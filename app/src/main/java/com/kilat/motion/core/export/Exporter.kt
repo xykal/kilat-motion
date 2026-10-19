@@ -1,4 +1,7 @@
-package com.kilat.motion
+package com.kilat.motion.core.export
+
+import com.kilat.motion.core.model.*
+import com.kilat.motion.core.render.Renderer
 
 import android.content.ContentValues
 import android.content.Context

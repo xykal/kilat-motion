@@ -1,4 +1,7 @@
-package com.kilat.motion
+package com.kilat.motion.core.audio
+
+import com.kilat.motion.core.model.Music
+import com.kilat.motion.core.model.Project
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

@@ -1,4 +1,7 @@
-package com.kilat.motion
+package com.kilat.motion.core.render
+
+import com.kilat.motion.core.model.*
+import com.kilat.motion.core.animation.Anim
 
 import android.graphics.Bitmap
 import android.graphics.BlurMaskFilter
@@ -313,7 +316,7 @@ object Renderer {
             fp.color = 0xFF5B6B85.toInt()
             fp.textSize = min(w, h) * 0.12f
             fp.textAlign = Paint.Align.CENTER
-            canvas.drawText("🖼 gambar", 0f, 0f, fp)
+            canvas.drawText("GAMBAR", 0f, 0f, fp)
             return
         }
         val blur = fx["fx.blur"] ?: 0f

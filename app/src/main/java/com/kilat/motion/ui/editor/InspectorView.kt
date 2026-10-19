@@ -1,4 +1,7 @@
-package com.kilat.motion
+package com.kilat.motion.ui.editor
+
+import com.kilat.motion.core.model.*
+import com.kilat.motion.core.animation.Anim
 
 import android.content.Context
 import android.graphics.Color
@@ -7,12 +10,16 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.SeekBar
-import android.widget.Spinner
 import android.widget.TextView
+import com.kilat.motion.ui.components.KeyframeButton
+import com.kilat.motion.ui.components.KilatChip
+import com.kilat.motion.ui.components.KilatDropdown
+import com.kilat.motion.ui.components.KilatIcon
+import com.kilat.motion.ui.components.KilatIconButton
+import com.kilat.motion.ui.components.KilatSlider
+import com.kilat.motion.ui.components.kEditText
 import kotlin.math.roundToInt
 
 class InspectorView(context: Context) : LinearLayout(context) {
@@ -36,9 +43,9 @@ class InspectorView(context: Context) : LinearLayout(context) {
 
     private class RowRef(
         val key: String,
-        val seek: SeekBar?,
+        val seek: KilatSlider?,
         val valueText: TextView?,
-        val keyBtn: TextView,
+        val keyBtn: KeyframeButton,
         val min: Float,
         val step: Float,
         val isInt: Boolean,
@@ -112,6 +119,13 @@ class InspectorView(context: Context) : LinearLayout(context) {
         return b
     }
 
+    private fun miniIconBtn(icon: KilatIcon, tint: Int = cMuted, onClick: () -> Unit): KilatIconButton {
+        val b = KilatIconButton(context, icon, tint, filled = true, sizeDp = 34f)
+        b.layoutParams = LayoutParams(dp(34f).toInt(), dp(34f).toInt())
+        b.setOnClickListener { onClick() }
+        return b
+    }
+
     private fun labelTv(text: String, size: Float = 11.5f, color: Int = cMuted, widthDp: Float? = null): TextView {
         val tv = TextView(context)
         tv.text = text
@@ -122,34 +136,18 @@ class InspectorView(context: Context) : LinearLayout(context) {
     }
 
     private fun editText(value: String, numeric: Boolean, onDone: (String) -> Unit): EditText {
-        val e = EditText(context)
-        e.setText(value)
-        e.setTextColor(cText)
-        e.textSize = 12f
-        e.setSingleLine(true)
-        e.background = roundRectBg(0xFF0A0C11.toInt(), dp(8f), cLine)
-        e.setPadding(dp(9f).toInt(), dp(6f).toInt(), dp(9f).toInt(), dp(6f).toInt())
-        e.inputType = if (numeric)
-            InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED
-        else InputType.TYPE_CLASS_TEXT
+        val e = context.kEditText(value, numeric = numeric)
         e.setOnEditorActionListener { v, _, _ -> onDone(v.text.toString()); true }
         e.setOnFocusChangeListener { v, hasFocus -> if (!hasFocus) onDone((v as EditText).text.toString()) }
         return e
     }
 
-    private fun spinner(labels: List<String>, selected: Int, onChange: (Int) -> Unit): Spinner {
-        val s = Spinner(context)
-        val adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, labels)
-        s.adapter = adapter
-        s.setSelection(selected.coerceIn(0, labels.size - 1))
-        s.background = roundRectBg(0xFF0A0C11.toInt(), dp(8f), cLine)
-        s.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (!binding) onChange(position)
-            }
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-        })
-        return s
+    private fun dropdown(labels: List<String>, selected: Int, title: String = "Pilih", onChange: (Int) -> Unit): KilatDropdown {
+        val d = KilatDropdown(context)
+        d.sheetTitle = title
+        d.setItems(labels, selected)
+        d.onSelected = { idx -> if (!binding) onChange(idx) }
+        return d
     }
 
     private fun swatchRow(selected: Int, onPick: (Int) -> Unit): LinearLayout {
@@ -197,15 +195,14 @@ class InspectorView(context: Context) : LinearLayout(context) {
         binding = true
         for (r in rows) {
             val v = Anim.value(l, r.key, curPlayhead)
-            r.valueText?.text = if (r.isInt) v.roundToInt().toString() else String.format("%.2f", v)
+            r.valueText?.text = if (r.isInt) v.roundToInt().toString() else Format.dec(v, 2)
             if (r.seek != null) {
                 val prog = ((v - r.min) / r.step).roundToInt().coerceIn(0, r.seek.max)
                 r.seek.progress = prog
             }
             val hasKf = Anim.keyAt(l, r.key, curPlayhead) != null
             val any = l.channels[r.key]?.keys?.isNotEmpty() == true
-            r.keyBtn.setTextColor(if (hasKf) 0xFF06231D.toInt() else if (any) 0xFF79D9C6.toInt() else 0xFF4D5871.toInt())
-            r.keyBtn.background = if (hasKf) roundRectBg(cAccent, dp(6f)) else null
+            r.keyBtn.mode = if (hasKf) 2 else if (any) 1 else 0
         }
         binding = false
     }
@@ -236,12 +233,12 @@ class InspectorView(context: Context) : LinearLayout(context) {
             if (s.isNotBlank()) { l.name = s.trim(); listener?.onEdited(true) }
         }
         head.addView(nameEdit, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        val dup = miniBtn("⧉") { listener?.onDuplicate(l) }
-        val del = miniBtn("✕") { listener?.onDelete(l) }
-        val lpDup = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+        val dup = miniIconBtn(KilatIcon.COPY) { listener?.onDuplicate(l) }
+        val del = miniIconBtn(KilatIcon.TRASH, 0xFFFF5C7A.toInt()) { listener?.onDelete(l) }
+        val lpDup = LayoutParams(dp(34f).toInt(), dp(34f).toInt())
         lpDup.leftMargin = dp(6f).toInt()
         head.addView(dup, lpDup)
-        val lpDel = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+        val lpDel = LayoutParams(dp(34f).toInt(), dp(34f).toInt())
         lpDel.leftMargin = dp(6f).toInt()
         head.addView(del, lpDel)
         addView(head)
@@ -252,7 +249,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
             KIND_SHAPE -> "BENTUK"
             else -> "GAMBAR"
         }
-        typeTv.text = "$kindLabel  ·  ${Anim.allKeyTimes(l).size} keyframe"
+        typeTv.text = "$kindLabel  |  ${Anim.allKeyTimes(l).size} keyframe"
         typeTv.setTextColor(cAccent)
         typeTv.textSize = 9.5f
         typeTv.letterSpacing = 0.1f
@@ -301,12 +298,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
         for (id in Anim.PRESETS) {
             if (id == "typing" && l.kind != KIND_TEXT) continue
             if (id == "kenBurns" && l.kind != KIND_IMAGE) continue
-            val chip = TextView(context)
-            chip.text = Anim.PRESET_LABELS[id]
-            chip.setTextColor(cMuted)
-            chip.textSize = 11f
-            chip.background = roundRectBg(0xFF0A0C11.toInt(), dp(8f), cLine)
-            chip.setPadding(dp(11f).toInt(), dp(7f).toInt(), dp(11f).toInt(), dp(7f).toInt())
+            val chip = KilatChip(context, Anim.PRESET_LABELS[id] ?: id)
             val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
             lp.rightMargin = dp(6f).toInt()
             chipRow.addView(chip, lp)
@@ -320,16 +312,16 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpEase = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         lpEase.topMargin = dp(8f).toInt()
         easeRow.addView(labelTv("Easing baru", widthDp = 84f))
-        val easeSpinner = spinner(Anim.EASES.map { Anim.EASE_LABELS[it] ?: it }, Anim.EASES.indexOf(defaultEase)) { idx ->
+        val easeDrop = dropdown(Anim.EASES.map { Anim.EASE_LABELS[it] ?: it }, Anim.EASES.indexOf(defaultEase), "Easing keyframe") { idx ->
             defaultEase = Anim.EASES[idx]
         }
-        easeRow.addView(easeSpinner, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        easeRow.addView(easeDrop, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         presetCard.addView(easeRow, lpEase)
         addView(presetCard)
 
         // ---- transform ----
         val transform = card()
-        val kfAction = miniBtn("⟲") { listener?.onClearKeys(l) }
+        val kfAction = miniIconBtn(KilatIcon.RESET) { listener?.onClearKeys(l) }
         transform.addView(header("Transform", kfAction))
         addProp(transform, l, "x", "Posisi X", 0f, p.width.toFloat(), 1f, false)
         addProp(transform, l, "y", "Posisi Y", 0f, p.height.toFloat(), 1f, false)
@@ -362,11 +354,11 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpBlend = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         lpBlend.topMargin = dp(10f).toInt()
         blendRow.addView(labelTv("Blend", widthDp = 84f))
-        val blendSpinner = spinner(BLEND_MODES.map { BLEND_LABELS[it] ?: it }, BLEND_MODES.indexOf(l.blend)) { idx ->
+        val blendDrop = dropdown(BLEND_MODES.map { BLEND_LABELS[it] ?: it }, BLEND_MODES.indexOf(l.blend), "Blend mode") { idx ->
             l.blend = BLEND_MODES[idx]
             listener?.onEdited(true)
         }
-        blendRow.addView(blendSpinner, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        blendRow.addView(blendDrop, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         fx.addView(blendRow, lpBlend)
         addView(fx)
 
@@ -415,11 +407,11 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpFont = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         lpFont.topMargin = dp(8f).toInt()
         fontRow.addView(labelTv("Font", widthDp = 50f))
-        val fontSpinner = spinner(FONT_KEYS.map { FONT_LABELS[it] ?: it }, FONT_KEYS.indexOf(l.fontKey)) { idx ->
+        val fontDrop = dropdown(FONT_KEYS.map { FONT_LABELS[it] ?: it }, FONT_KEYS.indexOf(l.fontKey), "Pilih font") { idx ->
             l.fontKey = FONT_KEYS[idx]
             listener?.onEdited(true)
         }
-        fontRow.addView(fontSpinner, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        fontRow.addView(fontDrop, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         c.addView(fontRow, lpFont)
 
         val sizeRow = LinearLayout(context)
@@ -428,20 +420,16 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpSize = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         lpSize.topMargin = dp(6f).toInt()
         sizeRow.addView(labelTv("Ukuran", widthDp = 50f))
-        val sizeSeek = SeekBar(context)
+        val sizeSeek = KilatSlider(context)
         sizeSeek.max = 400 - 8
         sizeSeek.progress = (l.textSize.toInt() - 8).coerceIn(0, sizeSeek.max)
         val sizeVal = labelTv(l.textSize.toInt().toString(), 11f, cText)
-        sizeSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (!fromUser) return
-                l.textSize = (progress + 8).toFloat()
-                sizeVal.text = l.textSize.toInt().toString()
-                listener?.onEdited(false)
-            }
-            override fun onStartTrackingTouch(sb: SeekBar?) {}
-            override fun onStopTrackingTouch(sb: SeekBar?) { listener?.onEdited(true) }
-        })
+        sizeSeek.onProgress = { progress ->
+            l.textSize = (progress + 8).toFloat()
+            sizeVal.text = l.textSize.toInt().toString()
+            listener?.onEdited(false)
+        }
+        sizeSeek.onReleased = { listener?.onEdited(true) }
         sizeRow.addView(sizeSeek, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         sizeRow.addView(sizeVal, LayoutParams(dp(36f).toInt(), LayoutParams.WRAP_CONTENT))
         c.addView(sizeRow, lpSize)
@@ -489,20 +477,16 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpStroke = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         lpStroke.topMargin = dp(8f).toInt()
         strokeRow.addView(labelTv("Outline", widthDp = 50f))
-        val strokeSeek = SeekBar(context)
+        val strokeSeek = KilatSlider(context)
         strokeSeek.max = 40
         strokeSeek.progress = l.strokeW.toInt().coerceIn(0, 40)
         val strokeVal = labelTv(l.strokeW.toInt().toString(), 11f, cText)
-        strokeSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (!fromUser) return
-                l.strokeW = progress.toFloat()
-                strokeVal.text = progress.toString()
-                listener?.onEdited(false)
-            }
-            override fun onStartTrackingTouch(sb: SeekBar?) {}
-            override fun onStopTrackingTouch(sb: SeekBar?) { listener?.onEdited(true) }
-        })
+        strokeSeek.onProgress = { progress ->
+            l.strokeW = progress.toFloat()
+            strokeVal.text = progress.toString()
+            listener?.onEdited(false)
+        }
+        strokeSeek.onReleased = { listener?.onEdited(true) }
         strokeRow.addView(strokeSeek, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         strokeRow.addView(strokeVal, LayoutParams(dp(36f).toInt(), LayoutParams.WRAP_CONTENT))
         c.addView(strokeRow, lpStroke)
@@ -520,7 +504,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
         typeRow.orientation = HORIZONTAL
         typeRow.gravity = Gravity.CENTER_VERTICAL
         typeRow.addView(labelTv("Jenis", widthDp = 60f))
-        val sp = spinner(SHAPE_TYPES.map { SHAPE_LABELS[it] ?: it }, SHAPE_TYPES.indexOf(l.shape)) { idx ->
+        val sp = dropdown(SHAPE_TYPES.map { SHAPE_LABELS[it] ?: it }, SHAPE_TYPES.indexOf(l.shape), "Jenis bentuk") { idx ->
             l.shape = SHAPE_TYPES[idx]
             listener?.onEdited(true)
         }
@@ -534,20 +518,16 @@ class InspectorView(context: Context) : LinearLayout(context) {
             val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
             lp.topMargin = dp(6f).toInt()
             row.addView(labelTv(label, widthDp = 60f))
-            val seek = SeekBar(context)
+            val seek = KilatSlider(context)
             seek.max = maxVal
             seek.progress = value.toInt().coerceIn(0, maxVal)
             val valTv = labelTv(value.toInt().toString(), 11f, cText)
-            seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                    if (!fromUser) return
-                    onChange(progress.toFloat())
-                    valTv.text = progress.toString()
-                    listener?.onEdited(false)
-                }
-                override fun onStartTrackingTouch(sb: SeekBar?) {}
-                override fun onStopTrackingTouch(sb: SeekBar?) { listener?.onEdited(true) }
-            })
+            seek.onProgress = { progress ->
+                onChange(progress.toFloat())
+                valTv.text = progress.toString()
+                listener?.onEdited(false)
+            }
+            seek.onReleased = { listener?.onEdited(true) }
             row.addView(seek, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
             row.addView(valTv, LayoutParams(dp(36f).toInt(), LayoutParams.WRAP_CONTENT))
             c.addView(row, lp)
@@ -577,20 +557,16 @@ class InspectorView(context: Context) : LinearLayout(context) {
             val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
             lp.topMargin = dp(6f).toInt()
             row.addView(labelTv(label, widthDp = 60f))
-            val seek = SeekBar(context)
+            val seek = KilatSlider(context)
             seek.max = maxVal
             seek.progress = value.toInt().coerceIn(0, maxVal)
             val valTv = labelTv(value.toInt().toString(), 11f, cText)
-            seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                    if (!fromUser) return
-                    onChange(progress.toFloat())
-                    valTv.text = progress.toString()
-                    listener?.onEdited(false)
-                }
-                override fun onStartTrackingTouch(sb: SeekBar?) {}
-                override fun onStopTrackingTouch(sb: SeekBar?) { listener?.onEdited(true) }
-            })
+            seek.onProgress = { progress ->
+                onChange(progress.toFloat())
+                valTv.text = progress.toString()
+                listener?.onEdited(false)
+            }
+            seek.onReleased = { listener?.onEdited(true) }
             row.addView(seek, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
             row.addView(valTv, LayoutParams(dp(36f).toInt(), LayoutParams.WRAP_CONTENT))
             c.addView(row, lp)
@@ -610,33 +586,27 @@ class InspectorView(context: Context) : LinearLayout(context) {
         parent.addView(row, lp)
 
         row.addView(labelTv(label, widthDp = 74f))
-        val seek = SeekBar(context)
+        val seek = KilatSlider(context)
         seek.max = (((maxV - minV) / step).roundToInt()).coerceAtLeast(1)
         val valTv = labelTv("", 11f, cText, 40f)
-        val keyBtn = TextView(context)
-        keyBtn.text = "◆"
-        keyBtn.textSize = 13f
-        keyBtn.gravity = Gravity.CENTER
-        keyBtn.setPadding(dp(6f).toInt(), dp(3f).toInt(), dp(6f).toInt(), dp(3f).toInt())
+        val keyBtn = KeyframeButton(context)
 
         row.addView(seek, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         row.addView(valTv)
-        row.addView(keyBtn, LayoutParams(dp(30f).toInt(), LayoutParams.WRAP_CONTENT))
+        row.addView(keyBtn, LayoutParams(dp(30f).toInt(), dp(30f).toInt()))
 
         val ref = RowRef(key, seek, valTv, keyBtn, minV, step, isInt, l)
         rows.add(ref)
 
-        seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (!fromUser || binding) return
+        seek.onProgress = { progress ->
+            if (!binding) {
                 val v = minV + progress * step
                 applyValue(l, key, v)
-                valTv.text = if (isInt) v.roundToInt().toString() else String.format("%.2f", v)
+                valTv.text = if (isInt) v.roundToInt().toString() else Format.dec(v, 2)
                 listener?.onEdited(false)
             }
-            override fun onStartTrackingTouch(sb: SeekBar?) {}
-            override fun onStopTrackingTouch(sb: SeekBar?) { listener?.onEdited(true) }
-        })
+        }
+        seek.onReleased = { listener?.onEdited(true) }
         keyBtn.setOnClickListener {
             val t = curPlayhead
             if (Anim.keyAt(l, key, t) != null) {

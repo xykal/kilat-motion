@@ -1,4 +1,6 @@
-package com.kilat.motion
+package com.kilat.motion.core.animation
+
+import com.kilat.motion.core.model.*
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

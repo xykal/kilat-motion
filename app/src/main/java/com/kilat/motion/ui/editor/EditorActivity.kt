@@ -1,35 +1,55 @@
-package com.kilat.motion
+package com.kilat.motion.ui.editor
+
+import com.kilat.motion.core.model.*
+import com.kilat.motion.core.animation.Anim
+import com.kilat.motion.core.audio.AudioUtil
+import com.kilat.motion.core.audio.MusicPlayer
+import com.kilat.motion.core.export.Exporter
+import com.kilat.motion.data.ProjectLibrary
+import com.kilat.motion.data.ProjectStore
+import com.kilat.motion.data.Templates
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.ScrollView
-import android.widget.SeekBar
-import android.widget.Spinner
-import android.widget.ArrayAdapter
 import android.widget.TextView
-import android.widget.Toast
-import java.io.File
+import com.kilat.motion.ui.components.IconView
+import com.kilat.motion.ui.components.KilatDropdown
+import com.kilat.motion.ui.components.KilatIcon
+import com.kilat.motion.ui.components.KilatIconButton
+import com.kilat.motion.ui.components.KilatSheet
+import com.kilat.motion.ui.components.KilatSlider
+import com.kilat.motion.ui.components.KilatToast
+import com.kilat.motion.ui.components.kEditText
+import com.kilat.motion.ui.theme.KColors
+import com.kilat.motion.ui.theme.dp as kdp
+import com.kilat.motion.ui.theme.dpf as kdpf
+import com.kilat.motion.ui.theme.kText
+import com.kilat.motion.ui.theme.kilatGradient
+import com.kilat.motion.ui.theme.ovalBg
+import com.kilat.motion.ui.theme.pressEffect
+import com.kilat.motion.ui.theme.roundedRect
+import com.kilat.motion.ui.theme.roundedTop
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.roundToInt
 
-class MainActivity : Activity() {
+/**
+ * Editor KILAT Motion.
+ * Seluruh UI dibangun dari komponen custom (ui/components) dan ikon Canvas
+ * (Icons.kt) - tanpa dialog, spinner, seekbar, toast, maupun ikon bawaan Android.
+ */
+class EditorActivity : Activity() {
 
     private lateinit var project: Project
     private var playhead = 0f
@@ -46,44 +66,54 @@ class MainActivity : Activity() {
     private lateinit var inspectorPanel: LinearLayout
     private lateinit var nameEdit: EditText
     private lateinit var timecode: TextView
-    private lateinit var playBtn: TextView
-    private lateinit var loopBtn: TextView
+    private lateinit var playIcon: IconView
+    private lateinit var loopBtn: KilatIconButton
     private lateinit var badge: TextView
 
     private val handler = Handler(Looper.getMainLooper())
     private val musicPlayer by lazy { MusicPlayer(applicationContext) }
-    private val density by lazy { resources.displayMetrics.density }
-    private fun dp(v: Float): Int = (v * density).roundToInt()
-
-    private val cBg = 0xFF0A0B0F.toInt()
-    private val cPanel = 0xFF111319.toInt()
-    private val cPanel2 = 0xFF151821.toInt()
-    private val cLine = 0xFF222837.toInt()
-    private val cText = 0xFFEEF2F8.toInt()
-    private val cMuted = 0xFF98A3B8.toInt()
-    private val cDim = 0xFF687389.toInt()
-    private val cAccent = 0xFF2EE6C0.toInt()
+    private fun dp(v: Float): Int = kdp(v)
 
     // =====================================================================
     // lifecycle
     // =====================================================================
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = 0xFF0D0F15.toInt()
-        window.navigationBarColor = cBg
+        window.statusBarColor = KColors.BgTop
+        window.navigationBarColor = KColors.Bg
 
-        project = ProjectStore.load(this) ?: Demo.build()
+        project = resolveProject()
         buildUi()
         setPlayhead(0f)
         updateTimecode()
         showInspectorFor(null)
+        ProjectLibrary.save(applicationContext, project, touch = false)
+    }
+
+    /** Project ditentukan dari intent homescreen: buka / template / baru / terakhir. */
+    private fun resolveProject(): Project {
+        val templateId = intent.getStringExtra(EXTRA_TEMPLATE_ID)
+        if (templateId != null) {
+            Templates.createFromTemplate(templateId)?.let { return it }
+        }
+        val projectId = intent.getStringExtra(EXTRA_PROJECT_ID)
+        if (projectId != null) {
+            ProjectLibrary.load(applicationContext, projectId)?.let { return it }
+        }
+        if (intent.hasExtra(EXTRA_NEW_W)) {
+            val w = intent.getIntExtra(EXTRA_NEW_W, 1080)
+            val h = intent.getIntExtra(EXTRA_NEW_H, 1920)
+            return Templates.newProject(w, h)
+        }
+        if (intent.getBooleanExtra(EXTRA_DEMO, false)) return Templates.buildDemo()
+        return ProjectLibrary.latest(applicationContext) ?: Templates.buildDemo()
     }
 
     override fun onPause() {
         playing = false
         musicPlayer.sync(project.music, playhead, false)
         updatePlayButton()
-        ProjectStore.save(applicationContext, project)
+        ProjectLibrary.save(applicationContext, project, touch = false)
         super.onPause()
     }
 
@@ -92,51 +122,46 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (inspectorPanel.visibility == View.VISIBLE) {
             hidePanel()
             return
         }
+        @Suppress("DEPRECATION")
         super.onBackPressed()
     }
 
     // =====================================================================
     // UI
     // =====================================================================
-    private fun rounded(fill: Int, radius: Float = dp(10f).toFloat(), stroke: Int? = null): GradientDrawable {
-        val d = GradientDrawable()
-        d.cornerRadius = radius
-        d.setColor(fill)
-        if (stroke != null) d.setStroke(dp(1f), stroke)
-        return d
-    }
-
-    private fun textView(text: String, size: Float, color: Int, bold: Boolean = false): TextView {
-        val tv = TextView(this)
-        tv.text = text
-        tv.setTextColor(color)
-        tv.textSize = size
-        if (bold) tv.typeface = Typeface.create("sans-serif", Typeface.BOLD)
-        return tv
-    }
-
-    private fun toolButton(label: String, accent: Boolean = false, onClick: () -> Unit): TextView {
-        val tv = TextView(this)
-        tv.text = label
-        tv.textSize = 11f
+    private fun toolItem(icon: KilatIcon, label: String, accent: Boolean = false, onClick: () -> Unit): LinearLayout {
+        val col = LinearLayout(this)
+        col.orientation = LinearLayout.VERTICAL
+        col.gravity = Gravity.CENTER
+        col.isClickable = true
+        col.setPadding(dp(2f), dp(5f), dp(2f), dp(4f))
+        val tile = FrameLayout(this)
+        tile.background = if (accent) kilatGradient(kdpf(13f))
+        else roundedRect(KColors.CardHi, kdpf(13f), KColors.Line, dp(1f))
+        val iv = IconView(this, icon, if (accent) 0xFF05131F.toInt() else KColors.Text)
+        val pad = dp(10f)
+        iv.setPadding(pad, pad, pad, pad)
+        tile.addView(iv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        col.addView(tile, LinearLayout.LayoutParams(dp(42f), dp(42f)))
+        val tv = kText(label, 9.5f, if (accent) KColors.Accent else KColors.Muted, bold = true)
         tv.gravity = Gravity.CENTER
-        tv.setTextColor(if (accent) 0xFF031A15.toInt() else cText)
-        tv.typeface = Typeface.create("sans-serif", Typeface.BOLD)
-        tv.background = rounded(if (accent) cAccent else 0xFF1B1F2B.toInt(), dp(9f).toFloat(), if (accent) null else cLine)
-        tv.setPadding(dp(4f), dp(9f), dp(4f), dp(9f))
-        tv.isClickable = true
-        tv.setOnClickListener { onClick() }
-        return tv
+        val lpTv = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpTv.topMargin = dp(4f)
+        col.addView(tv, lpTv)
+        col.pressEffect(0.93f)
+        col.setOnClickListener { onClick() }
+        return col
     }
 
     private fun buildUi() {
         val root = FrameLayout(this)
-        root.setBackgroundColor(cBg)
+        root.setBackgroundColor(KColors.Bg)
 
         val main = LinearLayout(this)
         main.orientation = LinearLayout.VERTICAL
@@ -146,25 +171,36 @@ class MainActivity : Activity() {
         val top = LinearLayout(this)
         top.orientation = LinearLayout.HORIZONTAL
         top.gravity = Gravity.CENTER_VERTICAL
-        top.setPadding(dp(14f), dp(8f), dp(8f), dp(6f))
-        top.setBackgroundColor(0xFF0D0F15.toInt())
+        top.setPadding(dp(10f), dp(8f), dp(8f), dp(6f))
+        top.setBackgroundColor(KColors.BgTop)
 
-        val logo = textView("⚡", 18f, cAccent, true)
-        top.addView(logo, LinearLayout.LayoutParams(dp(24f), ViewGroup.LayoutParams.WRAP_CONTENT))
+        val backBtn = KilatIconButton(this, KilatIcon.BACK, KColors.Muted, filled = false, sizeDp = 34f)
+        backBtn.setOnClickListener { finish() }
+        top.addView(backBtn, LinearLayout.LayoutParams(dp(34f), dp(34f)))
+
+        val logoTile = FrameLayout(this)
+        logoTile.background = kilatGradient(kdpf(10f))
+        val bolt = IconView(this, KilatIcon.BOLT, 0xFF05131F.toInt())
+        val lpBoltPad = dp(7f)
+        bolt.setPadding(lpBoltPad, lpBoltPad, lpBoltPad, lpBoltPad)
+        logoTile.addView(bolt, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        val lpLogo = LinearLayout.LayoutParams(dp(32f), dp(32f))
+        lpLogo.leftMargin = dp(4f)
+        top.addView(logoTile, lpLogo)
 
         val brand = LinearLayout(this)
         brand.orientation = LinearLayout.VERTICAL
-        brand.addView(textView("KILAT", 13f, cText, true))
-        val sub = textView("MOTION", 7.5f, cDim, true)
+        brand.addView(kText("KILAT", 12.5f, KColors.Text, bold = true))
+        val sub = kText("MOTION", 7f, KColors.Dim, bold = true)
         sub.letterSpacing = 0.32f
         brand.addView(sub)
         val lpBrand = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        lpBrand.marginStart = dp(4f)
+        lpBrand.marginStart = dp(7f)
         top.addView(brand, lpBrand)
 
         nameEdit = EditText(this)
         nameEdit.setText(project.name)
-        nameEdit.setTextColor(cMuted)
+        nameEdit.setTextColor(KColors.Muted)
         nameEdit.textSize = 12f
         nameEdit.setSingleLine(true)
         nameEdit.background = null
@@ -179,15 +215,12 @@ class MainActivity : Activity() {
             }
         }
         val lpName = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        lpName.marginStart = dp(6f)
+        lpName.marginStart = dp(2f)
         top.addView(nameEdit, lpName)
 
-        val menuBtn = textView("⋮", 20f, cMuted, true)
-        menuBtn.gravity = Gravity.CENTER
-        menuBtn.setPadding(dp(10f), dp(2f), dp(10f), dp(6f))
-        menuBtn.isClickable = true
+        val menuBtn = KilatIconButton(this, KilatIcon.MORE, KColors.Muted, filled = true, sizeDp = 34f)
         menuBtn.setOnClickListener { showMenu() }
-        top.addView(menuBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34f)))
+        top.addView(menuBtn, LinearLayout.LayoutParams(dp(34f), dp(34f)))
 
         main.addView(top, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
@@ -215,15 +248,15 @@ class MainActivity : Activity() {
         }
         previewWrap.addView(preview, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
-        badge = textView("", 9.5f, cDim, true)
+        badge = kText("", 9.5f, KColors.Dim, bold = true)
         badge.setPadding(dp(8f), dp(4f), dp(8f), dp(4f))
-        badge.background = rounded(0xCC0A0C11.toInt(), dp(6f).toFloat(), 0x22FFFFFF)
+        badge.background = roundedRect(0xCC0A0C11.toInt(), kdpf(6f), 0x22FFFFFF, dp(1f))
         val lpBadge = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpBadge.gravity = Gravity.TOP or Gravity.START
         lpBadge.leftMargin = dp(10f)
         lpBadge.topMargin = dp(8f)
         previewWrap.addView(badge, lpBadge)
-        badge.text = "${project.width} × ${project.height}  ·  ${project.fps}fps"
+        updateBadge()
 
         main.addView(previewWrap, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
@@ -233,32 +266,29 @@ class MainActivity : Activity() {
         transport.gravity = Gravity.CENTER_VERTICAL
         transport.setPadding(dp(14f), dp(4f), dp(14f), dp(6f))
 
-        playBtn = textView("▶", 16f, 0xFF0A0B0F.toInt(), true)
-        playBtn.gravity = Gravity.CENTER
-        playBtn.background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(Color.WHITE)
-        }
-        playBtn.isClickable = true
-        playBtn.setOnClickListener { togglePlay() }
-        transport.addView(playBtn, LinearLayout.LayoutParams(dp(42f), dp(42f)))
+        val playWrap = FrameLayout(this)
+        playWrap.background = ovalBg(0xFFFFFFFF.toInt())
+        playWrap.isClickable = true
+        playIcon = IconView(this, KilatIcon.PLAY, KColors.Bg)
+        val pp = dp(12f)
+        playIcon.setPadding(pp, pp, pp, pp)
+        playWrap.addView(playIcon, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        playWrap.pressEffect(0.92f)
+        playWrap.setOnClickListener { togglePlay() }
+        transport.addView(playWrap, LinearLayout.LayoutParams(dp(44f), dp(44f)))
 
-        timecode = textView("00:00.00 / 00:00.00", 12f, cText, true)
-        timecode.typeface = Typeface.create("monospace", Typeface.BOLD)
+        timecode = kText("00:00.00 / 00:00.00", 12f, KColors.Text, bold = true, font = "monospace")
         val lpTc = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         lpTc.marginStart = dp(12f)
         transport.addView(timecode, lpTc)
 
-        loopBtn = textView("⟳", 18f, cDim, true)
-        loopBtn.gravity = Gravity.CENTER
-        loopBtn.setPadding(dp(6f), dp(2f), dp(6f), dp(2f))
-        loopBtn.isClickable = true
+        loopBtn = KilatIconButton(this, KilatIcon.LOOP, KColors.Dim, filled = false, sizeDp = 38f)
         loopBtn.setOnClickListener {
             loop = !loop
-            loopBtn.setTextColor(if (loop) cAccent else cDim)
-            toast(if (loop) "Loop: ON" else "Loop: OFF")
+            loopBtn.setTint(if (loop) KColors.Accent else KColors.Dim)
+            toast(if (loop) "Loop nyala" else "Loop mati", KilatIcon.LOOP)
         }
-        transport.addView(loopBtn, LinearLayout.LayoutParams(dp(36f), dp(36f)))
+        transport.addView(loopBtn, LinearLayout.LayoutParams(dp(38f), dp(38f)))
 
         main.addView(transport, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
@@ -308,20 +338,19 @@ class MainActivity : Activity() {
         // ---------- bottom toolbar ----------
         val bottom = LinearLayout(this)
         bottom.orientation = LinearLayout.HORIZONTAL
-        bottom.setPadding(dp(10f), dp(6f), dp(10f), dp(10f))
-        bottom.setBackgroundColor(0xFF0D0F15.toInt())
+        bottom.setPadding(dp(8f), dp(4f), dp(8f), dp(8f))
+        bottom.setBackgroundColor(KColors.BgTop)
         val tools = listOf(
-            "＋ Teks" to { addTextLayer() },
-            "◆ Bentuk" to { showShapePicker() },
-            "🖼 Gambar" to { pickImage(null) },
-            "⚙ Properti" to { showPanel() },
-            "⤓ Export" to { showExportDialog() }
+            Triple(KilatIcon.TEXT, "Teks") { addTextLayer() },
+            Triple(KilatIcon.SHAPE, "Bentuk") { showShapePicker() },
+            Triple(KilatIcon.IMAGE, "Gambar") { pickImage(null) },
+            Triple(KilatIcon.SLIDERS, "Properti") { showPanel() },
+            Triple(KilatIcon.EXPORT, "Export") { showExportDialog() }
         )
-        for ((i, pair) in tools.withIndex()) {
-            val btn = toolButton(pair.first, accent = i == tools.size - 1) { pair.second() }
-            val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            if (i > 0) lp.marginStart = dp(6f)
-            bottom.addView(btn, lp)
+        for ((i, triple) in tools.withIndex()) {
+            val (icon, label, action) = triple
+            val item = toolItem(icon, label, accent = i == tools.size - 1) { action() }
+            bottom.addView(item, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
         main.addView(bottom, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
@@ -330,41 +359,27 @@ class MainActivity : Activity() {
         // ---------- inspector panel ----------
         inspectorPanel = LinearLayout(this)
         inspectorPanel.orientation = LinearLayout.VERTICAL
-        inspectorPanel.background = GradientDrawable().apply {
-            cornerRadii = floatArrayOf(dp(18f).toFloat(), dp(18f).toFloat(), dp(18f).toFloat(), dp(18f).toFloat(), 0f, 0f, 0f, 0f)
-            setColor(0xFF0D0F15.toInt())
-            setStroke(dp(1f), cLine)
-        }
+        inspectorPanel.background = roundedTop(KColors.BgTop, kdpf(20f), KColors.Line, dp(1f))
         inspectorPanel.visibility = View.GONE
+
+        val strip = View(this)
+        strip.background = roundedRect(0xFF2C3346.toInt(), kdpf(3f))
+        val lpStrip = LinearLayout.LayoutParams(dp(42f), dp(4f))
+        lpStrip.gravity = Gravity.CENTER_HORIZONTAL
+        lpStrip.topMargin = dp(8f)
+        inspectorPanel.addView(strip, lpStrip)
 
         val panelHead = LinearLayout(this)
         panelHead.orientation = LinearLayout.HORIZONTAL
         panelHead.gravity = Gravity.CENTER_VERTICAL
-        panelHead.setPadding(dp(16f), dp(10f), dp(10f), dp(4f))
-        val handle = TextView(this)
-        handle.text = "▬"
-        handle.setTextColor(0xFF2C3346.toInt())
-        handle.textSize = 12f
-        handle.gravity = Gravity.CENTER
-
-        val panelTitle = textView("Properti Layer", 13f, cText, true)
+        panelHead.setPadding(dp(16f), dp(6f), dp(10f), dp(2f))
+        val panelTitle = kText("Properti Layer", 13f, KColors.Text, bold = true)
         val lpTitle = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        lpTitle.marginStart = dp(6f)
         panelHead.addView(panelTitle, lpTitle)
-        val closeBtn = textView("✕", 15f, cMuted, true)
-        closeBtn.gravity = Gravity.CENTER
-        closeBtn.setPadding(dp(10f), dp(2f), dp(10f), dp(2f))
-        closeBtn.isClickable = true
+        val closeBtn = KilatIconButton(this, KilatIcon.CLOSE, KColors.Dim, filled = false, sizeDp = 34f)
         closeBtn.setOnClickListener { hidePanel() }
-        panelHead.addView(closeBtn, LinearLayout.LayoutParams(dp(36f), dp(36f)))
+        panelHead.addView(closeBtn, LinearLayout.LayoutParams(dp(34f), dp(34f)))
         inspectorPanel.addView(panelHead, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        // strip handle (visual only)
-        val strip = View(this)
-        strip.setBackgroundColor(0xFF2C3346.toInt())
-        val lpStrip = LinearLayout.LayoutParams(dp(40f), dp(3f))
-        lpStrip.gravity = Gravity.CENTER_HORIZONTAL
-        lpStrip.topMargin = -dp(4f)
-        inspectorPanel.addView(strip, lpStrip)
 
         inspector = InspectorView(this)
         inspector.listener = object : InspectorView.Listener {
@@ -389,14 +404,14 @@ class MainActivity : Activity() {
             override fun onApplyPreset(layer: Layer, preset: String) {
                 val ok = Anim.applyPreset(layer, preset, playhead, project.duration)
                 if (!ok) {
-                    toast("Preset ini tidak cocok untuk layer ${layer.kind}")
+                    toast("Preset ini tidak cocok untuk layer ${layer.kind}", KilatIcon.INFO)
                     return
                 }
                 preview.invalidate()
                 timeline.invalidate()
                 showInspectorFor(layer)
                 autosave()
-                toast("Preset ${Anim.PRESET_LABELS[preset]} diterapkan")
+                toast("Preset ${Anim.PRESET_LABELS[preset]} diterapkan", KilatIcon.WAND)
             }
 
             override fun onClearKeys(layer: Layer) {
@@ -405,10 +420,11 @@ class MainActivity : Activity() {
                 timeline.invalidate()
                 showInspectorFor(layer)
                 autosave()
-                toast("Semua keyframe dihapus")
+                toast("Semua keyframe dihapus", KilatIcon.RESET)
             }
         }
         val scroll = ScrollView(this)
+        scroll.isVerticalScrollBarEnabled = false
         scroll.addView(inspector, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         inspectorPanel.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
@@ -417,6 +433,10 @@ class MainActivity : Activity() {
         root.addView(inspectorPanel, lpPanel)
 
         setContentView(root)
+    }
+
+    private fun updateBadge() {
+        badge.text = "${project.width} x ${project.height}  |  ${project.fps}fps"
     }
 
     // =====================================================================
@@ -466,12 +486,11 @@ class MainActivity : Activity() {
         handler.removeCallbacks(ticker)
         musicPlayer.sync(project.music, playhead, false)
         updatePlayButton()
-        ProjectStore.save(applicationContext, project)
+        ProjectLibrary.save(applicationContext, project, touch = false)
     }
 
     private fun updatePlayButton() {
-        playBtn.text = if (playing) "❚❚" else "▶"
-        playBtn.textSize = if (playing) 13f else 16f
+        playIcon.icon = if (playing) KilatIcon.PAUSE else KilatIcon.PLAY
     }
 
     private val ticker = object : Runnable {
@@ -551,35 +570,35 @@ class MainActivity : Activity() {
         p.layers.add(l)
         afterChange(l.id)
         selectLayer(l.id, openPanel = true)
-        toast("Teks ditambahkan")
+        toast("Teks ditambahkan", KilatIcon.TEXT)
     }
 
     private fun showShapePicker() {
-        val labels = SHAPE_TYPES.map { SHAPE_LABELS[it] ?: it }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Tambah bentuk")
-            .setItems(labels) { _, which ->
-                val p = project
-                val shape = SHAPE_TYPES[which]
-                val base = min(p.width, p.height) * 0.46f
-                val l = Layer().apply {
-                    kind = KIND_SHAPE
-                    name = "${SHAPE_LABELS[shape]} ${p.layers.count { it.kind == KIND_SHAPE } + 1}"
-                    this.shape = shape
-                    w = base
-                    h = if (shape == "triangle") base * 0.9f else base
-                    radius = if (shape == "rect") base * 0.1f else 0f
-                    fill = cAccent
-                    x = p.width / 2f
-                    y = p.height / 2f
-                    start = playhead.coerceIn(0f, max(0f, p.duration - 0.5f))
-                    dur = min(4f, p.duration - start)
-                }
-                p.layers.add(l)
-                afterChange(l.id)
-                selectLayer(l.id, openPanel = true)
+        val tints = listOf(KColors.Accent, KColors.Sky, KColors.Amber, KColors.Violet)
+        val items = SHAPE_TYPES.mapIndexed { i, s ->
+            KilatSheet.Item(SHAPE_LABELS[s] ?: s, icon = KilatIcon.SHAPE, iconTint = tints[i % tints.size])
+        }
+        KilatSheet.showList(this, "Tambah bentuk", items) { which ->
+            val p = project
+            val shape = SHAPE_TYPES[which]
+            val base = min(p.width, p.height) * 0.46f
+            val l = Layer().apply {
+                kind = KIND_SHAPE
+                name = "${SHAPE_LABELS[shape]} ${p.layers.count { it.kind == KIND_SHAPE } + 1}"
+                this.shape = shape
+                w = base
+                h = if (shape == "triangle") base * 0.9f else base
+                radius = if (shape == "rect") base * 0.1f else 0f
+                fill = KColors.Accent
+                x = p.width / 2f
+                y = p.height / 2f
+                start = playhead.coerceIn(0f, max(0f, p.duration - 0.5f))
+                dur = min(4f, p.duration - start)
             }
-            .show()
+            p.layers.add(l)
+            afterChange(l.id)
+            selectLayer(l.id, openPanel = true)
+        }
     }
 
     private fun deleteLayer(layer: Layer) {
@@ -590,7 +609,7 @@ class MainActivity : Activity() {
         selectedId = next?.id
         afterChange(selectedId)
         if (inspectorPanel.visibility == View.VISIBLE) showInspectorFor(next)
-        toast("Layer dihapus")
+        toast("Layer dihapus", KilatIcon.TRASH)
     }
 
     private fun duplicateLayer(layer: Layer) {
@@ -599,7 +618,7 @@ class MainActivity : Activity() {
         project.layers.add(idx + 1, copy)
         selectedId = copy.id
         afterChange(selectedId)
-        toast("Layer diduplikat")
+        toast("Layer diduplikat", KilatIcon.COPY)
     }
 
     // =====================================================================
@@ -608,78 +627,92 @@ class MainActivity : Activity() {
     private fun showMusicDialog() {
         val m = project.music
         if (m == null) {
-            AlertDialog.Builder(this)
-                .setTitle("Musik latar")
-                .setMessage("Tambahkan musik dari galeri. Musik akan ikut ter-export ke MP4 (volume di video mengikuti file asli).")
-                .setPositiveButton("Pilih musik") { _, _ -> pickAudio() }
-                .setNegativeButton("Batal", null)
-                .show()
+            KilatSheet.show(
+                this, "Musik latar",
+                kText(
+                    "Tambahkan musik dari galeri. Musik akan ikut ter-export ke MP4 (volume di video mengikuti file asli).",
+                    12.5f, KColors.Muted
+                ),
+                positiveText = "Pilih musik", positiveIcon = KilatIcon.MUSIC,
+                onPositive = { pickAudio() },
+                negativeText = "Batal"
+            )
             return
         }
         val wrap = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20f), dp(10f), dp(20f), dp(2f))
+            setPadding(0, dp(2f), 0, dp(2f))
         }
-        wrap.addView(textView("♫ ${m.name}", 13f, cText, true))
-        wrap.addView(textView("Durasi file: ${"%.1f".format(AudioUtil.durationSeconds(m.path))}s", 11f, cDim))
+        val headRow = LinearLayout(this)
+        headRow.orientation = LinearLayout.HORIZONTAL
+        headRow.gravity = Gravity.CENTER_VERTICAL
+        val mTile = FrameLayout(this)
+        mTile.background = roundedRect(KColors.CardHi, kdpf(10f), KColors.Line, dp(1f))
+        val mIv = IconView(this, KilatIcon.MUSIC, KColors.Accent)
+        val mp = dp(8f)
+        mIv.setPadding(mp, mp, mp, mp)
+        mTile.addView(mIv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        val lpMT = LinearLayout.LayoutParams(dp(38f), dp(38f))
+        lpMT.rightMargin = dp(11f)
+        headRow.addView(mTile, lpMT)
+        val mCol = LinearLayout(this)
+        mCol.orientation = LinearLayout.VERTICAL
+        mCol.addView(kText(m.name, 13f, KColors.Text, bold = true))
+        mCol.addView(kText("Durasi file: ${Format.dec(AudioUtil.durationSeconds(m.path))}s", 11f, KColors.Dim))
+        headRow.addView(mCol)
+        wrap.addView(headRow)
 
-        var vol = m.volume
-        val volLabel = textView("Volume preview: ${(vol * 100).toInt()}%", 11.5f, cMuted)
+        val volLabel = kText("Volume preview: ${(m.volume * 100).toInt()}%", 11.5f, KColors.Muted)
         val lpV = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        lpV.topMargin = dp(12f)
+        lpV.topMargin = dp(14f)
         wrap.addView(volLabel, lpV)
-        val seek = SeekBar(this)
-        seek.max = 100
-        seek.progress = (vol * 100).toInt().coerceIn(0, 100)
-        seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (!fromUser) return
-                vol = progress / 100f
-                volLabel.text = "Volume preview: $progress%"
-                project.music?.volume = vol
-                musicPlayer.sync(project.music, playhead, playing)
-            }
-            override fun onStartTrackingTouch(sb: SeekBar?) {}
-            override fun onStopTrackingTouch(sb: SeekBar?) { autosave() }
-        })
-        wrap.addView(seek)
+        val volSlider = KilatSlider(this)
+        volSlider.max = 100
+        volSlider.progress = (m.volume * 100).toInt().coerceIn(0, 100)
+        volSlider.onProgress = { progress ->
+            volLabel.text = "Volume preview: $progress%"
+            project.music?.volume = progress / 100f
+            musicPlayer.sync(project.music, playhead, playing)
+        }
+        volSlider.onReleased = { autosave() }
+        wrap.addView(volSlider, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30f)))
 
-        val posLabel = textView("Mulai: ${"%.1f".format(m.start)}s · Durasi: ${"%.1f".format(m.dur)}s", 11.5f, cMuted)
+        val posLabel = kText("Mulai: ${Format.dec(m.start)}s | Durasi: ${Format.dec(m.dur)}s", 11.5f, KColors.Muted)
         val lpP = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpP.topMargin = dp(8f)
         wrap.addView(posLabel, lpP)
-        val startSeek = SeekBar(this)
+        val startSlider = KilatSlider(this)
         val maxStart = max(1, project.duration.toInt() - 1)
-        startSeek.max = maxStart
-        startSeek.progress = m.start.toInt().coerceIn(0, maxStart)
-        startSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (!fromUser) return
-                val mm = project.music ?: return
+        startSlider.max = maxStart
+        startSlider.progress = m.start.toInt().coerceIn(0, maxStart)
+        startSlider.onProgress = { progress ->
+            val mm = project.music
+            if (mm != null) {
                 mm.start = progress.toFloat()
                 if (mm.start + mm.dur > project.duration) mm.dur = max(0.5f, project.duration - mm.start)
-                posLabel.text = "Mulai: ${"%.1f".format(mm.start)}s · Durasi: ${"%.1f".format(mm.dur)}s"
+                posLabel.text = "Mulai: ${Format.dec(mm.start)}s | Durasi: ${Format.dec(mm.dur)}s"
                 timeline.invalidate()
                 musicPlayer.sync(project.music, playhead, playing)
             }
-            override fun onStartTrackingTouch(sb: SeekBar?) {}
-            override fun onStopTrackingTouch(sb: SeekBar?) { autosave() }
-        })
-        wrap.addView(startSeek)
+        }
+        startSlider.onReleased = { autosave() }
+        wrap.addView(startSlider, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30f)))
 
-        AlertDialog.Builder(this)
-            .setTitle("Musik latar")
-            .setView(ScrollView(this).apply { addView(wrap) })
-            .setPositiveButton("Tutup") { _, _ -> autosave() }
-            .setNeutralButton("Ganti") { _, _ -> pickAudio() }
-            .setNegativeButton("Hapus") { _, _ ->
+        KilatSheet.show(
+            this, "Musik latar", wrap,
+            positiveText = "Tutup", positiveIcon = KilatIcon.CHECK,
+            onPositive = { autosave() },
+            neutralText = "Ganti",
+            onNeutral = { pickAudio() },
+            negativeText = "Hapus",
+            onNegative = {
                 project.music = null
                 musicPlayer.release()
                 timeline.invalidate()
                 autosave()
-                toast("Musik dihapus")
+                toast("Musik dihapus", KilatIcon.TRASH)
             }
-            .show()
+        )
     }
 
     private fun pickAudio() {
@@ -688,25 +721,27 @@ class MainActivity : Activity() {
             type = "audio/*"
         }
         try {
+            @Suppress("DEPRECATION")
             startActivityForResult(intent, REQ_AUDIO)
         } catch (e: Throwable) {
-            toast("Tidak bisa membuka file audio")
+            toast("Tidak bisa membuka file audio", KilatIcon.INFO)
         }
     }
 
     private fun importAudioFrom(uri: Uri) {
-        toast("Mengimpor musik…")
+        toast("Mengimpor musik...", KilatIcon.MUSIC)
         Thread {
             val ctx = applicationContext
             val name = queryDisplayName(uri) ?: "musik"
             val path = ProjectStore.importAudio(ctx, uri, name)
             if (path == null) {
-                runOnUiThread { toast("Gagal mengimpor musik") }
+                runOnUiThread { if (!isFinishing) toast("Gagal mengimpor musik", KilatIcon.INFO) }
                 return@Thread
             }
             val durSec = AudioUtil.durationSeconds(path)
             val wave = AudioUtil.decodeEnvelope(path)
             runOnUiThread {
+                if (isFinishing) return@runOnUiThread
                 val p = project
                 val m = Music()
                 m.path = path
@@ -721,7 +756,7 @@ class MainActivity : Activity() {
                 timeline.invalidate()
                 autosave()
                 musicPlayer.sync(p.music, playhead, playing)
-                toast(if (wave != null) "Musik ditambahkan 🎵" else "Musik ditambahkan (waveform tidak tersedia)")
+                toast(if (wave != null) "Musik ditambahkan" else "Musik ditambahkan (waveform tidak tersedia)", KilatIcon.MUSIC)
                 showMusicDialog()
             }
         }.start()
@@ -750,13 +785,16 @@ class MainActivity : Activity() {
             type = "image/*"
         }
         try {
+            @Suppress("DEPRECATION")
             startActivityForResult(intent, REQ_IMAGE)
         } catch (e: Throwable) {
-            toast("Tidak bisa membuka galeri")
+            toast("Tidak bisa membuka galeri", KilatIcon.INFO)
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode != RESULT_OK) return
         if (requestCode == REQ_AUDIO) {
@@ -766,15 +804,16 @@ class MainActivity : Activity() {
         }
         if (requestCode != REQ_IMAGE) return
         val uri: Uri = data?.data ?: return
-        toast("Mengimpor gambar…")
+        toast("Mengimpor gambar...", KilatIcon.IMAGE)
         Thread {
             val ctx = applicationContext
             val path = ProjectStore.importImage(ctx, uri)
             val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             if (path != null) android.graphics.BitmapFactory.decodeFile(path, bounds)
             runOnUiThread {
+                if (isFinishing) return@runOnUiThread
                 if (path == null || bounds.outWidth <= 0) {
-                    toast("Gagal membaca gambar")
+                    toast("Gagal membaca gambar", KilatIcon.INFO)
                     return@runOnUiThread
                 }
                 val p = project
@@ -786,7 +825,7 @@ class MainActivity : Activity() {
                     target.imgW = bounds.outWidth * sc
                     target.imgH = bounds.outHeight * sc
                     afterChange(target.id)
-                    toast("Gambar diganti")
+                    toast("Gambar diganti", KilatIcon.IMAGE)
                 } else {
                     val sc = min(p.width * 0.8f / bounds.outWidth, p.height * 0.62f / bounds.outHeight)
                     val l = Layer().apply {
@@ -803,7 +842,7 @@ class MainActivity : Activity() {
                     p.layers.add(l)
                     afterChange(l.id)
                     selectLayer(l.id, openPanel = true)
-                    toast("Gambar ditambahkan")
+                    toast("Gambar ditambahkan", KilatIcon.IMAGE)
                 }
                 pendingImageLayer = null
             }
@@ -814,72 +853,55 @@ class MainActivity : Activity() {
     // export
     // =====================================================================
     private fun showExportDialog() {
-        val opts = arrayOf("720p — cepat & kecil", "1080p — HD, lebih lama")
-        AlertDialog.Builder(this)
-            .setTitle("Export MP4")
-            .setItems(opts) { _, which ->
-                val longSide = if (which == 0) 1280 else 1920
-                runExport(longSide)
-            }
-            .setNegativeButton("Batal", null)
-            .show()
+        val items = listOf(
+            KilatSheet.Item("720p", "Cepat dirender, ukuran file kecil", KilatIcon.FILM, KColors.Sky),
+            KilatSheet.Item("1080p", "Full HD, render lebih lama", KilatIcon.FILM, KColors.Violet)
+        )
+        KilatSheet.showList(this, "Export MP4", items) { which ->
+            runExport(if (which == 0) 1280 else 1920)
+        }
     }
 
     private fun runExport(longSide: Int) {
         if (playing) stopPlay()
         musicPlayer.sync(project.music, playhead, false)
         val p = project
-        val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            max = 100
-            progress = 0
-        }
-        val status = textView("Menyiapkan encoder…", 12f, cMuted)
-        val wrap = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20f), dp(12f), dp(20f), dp(4f))
-            addView(status, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            lp.topMargin = dp(10f)
-            addView(bar, lp)
-        }
-        val dialog = AlertDialog.Builder(this)
-            .setTitle("Mengekspor video…")
-            .setView(wrap)
-            .setCancelable(false)
-            .create()
-        dialog.show()
+        val handle = KilatSheet.showProgress(this, "Mengekspor video", "Menyiapkan encoder...")
 
         Thread {
             val ctx = applicationContext
             fun progressFn(f: Float) {
-                runOnUiThread {
-                    val pct = (f * 100).roundToInt()
-                    bar.progress = pct
-                    status.text = "Merender $pct%"
-                }
+                runOnUiThread { if (!isFinishing) handle.setProgress(f, "Merender frame video...") }
             }
             var result = Exporter.exportVideo(ctx, p, longSide, 30) { f -> progressFn(f) }
             // fallback otomatis: beberapa HP tidak mendukung encode 1080p tertentu
             if (result.error != null && longSide > 1280) {
-                runOnUiThread { status.text = "Resolusi tidak didukung, coba 720p…" }
+                runOnUiThread { if (!isFinishing) handle.setProgress(0f, "Resolusi tidak didukung, coba 720p...") }
                 result = Exporter.exportVideo(ctx, p, 1280, 30) { f -> progressFn(f) }
             }
+            val res = result
             runOnUiThread {
-                dialog.dismiss()
-                if (result.error != null || result.uri == null) {
-                    AlertDialog.Builder(this)
-                        .setTitle("Export gagal")
-                        .setMessage("${result.error ?: "URI tidak valid"}\n\nCoba resolusi 720p, atau pastikan penyimpanan cukup.")
-                        .setPositiveButton("Oke", null)
-                        .show()
+                if (isFinishing) return@runOnUiThread
+                handle.dismiss()
+                if (res.error != null || res.uri == null) {
+                    KilatSheet.showMessage(
+                        this, "Export gagal",
+                        "${res.error ?: "URI tidak valid"}\n\nCoba resolusi 720p, atau pastikan penyimpanan cukup.",
+                        icon = KilatIcon.INFO
+                    )
                 } else {
-                    AlertDialog.Builder(this)
-                        .setTitle("Export selesai 🎉")
-                        .setMessage("Video tersimpan di:\nMovies/KilatMotion\n\n${longSide}p · 30fps · ${"%.1f".format(p.duration)} detik")
-                        .setPositiveButton("Bagikan") { _, _ -> shareUri(result.uri, "video/mp4") }
-                        .setNegativeButton("Oke", null)
-                        .show()
-                    toast("Video tersimpan ke galeri")
+                    val resLabel = if (longSide <= 1280) "720p" else "1080p"
+                    KilatSheet.show(
+                        this, "Export selesai",
+                        kText(
+                            "Video tersimpan di Movies/KilatMotion.\n\n$resLabel | 30fps | ${Format.dec(p.duration)} detik. Bagikan sekarang?",
+                            12.5f, KColors.Muted
+                        ),
+                        positiveText = "Bagikan", positiveIcon = KilatIcon.SHARE,
+                        onPositive = { shareUri(res.uri, "video/mp4") },
+                        negativeText = "Oke"
+                    )
+                    toast("Video tersimpan ke galeri", KilatIcon.FILM)
                 }
             }
         }.start()
@@ -887,13 +909,14 @@ class MainActivity : Activity() {
 
     private fun exportPng() {
         val p = project
-        toast("Menyimpan frame PNG…")
+        toast("Menyimpan frame PNG...", KilatIcon.IMAGE)
         Thread {
             val uri = Exporter.exportFramePng(applicationContext, p, playhead)
             runOnUiThread {
-                if (uri == null) toast("Gagal export PNG")
+                if (isFinishing) return@runOnUiThread
+                if (uri == null) toast("Gagal export PNG", KilatIcon.INFO)
                 else {
-                    toast("Frame PNG tersimpan di Pictures/KilatMotion")
+                    toast("Frame PNG tersimpan di Pictures/KilatMotion", KilatIcon.IMAGE)
                     shareUri(uri, "image/png")
                 }
             }
@@ -910,7 +933,7 @@ class MainActivity : Activity() {
             }
             startActivity(Intent.createChooser(send, "Bagikan"))
         } catch (e: Throwable) {
-            toast("Tidak ada aplikasi untuk membagikan")
+            toast("Tidak ada aplikasi untuk membagikan", KilatIcon.INFO)
         }
     }
 
@@ -918,65 +941,62 @@ class MainActivity : Activity() {
     // menu & dialogs
     // =====================================================================
     private fun showMenu() {
-        val items = arrayOf(
-            "🎵 Musik latar",
-            "⚙ Pengaturan project",
-            "💾 Simpan sekarang",
-            "⚡ Muat demo",
-            "🆕 Project baru",
-            "🖼 Export frame PNG",
-            "📖 Panduan",
-            "ℹ Tentang"
+        val items = listOf(
+            KilatSheet.Item("Musik latar", "Musik ikut ter-export ke MP4", KilatIcon.MUSIC, KColors.Accent),
+            KilatSheet.Item("Pengaturan project", "Rasio, durasi, warna latar", KilatIcon.SETTINGS, KColors.Sky),
+            KilatSheet.Item("Simpan sekarang", "Tersimpan juga otomatis tiap perubahan", KilatIcon.SAVE, KColors.Green),
+            KilatSheet.Item("Muat demo", "Ganti isi project ini dengan demo", KilatIcon.BOLT, KColors.Amber),
+            KilatSheet.Item("Project baru (kosong)", "Isi project ini dikosongkan", KilatIcon.PLUS, KColors.Violet),
+            KilatSheet.Item("Export frame PNG", "Simpan frame saat ini sebagai gambar", KilatIcon.IMAGE, KColors.Rose),
+            KilatSheet.Item("Panduan", "Cara pakai editor", KilatIcon.BOOK, KColors.Sky),
+            KilatSheet.Item("Tentang", "Versi dan info aplikasi", KilatIcon.INFO, KColors.Muted),
+            KilatSheet.Item("Kembali ke Beranda", "Project tersimpan otomatis", KilatIcon.HOME, KColors.Accent)
         )
-        AlertDialog.Builder(this)
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> showMusicDialog()
-                    1 -> showProjectSettings()
-                    2 -> { ProjectStore.save(applicationContext, project); toast("Project disimpan") }
-                    3 -> { loadDemo() }
-                    4 -> { newProject() }
-                    5 -> exportPng()
-                    6 -> showGuide()
-                    7 -> showAbout()
+        KilatSheet.showList(this, "Menu project", items) { which ->
+            when (which) {
+                0 -> showMusicDialog()
+                1 -> showProjectSettings()
+                2 -> {
+                    ProjectLibrary.save(applicationContext, project)
+                    toast("Project disimpan", KilatIcon.SAVE)
                 }
+                3 -> loadDemo()
+                4 -> newProject()
+                5 -> exportPng()
+                6 -> showGuide()
+                7 -> showAbout()
+                8 -> finish()
             }
-            .show()
+        }
     }
 
     private fun showProjectSettings() {
-        val ratios = listOf(
-            Triple("9:16 (vertikal)", 1080, 1920),
-            Triple("16:9 (landscape)", 1920, 1080),
-            Triple("1:1 (kotak)", 1080, 1080),
-            Triple("4:5 (feed)", 1080, 1350),
-            Triple("3:4", 1080, 1440)
-        )
+        val ratios = Templates.RATIOS
         val wrap = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20f), dp(12f), dp(20f), dp(4f))
+            setPadding(0, dp(4f), 0, dp(2f))
         }
-        val ratioLabel = textView("Rasio kanvas", 11.5f, cMuted)
-        wrap.addView(ratioLabel)
-        val ratioSpinner = Spinner(this)
-        ratioSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, ratios.map { it.first })
-        val curIdx = ratios.indexOfFirst { it.second == project.width && it.third == project.height }.coerceAtLeast(0)
-        ratioSpinner.setSelection(curIdx)
+        wrap.addView(kText("Rasio kanvas", 11.5f, KColors.Muted))
+        val ratioDrop = KilatDropdown(this)
+        ratioDrop.sheetTitle = "Rasio kanvas"
+        ratioDrop.setItems(
+            ratios.map { "${it.label}  (${it.w} x ${it.h})" },
+            ratios.indexOfFirst { it.w == project.width && it.h == project.height }.coerceAtLeast(0)
+        )
         val lpR = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        lpR.topMargin = dp(6f)
-        wrap.addView(ratioSpinner, lpR)
+        lpR.topMargin = dp(7f)
+        wrap.addView(ratioDrop, lpR)
 
-        val durLabel = textView("Durasi (detik, 2–60)", 11.5f, cMuted)
+        val durLabel = kText("Durasi (detik, 2 - 60)", 11.5f, KColors.Muted)
         val lpD = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpD.topMargin = dp(14f)
         wrap.addView(durLabel, lpD)
-        val durEdit = EditText(this)
-        durEdit.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
-        durEdit.setText(project.duration.toInt().toString())
-        durEdit.setTextColor(cText)
-        wrap.addView(durEdit, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        val durEdit = kEditText(project.duration.toInt().toString(), hint = "8", numeric = true)
+        val lpDE = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpDE.topMargin = dp(7f)
+        wrap.addView(durEdit, lpDE)
 
-        val bgLabel = textView("Warna latar", 11.5f, cMuted)
+        val bgLabel = kText("Warna latar", 11.5f, KColors.Muted)
         val lpB = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpB.topMargin = dp(14f)
         wrap.addView(bgLabel, lpB)
@@ -987,40 +1007,39 @@ class MainActivity : Activity() {
             0xFF05070C.toInt(), 0xFF000000.toInt(), 0xFF101828.toInt(), 0xFF1A0B2E.toInt(),
             0xFF0B1F1A.toInt(), 0xFF2B0F1A.toInt(), 0xFFFFFFFF.toInt(), 0xFF2EE6C0.toInt()
         )
+        fun refreshSwatches() {
+            for (i in 0 until swRow.childCount) {
+                val dd = swRow.getChildAt(i).background as GradientDrawable
+                dd.setStroke(dp(2f), if (bgColors[i] == newBg) KColors.Accent else 0x33FFFFFF)
+            }
+        }
         for (c in bgColors) {
             val v = View(this)
             val d = GradientDrawable()
             d.shape = GradientDrawable.OVAL
             d.setColor(c)
-            d.setStroke(dp(2f), if (c == newBg) cAccent else 0x33FFFFFF)
+            d.setStroke(dp(2f), if (c == newBg) KColors.Accent else 0x33FFFFFF)
             v.background = d
-            val lp = LinearLayout.LayoutParams(dp(28f), dp(28f))
-            lp.rightMargin = dp(6f)
-            lp.topMargin = dp(6f)
+            val lp = LinearLayout.LayoutParams(dp(30f), dp(30f))
+            lp.rightMargin = dp(7f)
+            lp.topMargin = dp(8f)
             swRow.addView(v, lp)
             v.setOnClickListener {
                 newBg = c
-                for (i in 0 until swRow.childCount) {
-                    val child = swRow.getChildAt(i)
-                    val dd = child.background as GradientDrawable
-                    dd.setStroke(dp(2f), if (bgColors[i] == newBg) cAccent else 0x33FFFFFF)
-                }
+                refreshSwatches()
             }
         }
         wrap.addView(swRow)
 
-        val scroll = ScrollView(this)
-        scroll.addView(wrap)
-
-        AlertDialog.Builder(this)
-            .setTitle("Pengaturan project")
-            .setView(scroll)
-            .setPositiveButton("Terapkan") { _, _ ->
-                val (w, h) = ratios[ratioSpinner.selectedItemPosition].let { Pair(it.second, it.third) }
-                applyProjectSettings(w, h, durEdit.text.toString().toFloatOrNull() ?: project.duration, newBg)
-            }
-            .setNegativeButton("Batal", null)
-            .show()
+        KilatSheet.show(
+            this, "Pengaturan project", wrap,
+            positiveText = "Terapkan", positiveIcon = KilatIcon.CHECK,
+            onPositive = {
+                val r = ratios[ratioDrop.selectedIndex]
+                applyProjectSettings(r.w, r.h, durEdit.text.toString().toFloatOrNull() ?: project.duration, newBg)
+            },
+            negativeText = "Batal"
+        )
     }
 
     private fun applyProjectSettings(w: Int, h: Int, dur: Float, bg: Int) {
@@ -1045,11 +1064,6 @@ class MainActivity : Activity() {
                     l.imgW *= s
                     l.imgH *= s
                 }
-                for (ch in l.channels.values) {
-                    for (k in ch.keys) {
-                        // channel x/y perlu skala sumbu masing-masing
-                    }
-                }
                 l.channels["x"]?.keys?.forEach { it.v *= sx }
                 l.channels["y"]?.keys?.forEach { it.v *= sy }
             }
@@ -1064,15 +1078,17 @@ class MainActivity : Activity() {
             if (l.start + l.dur > nd) l.dur = max(0.2f, nd - l.start)
         }
         if (playhead > nd) setPlayhead(nd)
-        badge.text = "${p.width} × ${p.height}  ·  ${p.fps}fps"
+        updateBadge()
         afterChange(selectedId)
         showInspectorFor(project.findLayer(selectedId))
-        toast("Project diubah ke ${w}×${h}")
+        toast("Project diubah ke ${w} x ${h}", KilatIcon.RATIO)
     }
 
-    private fun loadDemo() {
+    private fun replaceProjectContent(fresh: Project) {
         musicPlayer.release()
-        project = Demo.build()
+        val keepId = project.id
+        project = fresh
+        project.id = keepId
         selectedId = null
         playhead = 0f
         preview.project = project
@@ -1083,68 +1099,56 @@ class MainActivity : Activity() {
         preview.invalidate()
         setPlayhead(0f)
         updateTimecode()
-        badge.text = "${project.width} × ${project.height}  ·  ${project.fps}fps"
+        updateBadge()
         nameEdit.setText(project.name)
         afterChange(null, openPanel = false)
-        toast("Demo dimuat ⚡")
+    }
+
+    private fun loadDemo() {
+        replaceProjectContent(Templates.buildDemo())
+        toast("Demo dimuat", KilatIcon.BOLT)
     }
 
     private fun newProject() {
-        AlertDialog.Builder(this)
-            .setTitle("Project baru?")
-            .setMessage("Layer yang sekarang akan diganti. Project tersimpan otomatis, tapi belum ada riwayat versi.")
-            .setPositiveButton("Buat baru") { _, _ ->
-                musicPlayer.release()
-                project = Demo.newProject()
-                selectedId = null
-                playhead = 0f
-                preview.project = project
-                timeline.project = project
-                preview.select(null)
-                timeline.selectedId = null
-                timeline.invalidate()
-                preview.invalidate()
-                setPlayhead(0f)
-                badge.text = "${project.width} × ${project.height}  ·  ${project.fps}fps"
-                nameEdit.setText(project.name)
-                afterChange(null, openPanel = false)
-                toast("Project baru dibuat")
+        KilatSheet.showConfirm(
+            this, "Project baru?",
+            "Isi project yang sedang dibuka akan dikosongkan. Project lain di pustaka tidak ikut terhapus.",
+            positiveText = "Kosongkan", danger = true,
+            onPositive = {
+                replaceProjectContent(Templates.newProject(project.width, project.height))
+                toast("Project kosong dibuat", KilatIcon.PLUS)
             }
-            .setNegativeButton("Batal", null)
-            .show()
+        )
     }
 
     private fun showGuide() {
         val msg = """
             ALUR CEPAT
-            • Tambah layer: Teks / Bentuk / Gambar (tombol bawah)
-            • Pindah layer: drag di kanvas
-            • Resize: tarik handle pojok
-            • Rotasi: tarik knob di atas layer
-            • Timeline: drag bar = geser waktu, ujung kanan = durasi
-            • Keyframe: tab Properti → tombol ◆ per properti
-            • Preset: Fade, Slide, Zoom, Spin, Bounce, Typing, Ken Burns, Glitch
-            • Export MP4 ke galeri (Movies/KilatMotion)
+            - Tambah layer: Teks / Bentuk / Gambar (tombol bawah)
+            - Pindah layer: drag di kanvas
+            - Resize: tarik handle pojok
+            - Rotasi: tarik knob di atas layer
+            - Timeline: drag bar = geser waktu, ujung kanan = durasi
+            - Keyframe: panel Properti, ketuk ikon wajik per properti
+            - Preset: Fade, Slide, Zoom, Spin, Bounce, Typing, Ken Burns, Glitch
+            - Export MP4 ke galeri (Movies/KilatMotion)
 
             TIPS
-            • Ketuk ◆ saat playhead di posisi tertentu untuk bikin keyframe
-            • Peluk/regangkan? — belum ada pinch, pakai handle pojok
-            • Efek Blur pada gambar memakai downscale (ringan)
-            • Ghosting? coba turunkan Glow / jumlah layer
+            - Posisikan playhead, ubah nilai, lalu ketuk wajik untuk bikin keyframe di titik itu
+            - Wajik terisi penuh artinya ada keyframe tepat di playhead; ketuk lagi untuk hapus
+            - Belum ada pinch zoom, pakai handle pojok untuk resize
+            - Efek Blur pada gambar memakai downscale supaya ringan
+            - Preview terasa berat? turunkan Glow atau kurangi jumlah layer
         """.trimIndent()
-        AlertDialog.Builder(this)
-            .setTitle("Panduan KILAT Motion")
-            .setMessage(msg)
-            .setPositiveButton("Oke", null)
-            .show()
+        KilatSheet.showMessage(this, "Panduan KILAT Motion", msg, icon = KilatIcon.BOOK)
     }
 
     private fun showAbout() {
-        AlertDialog.Builder(this)
-            .setTitle("KILAT Motion")
-            .setMessage("Motion graphics editor native Android.\n\nVersi 1.0.0\nKotlin · Canvas · MediaCodec\nTanpa iklan · tanpa library eksternal.\n\nDibuat dengan ⚡")
-            .setPositiveButton("Oke", null)
-            .show()
+        KilatSheet.showMessage(
+            this, "KILAT Motion",
+            "Motion graphics editor native Android.\n\nVersi 1.1.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa library eksternal.\nSemua ikon digambar manual pakai Canvas.",
+            icon = KilatIcon.BOLT
+        )
     }
 
     // =====================================================================
@@ -1152,16 +1156,23 @@ class MainActivity : Activity() {
     // =====================================================================
     private fun autosave() {
         val token = ++autosaveToken
+        val snapshot = project
         handler.postDelayed({
-            if (token == autosaveToken) ProjectStore.save(applicationContext, project)
+            if (token == autosaveToken) ProjectLibrary.save(applicationContext, snapshot, touch = false)
         }, 800)
     }
 
-    private fun toast(msg: String) {
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+    private fun toast(msg: String, icon: KilatIcon = KilatIcon.CHECK) {
+        KilatToast.show(this, msg, icon)
     }
 
     companion object {
+        const val EXTRA_PROJECT_ID = "extra_project_id"
+        const val EXTRA_TEMPLATE_ID = "extra_template_id"
+        const val EXTRA_NEW_W = "extra_new_w"
+        const val EXTRA_NEW_H = "extra_new_h"
+        const val EXTRA_DEMO = "extra_demo"
+
         private const val REQ_IMAGE = 1001
         private const val REQ_AUDIO = 1002
     }

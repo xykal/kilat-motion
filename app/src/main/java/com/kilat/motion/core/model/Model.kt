@@ -1,8 +1,9 @@
-package com.kilat.motion
+package com.kilat.motion.core.model
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import java.io.File
+import java.util.Locale
 import java.util.UUID
 
 const val KIND_TEXT = "text"
@@ -235,7 +236,9 @@ class Music {
 }
 
 class Project {
+    var id: String = UUID.randomUUID().toString().substring(0, 12)
     var name: String = "Project Baru"
+    var updatedAt: Long = System.currentTimeMillis()
     var width: Int = 1080
     var height: Int = 1920
     var bg: Int = 0xFF05070C.toInt()
@@ -265,10 +268,13 @@ object Format {
         val tt = maxOf(0f, t)
         val m = (tt / 60f).toInt()
         val s = tt - m * 60f
-        return String.format("%02d:%05.2f", m, s)
+        return String.format(Locale.US, "%02d:%05.2f", m, s)
     }
 
-    fun color(c: Int): String = String.format("#%08X", c)
+    fun color(c: Int): String = String.format(Locale.US, "#%08X", c)
+
+    /** Format desimal titik (bukan koma) di semua locale perangkat. */
+    fun dec(v: Float, digits: Int = 1): String = String.format(Locale.US, "%." + digits + "f", v)
 
     fun parseColor(hex: String?, def: Int): Int {
         if (hex == null) return def

@@ -1,4 +1,9 @@
-package com.kilat.motion
+package com.kilat.motion.ui.editor
+
+import com.kilat.motion.core.model.*
+import com.kilat.motion.core.animation.Anim
+import com.kilat.motion.ui.components.IconPainter
+import com.kilat.motion.ui.components.KilatIcon
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -154,7 +159,7 @@ class TimelineView(context: Context) : View(context) {
             val x = timeToX(t)
             canvas.drawLine(x, 0f, x, height.toFloat(), tickPaint)
             if (x < width - dp(14f)) {
-                val label = if (step < 1f) String.format("%.1fs", t) else "${t.roundToInt()}s"
+                val label = if (step < 1f) Format.dec(t) + "s" else "${t.roundToInt()}s"
                 canvas.drawText(label, x + dp(3f), dp(10f), labelPaint)
             }
             t += step
@@ -252,7 +257,8 @@ class TimelineView(context: Context) : View(context) {
             }
             // label musik di kolom kiri
             namePaint.alpha = 255
-            canvas.drawText("♫ ${music.name}".take(16), dp(8f), laneTop + mlh / 2f + dp(3.6f), namePaint)
+            IconPainter.draw(canvas, KilatIcon.MUSIC, dp(7f), laneTop + mlh / 2f - dp(7f), dp(14f), c2EE6C0())
+            canvas.drawText(music.name.take(14), dp(25f), laneTop + mlh / 2f + dp(3.6f), namePaint)
             canvas.drawCircle(leftW - dp(12f), laneTop + mlh / 2f, dp(4f), dotPaint.apply { color = c2EE6C0() })
 
             // playhead di lane

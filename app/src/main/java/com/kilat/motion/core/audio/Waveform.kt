@@ -1,4 +1,4 @@
-package com.kilat.motion
+package com.kilat.motion.core.audio
 
 import kotlin.math.abs
 import kotlin.math.max

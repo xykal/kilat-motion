@@ -1,4 +1,8 @@
-package com.kilat.motion
+package com.kilat.motion.ui.editor
+
+import com.kilat.motion.core.model.*
+import com.kilat.motion.core.animation.Anim
+import com.kilat.motion.core.render.Renderer
 
 import android.annotation.SuppressLint
 import android.content.Context

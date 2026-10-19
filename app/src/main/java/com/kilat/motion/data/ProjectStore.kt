@@ -1,4 +1,6 @@
-package com.kilat.motion
+package com.kilat.motion.data
+
+import com.kilat.motion.core.model.*
 
 import android.content.Context
 import android.net.Uri
@@ -20,12 +22,35 @@ object ProjectStore {
     }
 
     // ---------------- SAVE ----------------
+    /** Bungkus project jadi string file (.json) — dipakai autosave & ProjectLibrary. */
+    fun encode(project: Project): String {
+        val root = JSONObject()
+        root.put("v", 2)
+        root.put("project", projectToJson(project))
+        return root.toString()
+    }
+
+    fun decode(text: String): Project? {
+        return try {
+            val root = JSONObject(text)
+            val pj = root.optJSONObject("project") ?: return null
+            jsonToProject(pj)
+        } catch (e: Throwable) {
+            null
+        }
+    }
+
+    fun clearLegacy(ctx: Context) {
+        try {
+            projectFile(ctx).delete()
+        } catch (e: Throwable) {
+            // abaikan
+        }
+    }
+
     fun save(ctx: Context, project: Project) {
         try {
-            val root = JSONObject()
-            root.put("v", 1)
-            root.put("project", projectToJson(project))
-            projectFile(ctx).writeText(root.toString())
+            projectFile(ctx).writeText(encode(project))
         } catch (e: Throwable) {
             // autosave best-effort; jangan crash app
         }
@@ -33,6 +58,8 @@ object ProjectStore {
 
     fun projectToJson(p: Project): JSONObject {
         val o = JSONObject()
+        o.put("id", p.id)
+        o.put("updatedAt", p.updatedAt)
         o.put("name", p.name)
         o.put("width", p.width)
         o.put("height", p.height)

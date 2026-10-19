@@ -1,4 +1,6 @@
-package com.kilat.motion
+package com.kilat.motion.core.audio
+
+import com.kilat.motion.core.model.Music
 
 import android.content.Context
 import android.media.MediaPlayer

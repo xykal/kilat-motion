@@ -1,4 +1,4 @@
-package com.kilat.motion
+package com.kilat.motion.core.audio
 
 import android.media.MediaCodec
 import android.media.MediaExtractor

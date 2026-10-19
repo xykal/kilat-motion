@@ -3,11 +3,25 @@
 Motion graphics editor **native Android** (Kotlin), alur kerja ala **Alight Motion** + UI gelap ala **CapCut**.
 Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK dibuild otomatis via **GitHub Actions**.
 
-![status](https://img.shields.io/badge/build-passing-2ee6c0) ![minSdk](https://img.shields.io/badge/minSdk-29-blue) ![size](https://img.shields.io/badge/APK-2.2--2.7%20MB-lightgrey) ![tests](https://img.shields.io/badge/tests-19%20passing-2ee6c0)
+![status](https://img.shields.io/badge/build-passing-2ee6c0) ![minSdk](https://img.shields.io/badge/minSdk-29-blue) ![size](https://img.shields.io/badge/APK-2.3--2.9%20MB-lightgrey) ![tests](https://img.shields.io/badge/tests-26%20passing-2ee6c0)
 
 ---
 
-## ✨ Fitur v1.0.0 (MVP)
+## Baru di v1.1.0 — Onboarding, Homescreen, UI 100% Custom
+
+- **Splash + Onboarding 4 halaman**: ilustrasi digambar manual pakai Canvas (logo mengorbit, mock timeline ber-playhead, tumpukan layer, export), indikator pil, navigasi tombol + usap. Tampil sekali di peluncuran pertama, bisa diulang dari tab Profil.
+- **Homescreen + Bottom Navigation custom**: tab **Beranda | Project | Template | Profil** dengan tombol **Buat** (FAB gradient) mengambang di tengah.
+  - Beranda: sapaan, kartu hero Buat Project + chip rasio, kartu "Lanjutkan" project terakhir, deretan template, ubin Mulai Cepat.
+  - Project: pustaka project lokal (thumbnail asli dirender dari isi project, hapus per project).
+  - Template: 5 template siap edit — Intro KILAT, Intro Bold, Quote Minimal 1:1, Promo Pop, Lower Third 16:9.
+  - Profil: statistik, panduan, ulangi onboarding, tentang, hapus semua project.
+- **Nol emoji, nol ikon bawaan**: 40 ikon digambar manual satu-satu pakai Canvas (`Icons.kt`) — tiap ikon bergaya beda (filled, outline rounded, duotone).
+- **Nol komponen UI bawaan yang terlihat**: dialog diganti bottom sheet `KilatSheet`, dropdown `KilatDropdown`, slider `KilatSlider`, toast `KilatToast`, tombol `KilatButton`, progress `KilatProgressBar`, tombol keyframe wajik Canvas. (Keyboard sistem tetap dipakai untuk mengetik — itu memang ranah OS.)
+- **Struktur kode dirombak rapi** (lihat pohon folder di bawah), editor ditulis ulang bersih, penyimpanan naik kelas jadi pustaka multi-project (`ProjectLibrary`).
+
+---
+
+## Fitur Editor (v1.0.0, tetap ada)
 
 **Layer & kanvas**
 - Layer **Teks**, **Bentuk** (kotak/lingkaran/segitiga/bintang), **Gambar** (galeri)
@@ -38,6 +52,41 @@ Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK 
 
 ---
 
+---
+
+## Arsitektur & Struktur Folder
+
+```
+app/src/main/java/com/kilat/motion/
+|-- core/
+|   |-- model/Model.kt            -> Project, Layer, Keyframe, Music, konstanta
+|   |-- animation/Anim.kt         -> easing, evaluasi keyframe, 8 preset
+|   |-- render/Renderer.kt        -> satu renderer untuk preview + export + thumbnail
+|   |-- audio/                    -> Waveform, AudioUtil (decode), MusicPlayer (preview)
+|   `-- export/Exporter.kt        -> MediaCodec H.264 + mux audio + PNG
+|-- data/
+|   |-- ProjectStore.kt           -> serialisasi JSON project, impor gambar/audio
+|   |-- ProjectLibrary.kt         -> pustaka multi-project (files/projects/*.json)
+|   |-- Templates.kt              -> demo + 5 template + daftar rasio kanvas
+|   `-- Prefs.kt                  -> status onboarding
+`-- ui/
+    |-- theme/KilatTheme.kt       -> warna, radius, tipografi, efek tekan
+    |-- components/
+    |   |-- Icons.kt              -> 40 ikon Canvas manual (IconPainter + IconView)
+    |   |-- KilatViews.kt         -> Button, IconButton, Slider, Dropdown, Chip, Progress, KeyframeButton
+    |   |-- KilatSheet.kt         -> bottom sheet (list/pesan/konfirmasi/progress)
+    |   |-- KilatToast.kt         -> toast in-app custom
+    |   |-- BottomNav.kt          -> navigasi bawah homescreen + FAB Buat
+    |   `-- Thumbnails.kt         -> render thumbnail project/template
+    |-- launcher/LauncherActivity.kt   -> splash -> onboarding / homescreen
+    |-- onboarding/                    -> OnboardingActivity + ilustrasi Canvas
+    |-- home/HomeActivity.kt           -> homescreen 4 tab
+    `-- editor/                        -> EditorActivity, PreviewView, TimelineView, InspectorView
+```
+
+Prinsip: `core` tidak tahu UI, `data` tidak tahu tampilan, `ui` memakai keduanya.
+Tes JVM meniru struktur yang sama di `app/src/test/java/com/kilat/motion/`.
+
 ## 📥 Download APK
 
 | Build | Link |
@@ -55,7 +104,7 @@ Butuh **JDK 17** + **Android SDK (platform 34, build-tools 34.0.0)**.
 ```bash
 ./gradlew :app:assembleDebug      # APK debug
 ./gradlew :app:assembleRelease    # APK release (signed pakai debug key → bisa langsung sideload)
-./gradlew :app:testDebugUnitTest  # 19 unit test (engine animasi + waveform)
+./gradlew :app:testDebugUnitTest  # 26 unit test (animasi, waveform, template, ikon)
 ```
 
 APK ada di:

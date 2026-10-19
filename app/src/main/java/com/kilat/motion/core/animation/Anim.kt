@@ -1,4 +1,6 @@
-package com.kilat.motion
+package com.kilat.motion.core.animation
+
+import com.kilat.motion.core.model.*
 
 import kotlin.math.abs
 import kotlin.math.min
