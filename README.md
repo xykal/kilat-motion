@@ -91,8 +91,8 @@ Tes JVM meniru struktur yang sama di `app/src/test/java/com/kilat/motion/`.
 
 | Build | Link |
 |---|---|
-| Release (signed, sideload-ready) | https://github.com/xykal/kilat-motion/releases/download/v1.0.0/app-release.apk |
-| Debug | https://github.com/xykal/kilat-motion/releases/download/v1.0.0/app-debug.apk |
+| Release (signed, sideload-ready) | https://github.com/xykal/kilat-motion/releases/download/v1.1.0/app-release.apk |
+| Debug | https://github.com/xykal/kilat-motion/releases/download/v1.1.0/app-debug.apk |
 
 APK baru otomatis dibuat setiap push & setiap tag `v*` lewat GitHub Actions.
 
