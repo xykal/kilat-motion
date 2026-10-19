@@ -38,6 +38,15 @@ Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK 
 
 ---
 
+## 📥 Download APK
+
+| Build | Link |
+|---|---|
+| Release (signed, sideload-ready) | https://github.com/xykal/kilat-motion/releases/download/v1.0.0/app-release.apk |
+| Debug | https://github.com/xykal/kilat-motion/releases/download/v1.0.0/app-debug.apk |
+
+APK baru otomatis dibuat setiap push & setiap tag `v*` lewat GitHub Actions.
+
 ## 🚀 Build & install
 
 ### Lokal
