@@ -10,3 +10,9 @@ captures/
 local.properties
 *.apk
 *.aab
+
+# kredensial - JANGAN PERNAH COMMIT
+.env
+.env.*
+env.txt
+*.env

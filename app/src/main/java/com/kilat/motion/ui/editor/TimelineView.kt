@@ -96,6 +96,7 @@ class TimelineView(context: Context) : View(context) {
     }
     private val playheadHead = Path()
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val wavePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xAA2EE6C0.toInt() }
 
     private fun pxPerSec(): Float {
         val p = project ?: return 60f
@@ -239,8 +240,7 @@ class TimelineView(context: Context) : View(context) {
             // waveform
             val wave = music.wave
             if (wave != null && wave.isNotEmpty() && x2 > x1 + 2f) {
-                val wp = Paint(Paint.ANTI_ALIAS_FLAG)
-                wp.color = 0xAA2EE6C0.toInt()
+                val wp = wavePaint
                 val midY = (bt + bb) / 2f
                 val halfH = (bb - bt) / 2f - dp(1.5f)
                 val n = wave.size

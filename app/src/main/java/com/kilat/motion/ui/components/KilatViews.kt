@@ -54,9 +54,9 @@ class KilatButton(
         background = when (style) {
             KilatButtonStyle.PRIMARY -> roundedRect(KColors.Accent, dpf(11f))
             KilatButtonStyle.GRADIENT -> kilatGradient(dpf(11f))
-            KilatButtonStyle.GHOST -> roundedRect(KColors.CardHi, dpf(11f), KColors.Line, dp(1f))
-            KilatButtonStyle.SOFT -> roundedRect(KColors.Field, dpf(11f), KColors.Line, dp(1f))
-            KilatButtonStyle.DANGER_SOFT -> roundedRect(KColors.DangerInk, dpf(11f), 0xFF4A1E2B.toInt(), dp(1f))
+            KilatButtonStyle.GHOST -> roundedRect(KColors.CardHi, dpf(11f))
+            KilatButtonStyle.SOFT -> roundedRect(KColors.Field, dpf(11f))
+            KilatButtonStyle.DANGER_SOFT -> roundedRect(KColors.DangerInk, dpf(11f))
         }
         setPadding(dp(14f), dp(11f), dp(14f), dp(11f))
         iconView = if (icon != null) {
@@ -90,7 +90,7 @@ class KilatIconButton(
     init {
         isClickable = true
         isFocusable = true
-        if (filled) background = roundedRect(KColors.CardHi, dpf(10f), KColors.Line, dp(1f))
+        if (filled) background = roundedRect(KColors.CardHi, dpf(10f))
         val pad = dp(sizeDp * 0.24f)
         val lp = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         iconView.setPadding(pad, pad, pad, pad)
@@ -282,7 +282,7 @@ class KilatChip(context: Context, label: String) : TextView(context) {
             background = roundedRect(KColors.Accent, dpf(9f))
             setTextColor(KColors.AccentInk)
         } else {
-            background = roundedRect(KColors.Field, dpf(9f), KColors.Line, dp(1f))
+            background = roundedRect(KColors.Field, dpf(9f))
             setTextColor(KColors.Muted)
         }
     }
@@ -306,7 +306,7 @@ class KilatDropdown(context: Context) : LinearLayout(context) {
         gravity = Gravity.CENTER_VERTICAL
         isClickable = true
         isFocusable = true
-        background = roundedRect(KColors.Field, dpf(9f), KColors.Line, dp(1f))
+        background = roundedRect(KColors.Field, dpf(9f))
         setPadding(dp(10f), dp(9f), dp(8f), dp(9f))
         labelTv.maxLines = 1
         addView(labelTv, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -358,7 +358,7 @@ fun Context.kEditText(
     e.setTextColor(KColors.Text)
     e.setHintTextColor(KColors.Faint)
     e.textSize = textSizeSp
-    e.background = roundedRect(KColors.Field, dpf(9f), KColors.Line, dp(1f))
+    e.background = roundedRect(KColors.Field, dpf(9f))
     e.setPadding(dp(10f), dp(9f), dp(10f), dp(9f))
     e.inputType = when {
         numeric -> InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED

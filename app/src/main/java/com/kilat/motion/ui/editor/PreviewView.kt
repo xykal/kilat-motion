@@ -39,6 +39,8 @@ class PreviewView(context: Context) : View(context) {
     var playhead: Float = 0f
     var selectedId: String? = null
     var listener: Listener? = null
+    /** Magnet: snap posisi ke tengah kanvas + snap rotasi 15 derajat. */
+    var snapEnabled: Boolean = true
 
     private val density = resources.displayMetrics.density
     private fun dp(v: Float) = v * density
@@ -283,10 +285,12 @@ class PreviewView(context: Context) : View(context) {
                     MODE_MOVE -> {
                         var nx = origX + (px - startX)
                         var ny = origY + (py - startY)
-                        // snap ke tengah
-                        val snapT = dp(9f) / viewScale
-                        if (abs(nx - p.width / 2f) < snapT) nx = p.width / 2f
-                        if (abs(ny - p.height / 2f) < snapT) ny = p.height / 2f
+                        // snap ke tengah (magnet)
+                        if (snapEnabled) {
+                            val snapT = dp(9f) / viewScale
+                            if (abs(nx - p.width / 2f) < snapT) nx = p.width / 2f
+                            if (abs(ny - p.height / 2f) < snapT) ny = p.height / 2f
+                        }
                         liveSet(l, "x", nx)
                         liveSet(l, "y", ny)
                     }
@@ -299,8 +303,10 @@ class PreviewView(context: Context) : View(context) {
                     MODE_ROTATE -> {
                         val ang = atan2(py - origY, px - origX) * 180f / Math.PI.toFloat()
                         var nr = origRot + (ang - startAngle)
-                        val snapped = round(nr / 15f) * 15f
-                        if (abs(nr - snapped) < 4f) nr = snapped
+                        if (snapEnabled) {
+                            val snapped = round(nr / 15f) * 15f
+                            if (abs(nr - snapped) < 4f) nr = snapped
+                        }
                         liveSet(l, "rot", nr)
                     }
                 }

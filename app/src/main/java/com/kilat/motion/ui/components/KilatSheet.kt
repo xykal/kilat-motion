@@ -70,7 +70,7 @@ object KilatSheet {
 
         val sheet = LinearLayout(activity)
         sheet.orientation = LinearLayout.VERTICAL
-        sheet.background = roundedTop(KColors.BgTop, activity.dpf(22f), KColors.Line, activity.dp(1f))
+        sheet.background = roundedTop(KColors.BgTop, activity.dpf(22f))
         sheet.setPadding(activity.dp(18f), activity.dp(10f), activity.dp(18f), activity.dp(20f))
         sheet.elevation = activity.dpf(12f)
 
@@ -140,14 +140,14 @@ object KilatSheet {
             row.orientation = LinearLayout.HORIZONTAL
             row.gravity = Gravity.CENTER_VERTICAL
             row.isClickable = true
-            row.background = roundedRect(KColors.Card, activity.dpf(12f), KColors.Line, activity.dp(1f))
+            row.background = roundedRect(KColors.Card, activity.dpf(12f))
             row.setPadding(activity.dp(12f), activity.dp(11f), activity.dp(12f), activity.dp(11f))
             row.pressRow()
             if (item.icon != null) {
                 val tile = FrameLayout(activity)
                 tile.background = roundedRect(
                     if (item.danger) KColors.DangerInk else KColors.CardHi,
-                    activity.dpf(9f), KColors.Line, activity.dp(1f)
+                    activity.dpf(9f)
                 )
                 val iv = IconView(activity, item.icon, if (item.danger) KColors.Rose else item.iconTint)
                 val p = activity.dp(8f)
@@ -275,7 +275,7 @@ object KilatSheet {
         headRow.orientation = LinearLayout.HORIZONTAL
         headRow.gravity = Gravity.CENTER_VERTICAL
         val filmTile = FrameLayout(activity)
-        filmTile.background = roundedRect(KColors.CardHi, activity.dpf(10f), KColors.Line, activity.dp(1f))
+        filmTile.background = roundedRect(KColors.CardHi, activity.dpf(10f))
         val fiv = IconView(activity, KilatIcon.FILM, KColors.Accent)
         val fp = activity.dp(8f)
         fiv.setPadding(fp, fp, fp, fp)

@@ -184,7 +184,7 @@ class HomeActivity : Activity() {
 
     private fun iconTile(icon: KilatIcon, tint: Int, sizeDp: Float = 40f, bg: Int = KColors.CardHi): FrameLayout {
         val tile = FrameLayout(this)
-        tile.background = roundedRect(bg, dpf(11f), KColors.Line, dp(1f))
+        tile.background = roundedRect(bg, dpf(11f))
         val iv = IconView(this, icon, tint)
         val p = dp(sizeDp * 0.23f)
         iv.setPadding(p, p, p, p)
@@ -198,7 +198,7 @@ class HomeActivity : Activity() {
         row.orientation = LinearLayout.HORIZONTAL
         row.gravity = Gravity.CENTER_VERTICAL
         row.isClickable = true
-        row.background = roundedRect(KColors.Card, dpf(14f), KColors.Line, dp(1f))
+        row.background = roundedRect(KColors.Card, dpf(14f))
         row.setPadding(dp(12f), dp(12f), dp(12f), dp(12f))
         val tile = iconTile(icon, if (danger) KColors.Rose else tint, 40f, if (danger) KColors.DangerInk else KColors.CardHi)
         val lpT = tile.layoutParams as LinearLayout.LayoutParams
@@ -338,7 +338,7 @@ class HomeActivity : Activity() {
         val card = LinearLayout(this)
         card.orientation = LinearLayout.VERTICAL
         card.isClickable = true
-        card.background = roundedRect(KColors.Card, dpf(16f), KColors.Line, dp(1f))
+        card.background = roundedRect(KColors.Card, dpf(16f))
         card.setPadding(dp(14f), dp(13f), dp(14f), dp(13f))
         card.addView(iconTile(icon, tint, 42f))
         val l = kText(label, 13f, KColors.Text, bold = true)
@@ -358,7 +358,7 @@ class HomeActivity : Activity() {
         val card = LinearLayout(this)
         card.orientation = LinearLayout.VERTICAL
         card.isClickable = true
-        card.background = roundedRect(KColors.Card, dpf(16f), KColors.Line, dp(1f))
+        card.background = roundedRect(KColors.Card, dpf(16f))
         card.setPadding(dp(8f), dp(8f), dp(8f), dp(11f))
         val thumb = templateThumbView(info)
         card.addView(thumb, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(168f)))
@@ -383,7 +383,7 @@ class HomeActivity : Activity() {
         row.orientation = LinearLayout.HORIZONTAL
         row.gravity = Gravity.CENTER_VERTICAL
         row.isClickable = true
-        row.background = roundedRect(KColors.Card, dpf(16f), KColors.Line, dp(1f))
+        row.background = roundedRect(KColors.Card, dpf(16f))
         row.setPadding(dp(10f), dp(10f), dp(12f), dp(10f))
         val thumbTime = minOf(2.4f, p.duration * 0.45f)
         val thumb = thumbView(p, thumbTime)
@@ -435,10 +435,10 @@ class HomeActivity : Activity() {
             val empty = LinearLayout(this)
             empty.orientation = LinearLayout.VERTICAL
             empty.gravity = Gravity.CENTER_HORIZONTAL
-            empty.background = roundedRect(KColors.Card, dpf(18f), KColors.Line, dp(1f))
+            empty.background = roundedRect(KColors.Card, dpf(18f))
             empty.setPadding(dp(20f), dp(30f), dp(20f), dp(26f))
             val circle = FrameLayout(this)
-            circle.background = ovalBg(KColors.CardHi, KColors.Line, dp(1f))
+            circle.background = ovalBg(KColors.CardHi)
             val iv = IconView(this, KilatIcon.FOLDER, KColors.Dim)
             val p = dp(20f)
             iv.setPadding(p, p, p, p)
@@ -467,7 +467,7 @@ class HomeActivity : Activity() {
             card.orientation = LinearLayout.HORIZONTAL
             card.gravity = Gravity.CENTER_VERTICAL
             card.isClickable = true
-            card.background = roundedRect(KColors.Card, dpf(16f), KColors.Line, dp(1f))
+            card.background = roundedRect(KColors.Card, dpf(16f))
             card.setPadding(dp(10f), dp(10f), dp(8f), dp(10f))
             val thumb = thumbView(p, minOf(2.4f, p.duration * 0.45f))
             val lpTh = LinearLayout.LayoutParams(dp(62f), dp(84f))
@@ -539,7 +539,7 @@ class HomeActivity : Activity() {
             val proj = info.build()
             val card = LinearLayout(this)
             card.orientation = LinearLayout.VERTICAL
-            card.background = roundedRect(KColors.Card, dpf(18f), KColors.Line, dp(1f))
+            card.background = roundedRect(KColors.Card, dpf(18f))
             card.setPadding(dp(10f), dp(10f), dp(10f), dp(13f))
             val thumb = templateThumbView(info, 13f)
             card.addView(thumb, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(200f)))
@@ -591,7 +591,7 @@ class HomeActivity : Activity() {
         val nameCol = LinearLayout(this)
         nameCol.orientation = LinearLayout.VERTICAL
         nameCol.addView(kText("Kreator Kilat", 17f, KColors.Text, bold = true))
-        nameCol.addView(kText("KILAT Motion 1.1.0", 11f, KColors.Dim))
+        nameCol.addView(kText("KILAT Motion 1.2.0", 11f, KColors.Dim))
         val lpN = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpN.marginStart = dp(13f)
         head.addView(nameCol, lpN)
@@ -608,7 +608,7 @@ class HomeActivity : Activity() {
             val c = LinearLayout(this)
             c.orientation = LinearLayout.VERTICAL
             c.gravity = Gravity.CENTER_HORIZONTAL
-            c.background = roundedRect(KColors.Card, dpf(15f), KColors.Line, dp(1f))
+            c.background = roundedRect(KColors.Card, dpf(15f))
             c.setPadding(dp(8f), dp(13f), dp(8f), dp(12f))
             val tile = iconTile(icon, tint, 36f)
             (tile.layoutParams as LinearLayout.LayoutParams).gravity = Gravity.CENTER_HORIZONTAL
@@ -646,7 +646,7 @@ class HomeActivity : Activity() {
             i.putExtra(OnboardingActivity.EXTRA_REPLAY, true)
             startActivity(i)
         })
-        addSpaced(col, menuRow(KilatIcon.INFO, KColors.Muted, "Tentang KILAT Motion", "Versi 1.1.0 - native, tanpa iklan") { showAbout() })
+        addSpaced(col, menuRow(KilatIcon.INFO, KColors.Muted, "Tentang KILAT Motion", "Versi 1.2.0 - native, tanpa iklan") { showAbout() })
         addSpaced(col, menuRow(KilatIcon.TRASH, KColors.Rose, "Hapus Semua Project", "Kosongkan pustaka project di HP ini", danger = true) {
             KilatSheet.showConfirm(
                 this, "Hapus semua project?",
@@ -714,6 +714,7 @@ class HomeActivity : Activity() {
             - Buat project dari tombol Buat, atau pakai template
             - Tambah layer: Teks / Bentuk / Gambar
             - Pindah layer di kanvas, atur waktunya di timeline
+            - Undo/Redo, pisah layer di playhead, urutan Maju/Mundur, dan magnet snap
             - Keyframe: panel Properti, ketuk ikon wajik per properti
             - Tambah musik latar dari menu titik tiga di editor
             - Export MP4 720p/1080p ke Movies/KilatMotion
@@ -729,7 +730,7 @@ class HomeActivity : Activity() {
     private fun showAbout() {
         KilatSheet.showMessage(
             this, "KILAT Motion",
-            "Motion graphics editor native Android.\n\nVersi 1.1.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa watermark, tanpa library eksternal.\nSeluruh tampilan dan ikon dibuat custom pakai Canvas.",
+            "Motion graphics editor native Android.\n\nVersi 1.2.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa watermark, tanpa library eksternal.\nSeluruh tampilan dan ikon dibuat custom pakai Canvas.",
             icon = KilatIcon.BOLT
         )
     }

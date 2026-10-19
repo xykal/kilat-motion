@@ -12,7 +12,7 @@ class TemplatesTest {
     fun `id template unik`() {
         val ids = Templates.ALL.map { it.id }
         assertEquals(ids.size, ids.distinct().size)
-        assertTrue(Templates.ALL.size >= 5)
+        assertTrue(Templates.ALL.size >= 8)
     }
 
     @Test

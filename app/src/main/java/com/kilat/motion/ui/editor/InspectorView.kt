@@ -14,6 +14,8 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.kilat.motion.ui.components.KeyframeButton
+import com.kilat.motion.ui.components.KilatButton
+import com.kilat.motion.ui.components.KilatButtonStyle
 import com.kilat.motion.ui.components.KilatChip
 import com.kilat.motion.ui.components.KilatDropdown
 import com.kilat.motion.ui.components.KilatIcon
@@ -31,6 +33,9 @@ class InspectorView(context: Context) : LinearLayout(context) {
         fun onDuplicate(layer: Layer)
         fun onApplyPreset(layer: Layer, preset: String)
         fun onClearKeys(layer: Layer)
+        fun onSplit(layer: Layer)
+        /** dir: +1 = maju (digambar lebih atas), -1 = mundur. */
+        fun onReorder(layer: Layer, dir: Int)
     }
 
     var listener: Listener? = null
@@ -61,7 +66,6 @@ class InspectorView(context: Context) : LinearLayout(context) {
     private val cDim = 0xFF687389.toInt()
     private val cAccent = 0xFF2EE6C0.toInt()
     private val cCard = 0xFF151821.toInt()
-    private val cLine = 0xFF222837.toInt()
 
     init {
         orientation = VERTICAL
@@ -112,7 +116,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
         b.setTextColor(cMuted)
         b.textSize = 12f
         b.gravity = Gravity.CENTER
-        b.background = roundRectBg(0xFF1B1F2B.toInt(), dp(7f), cLine)
+        b.background = roundRectBg(0xFF1B1F2B.toInt(), dp(7f))
         b.setPadding(dp(9f).toInt(), dp(4f).toInt(), dp(9f).toInt(), dp(4f).toInt())
         b.isClickable = true
         b.setOnClickListener { onClick() }
@@ -257,6 +261,26 @@ class InspectorView(context: Context) : LinearLayout(context) {
         lpType.topMargin = dp(6f).toInt()
         addView(typeTv, lpType)
 
+        // ---- aksi layer: pisah di playhead + urutan tumpukan ----
+        val actRow = LinearLayout(context)
+        actRow.orientation = HORIZONTAL
+        val splitBtn = KilatButton(context, "Pisah", KilatIcon.SCISSORS, KilatButtonStyle.GHOST, 11f)
+        splitBtn.setOnClickListener { listener?.onSplit(l) }
+        actRow.addView(splitBtn, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        val upBtn = KilatButton(context, "Maju", KilatIcon.LAYER_UP, KilatButtonStyle.GHOST, 11f)
+        upBtn.setOnClickListener { listener?.onReorder(l, +1) }
+        val lpUp = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+        lpUp.leftMargin = dp(7f).toInt()
+        actRow.addView(upBtn, lpUp)
+        val downBtn = KilatButton(context, "Mundur", KilatIcon.LAYER_DOWN, KilatButtonStyle.GHOST, 11f)
+        downBtn.setOnClickListener { listener?.onReorder(l, -1) }
+        val lpDown = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+        lpDown.leftMargin = dp(7f).toInt()
+        actRow.addView(downBtn, lpDown)
+        val lpAct = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpAct.topMargin = dp(9f).toInt()
+        addView(actRow, lpAct)
+
         // ---- timing ----
         val timing = card()
         timing.addView(header("Waktu Layer"))
@@ -329,6 +353,16 @@ class InspectorView(context: Context) : LinearLayout(context) {
         addProp(transform, l, "rot", "Rotasi", -180f, 180f, 1f, true)
         addProp(transform, l, "alpha", "Opasitas", 0f, 1f, 0.01f, false)
         if (l.kind == KIND_TEXT) addProp(transform, l, "typing", "Teks muncul", 0f, 1f, 0.01f, false)
+        val centerBtn = KilatButton(context, "Tengahkan di Kanvas", KilatIcon.CROSSHAIR, KilatButtonStyle.SOFT, 11.5f)
+        centerBtn.setOnClickListener {
+            applyValue(l, "x", p.width / 2f)
+            applyValue(l, "y", p.height / 2f)
+            listener?.onEdited(true)
+            syncValues()
+        }
+        val lpCenter = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpCenter.topMargin = dp(10f).toInt()
+        transform.addView(centerBtn, lpCenter)
         addView(transform)
 
         // ---- efek ----
@@ -390,7 +424,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
         content.textSize = 12.5f
         content.minLines = 2
         content.gravity = Gravity.TOP or Gravity.START
-        content.background = roundRectBg(0xFF0A0C11.toInt(), dp(8f), cLine)
+        content.background = roundRectBg(0xFF11141C.toInt(), dp(8f))
         content.setPadding(dp(9f).toInt(), dp(8f).toInt(), dp(9f).toInt(), dp(8f).toInt())
         content.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
         content.setOnFocusChangeListener { _, hasFocus ->
@@ -449,7 +483,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
             b.gravity = Gravity.CENTER
             val active = l.align == aligns[i]
             b.setTextColor(if (active) cText else cMuted)
-            b.background = roundRectBg(if (active) 0xFF1B1F2B.toInt() else 0xFF0A0C11.toInt(), dp(7f), if (active) cLine else null)
+            b.background = roundRectBg(if (active) 0xFF1B1F2B.toInt() else 0xFF0A0C11.toInt(), dp(7f))
             b.setPadding(dp(10f).toInt(), dp(6f).toInt(), dp(10f).toInt(), dp(6f).toInt())
             val lp = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
             lp.rightMargin = dp(5f).toInt()

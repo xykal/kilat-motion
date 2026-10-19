@@ -111,4 +111,34 @@ class AnimTest {
         assertEquals("#FF2EE6C0", Format.color(0xFF2EE6C0.toInt()))
         assertEquals(0xFF2EE6C0.toInt(), Format.parseColor("#FF2EE6C0", 0))
     }
+
+    @Test
+    fun `splitAt memotong durasi dan menjaga nilai di titik pisah`() {
+        val l = Layer()
+        l.start = 1f; l.dur = 4f
+        Anim.setKey(l, "x", 1f, 100f, "linear")
+        Anim.setKey(l, "x", 5f, 300f, "linear")
+        val second = Anim.splitAt(l, 3f)
+        assertNotNull(second)
+        assertEquals(2f, l.dur, 0.001f)
+        assertEquals(3f, second!!.start, 0.001f)
+        assertEquals(2f, second.dur, 0.001f)
+        // nilai x di t=3 adalah 200 (linear) dan harus sama di kedua sisi
+        assertEquals(200f, Anim.value(l, "x", 3f), 0.01f)
+        assertEquals(200f, Anim.value(second, "x", 3f), 0.01f)
+        assertEquals(300f, Anim.value(second, "x", 5f), 0.01f)
+        assertTrue(l.channels["x"]!!.keys.all { it.t <= 3.01f })
+        assertTrue(second.channels["x"]!!.keys.all { it.t >= 2.99f })
+    }
+
+    @Test
+    fun `splitAt menolak titik di luar rentang`() {
+        val l = Layer()
+        l.start = 2f; l.dur = 2f
+        assertNull(Anim.splitAt(l, 1f))
+        assertNull(Anim.splitAt(l, 2f))
+        assertNull(Anim.splitAt(l, 4f))
+        assertNull(Anim.splitAt(l, 5f))
+        assertNotNull(Anim.splitAt(l, 3f))
+    }
 }

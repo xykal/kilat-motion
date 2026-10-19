@@ -3,7 +3,30 @@
 Motion graphics editor **native Android** (Kotlin), alur kerja ala **Alight Motion** + UI gelap ala **CapCut**.
 Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK dibuild otomatis via **GitHub Actions**.
 
-![status](https://img.shields.io/badge/build-passing-2ee6c0) ![minSdk](https://img.shields.io/badge/minSdk-29-blue) ![size](https://img.shields.io/badge/APK-2.3--2.9%20MB-lightgrey) ![tests](https://img.shields.io/badge/tests-26%20passing-2ee6c0)
+![status](https://img.shields.io/badge/build-passing-2ee6c0) ![minSdk](https://img.shields.io/badge/minSdk-29-blue) ![size](https://img.shields.io/badge/APK-2.3--2.9%20MB-lightgrey) ![tests](https://img.shields.io/badge/tests-28%20passing-2ee6c0)
+
+---
+
+## Baru di v1.2.0 — Flat Borderless, Ikon Presisi, Editor Makin Lengkap
+
+- **UI flat tanpa garis border**: semua kartu, tombol, field, sheet, dan navigasi
+  digambar ulang tanpa stroke pinggir; pemisahan antar-permukaan murni dari
+  nada warna tonal + elevasi lembut. Jauh dari kesan glassmorphism.
+- **Set ikon v2 (48 ikon)**: ditulis ulang di grid 24 yang presisi — stroke
+  utama konsisten 2.0 unit, koordinat snap 0.5 unit, detail mikro per ikon
+  (gir 8 gigi, jarum jam bertanda, mata dengan highlight, dst). Tetap 100%
+  digambar Canvas, nol emoji.
+- **Editor makin lengkap**: **Undo/Redo 40 langkah**, **pisah layer tepat
+  di playhead**, urutan layer **Maju/Mundur**, tombol **Tengahkan di Kanvas**,
+  **magnet snap** (tengah kanvas + rotasi 15 derajat) yang bisa dimatikan,
+  dan tombol lompat ke awal di transport.
+- **Template lebih kompleks + 3 baru**: total **8 template**. Baru: Hitung
+  Mundur (3-2-1 + cincin berdenyut), Kinetic Type (kata meluncur bergantian),
+  Showcase Produk (kartu + badge harga + CTA). Template lama diperkaya
+  (confetti di Promo Pop, badge LIVE di Lower Third, outro fade di Intro Bold,
+  halo + tanda kutip di Quote Minimal).
+- **Optimasi**: paint waveform timeline tidak lagi dialokasi per-frame,
+  autosave selalu menyimpan state terkini, thumbnail template ter-cache.
 
 ---
 
@@ -91,8 +114,8 @@ Tes JVM meniru struktur yang sama di `app/src/test/java/com/kilat/motion/`.
 
 | Build | Link |
 |---|---|
-| Release (signed, sideload-ready) | https://github.com/xykal/kilat-motion/releases/download/v1.1.0/app-release.apk |
-| Debug | https://github.com/xykal/kilat-motion/releases/download/v1.1.0/app-debug.apk |
+| Release (signed, sideload-ready) | https://github.com/xykal/kilat-motion/releases/download/v1.2.0/app-release.apk |
+| Debug | https://github.com/xykal/kilat-motion/releases/download/v1.2.0/app-debug.apk |
 
 APK baru otomatis dibuat setiap push & setiap tag `v*` lewat GitHub Actions.
 
@@ -104,7 +127,7 @@ Butuh **JDK 17** + **Android SDK (platform 34, build-tools 34.0.0)**.
 ```bash
 ./gradlew :app:assembleDebug      # APK debug
 ./gradlew :app:assembleRelease    # APK release (signed pakai debug key → bisa langsung sideload)
-./gradlew :app:testDebugUnitTest  # 26 unit test (animasi, waveform, template, ikon)
+./gradlew :app:testDebugUnitTest  # 28 unit test (animasi, split layer, waveform, template, ikon)
 ```
 
 APK ada di:

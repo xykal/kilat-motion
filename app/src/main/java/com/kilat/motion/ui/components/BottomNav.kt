@@ -36,7 +36,7 @@ class KilatBottomNav(context: Context) : FrameLayout(context) {
         val bar = LinearLayout(context)
         bar.orientation = LinearLayout.HORIZONTAL
         bar.gravity = Gravity.CENTER_VERTICAL
-        bar.background = roundedTop(KColors.BgTop, dpf(20f), KColors.Line, dp(1f))
+        bar.background = roundedTop(KColors.BgTop, dpf(20f))
         bar.setPadding(dp(8f), dp(8f), dp(8f), dp(10f))
         bar.elevation = dpf(10f)
         val lpBar = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM)
@@ -119,7 +119,7 @@ class KilatBottomNav(context: Context) : FrameLayout(context) {
             val (item, iv, label) = triple
             val pill = item.tag as? FrameLayout
             if (tid == id) {
-                pill?.background = roundedRect(0xFF123B32.toInt(), dpf(15f), 0xFF1C5C4E.toInt(), dp(1f))
+                pill?.background = roundedRect(0xFF123B32.toInt(), dpf(15f))
                 iv.tintColor = KColors.Accent
                 label.setTextColor(KColors.Accent)
                 item.animate().scaleX(1.04f).scaleY(1.04f).setDuration(120).start()

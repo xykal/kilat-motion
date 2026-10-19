@@ -68,6 +68,14 @@ class EditorActivity : Activity() {
     private lateinit var timecode: TextView
     private lateinit var playIcon: IconView
     private lateinit var loopBtn: KilatIconButton
+    private lateinit var undoBtn: KilatIconButton
+    private lateinit var redoBtn: KilatIconButton
+    private lateinit var magnetBtn: KilatIconButton
+
+    // riwayat undo/redo berbasis snapshot JSON project
+    private val undoStack = ArrayList<String>()
+    private val redoStack = ArrayList<String>()
+    private var lastSnapshot = ""
     private lateinit var badge: TextView
 
     private val handler = Handler(Looper.getMainLooper())
@@ -88,6 +96,8 @@ class EditorActivity : Activity() {
         updateTimecode()
         showInspectorFor(null)
         ProjectLibrary.save(applicationContext, project, touch = false)
+        lastSnapshot = ProjectStore.encode(project)
+        updateUndoButtons()
     }
 
     /** Project ditentukan dari intent homescreen: buka / template / baru / terakhir. */
@@ -143,7 +153,7 @@ class EditorActivity : Activity() {
         col.setPadding(dp(2f), dp(5f), dp(2f), dp(4f))
         val tile = FrameLayout(this)
         tile.background = if (accent) kilatGradient(kdpf(13f))
-        else roundedRect(KColors.CardHi, kdpf(13f), KColors.Line, dp(1f))
+        else roundedRect(KColors.CardHi, kdpf(13f))
         val iv = IconView(this, icon, if (accent) 0xFF05131F.toInt() else KColors.Text)
         val pad = dp(10f)
         iv.setPadding(pad, pad, pad, pad)
@@ -188,15 +198,14 @@ class EditorActivity : Activity() {
         lpLogo.leftMargin = dp(4f)
         top.addView(logoTile, lpLogo)
 
-        val brand = LinearLayout(this)
-        brand.orientation = LinearLayout.VERTICAL
-        brand.addView(kText("KILAT", 12.5f, KColors.Text, bold = true))
-        val sub = kText("MOTION", 7f, KColors.Dim, bold = true)
-        sub.letterSpacing = 0.32f
-        brand.addView(sub)
-        val lpBrand = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        lpBrand.marginStart = dp(7f)
-        top.addView(brand, lpBrand)
+        undoBtn = KilatIconButton(this, KilatIcon.UNDO, KColors.Faint, filled = false, sizeDp = 34f)
+        undoBtn.setOnClickListener { undo() }
+        val lpUndo = LinearLayout.LayoutParams(dp(34f), dp(34f))
+        lpUndo.marginStart = dp(6f)
+        top.addView(undoBtn, lpUndo)
+        redoBtn = KilatIconButton(this, KilatIcon.REDO, KColors.Faint, filled = false, sizeDp = 34f)
+        redoBtn.setOnClickListener { redo() }
+        top.addView(redoBtn, LinearLayout.LayoutParams(dp(34f), dp(34f)))
 
         nameEdit = EditText(this)
         nameEdit.setText(project.name)
@@ -250,7 +259,7 @@ class EditorActivity : Activity() {
 
         badge = kText("", 9.5f, KColors.Dim, bold = true)
         badge.setPadding(dp(8f), dp(4f), dp(8f), dp(4f))
-        badge.background = roundedRect(0xCC0A0C11.toInt(), kdpf(6f), 0x22FFFFFF, dp(1f))
+        badge.background = roundedRect(0xCC0A0C11.toInt(), kdpf(6f))
         val lpBadge = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpBadge.gravity = Gravity.TOP or Gravity.START
         lpBadge.leftMargin = dp(10f)
@@ -265,6 +274,16 @@ class EditorActivity : Activity() {
         transport.orientation = LinearLayout.HORIZONTAL
         transport.gravity = Gravity.CENTER_VERTICAL
         transport.setPadding(dp(14f), dp(4f), dp(14f), dp(6f))
+
+        val skipBtn = KilatIconButton(this, KilatIcon.SKIP_START, KColors.Muted, filled = false, sizeDp = 38f)
+        skipBtn.setOnClickListener {
+            setPlayhead(0f)
+            if (playing) {
+                playStart = 0f
+                playT0 = System.nanoTime()
+            }
+        }
+        transport.addView(skipBtn, LinearLayout.LayoutParams(dp(38f), dp(38f)))
 
         val playWrap = FrameLayout(this)
         playWrap.background = ovalBg(0xFFFFFFFF.toInt())
@@ -281,6 +300,14 @@ class EditorActivity : Activity() {
         val lpTc = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         lpTc.marginStart = dp(12f)
         transport.addView(timecode, lpTc)
+
+        magnetBtn = KilatIconButton(this, KilatIcon.MAGNET, KColors.Accent, filled = false, sizeDp = 38f)
+        magnetBtn.setOnClickListener {
+            preview.snapEnabled = !preview.snapEnabled
+            magnetBtn.setTint(if (preview.snapEnabled) KColors.Accent else KColors.Dim)
+            toast(if (preview.snapEnabled) "Magnet snap: nyala" else "Magnet snap: mati", KilatIcon.MAGNET)
+        }
+        transport.addView(magnetBtn, LinearLayout.LayoutParams(dp(38f), dp(38f)))
 
         loopBtn = KilatIconButton(this, KilatIcon.LOOP, KColors.Dim, filled = false, sizeDp = 38f)
         loopBtn.setOnClickListener {
@@ -359,7 +386,8 @@ class EditorActivity : Activity() {
         // ---------- inspector panel ----------
         inspectorPanel = LinearLayout(this)
         inspectorPanel.orientation = LinearLayout.VERTICAL
-        inspectorPanel.background = roundedTop(KColors.BgTop, kdpf(20f), KColors.Line, dp(1f))
+        inspectorPanel.background = roundedTop(KColors.BgTop, kdpf(20f))
+        inspectorPanel.elevation = kdpf(14f)
         inspectorPanel.visibility = View.GONE
 
         val strip = View(this)
@@ -412,6 +440,14 @@ class EditorActivity : Activity() {
                 showInspectorFor(layer)
                 autosave()
                 toast("Preset ${Anim.PRESET_LABELS[preset]} diterapkan", KilatIcon.WAND)
+            }
+
+            override fun onSplit(layer: Layer) {
+                splitLayerAtPlayhead(layer)
+            }
+
+            override fun onReorder(layer: Layer, dir: Int) {
+                reorderLayer(layer, dir)
             }
 
             override fun onClearKeys(layer: Layer) {
@@ -621,6 +657,104 @@ class EditorActivity : Activity() {
         toast("Layer diduplikat", KilatIcon.COPY)
     }
 
+    private fun splitLayerAtPlayhead(layer: Layer) {
+        val second = Anim.splitAt(layer, playhead)
+        if (second == null) {
+            toast("Geser playhead ke tengah layer dulu buat memisah", KilatIcon.SCISSORS)
+            return
+        }
+        val idx = project.layers.indexOf(layer)
+        project.layers.add(idx + 1, second)
+        selectedId = second.id
+        afterChange(selectedId)
+        toast("Layer dipisah di ${Format.time(playhead)}", KilatIcon.SCISSORS)
+    }
+
+    private fun reorderLayer(layer: Layer, dir: Int) {
+        val idx = project.layers.indexOf(layer)
+        if (idx < 0) return
+        val nidx = idx + dir
+        if (nidx !in project.layers.indices) {
+            toast(if (dir > 0) "Layer sudah paling atas" else "Layer sudah paling bawah", KilatIcon.INFO)
+            return
+        }
+        val tmp = project.layers[idx]
+        project.layers[idx] = project.layers[nidx]
+        project.layers[nidx] = tmp
+        afterChange(layer.id)
+    }
+
+    // =====================================================================
+    // undo / redo
+    // =====================================================================
+    private fun pushHistory() {
+        if (lastSnapshot.isEmpty()) return
+        val now = ProjectStore.encode(project)
+        if (now == lastSnapshot) return
+        undoStack.add(lastSnapshot)
+        while (undoStack.size > 40) undoStack.removeAt(0)
+        redoStack.clear()
+        lastSnapshot = now
+        updateUndoButtons()
+    }
+
+    private fun updateUndoButtons() {
+        if (!::undoBtn.isInitialized) return
+        undoBtn.setTint(if (undoStack.isNotEmpty()) KColors.Text else KColors.Faint)
+        redoBtn.setTint(if (redoStack.isNotEmpty()) KColors.Text else KColors.Faint)
+    }
+
+    private fun undo() {
+        if (undoStack.isEmpty()) {
+            toast("Belum ada yang bisa di-undo", KilatIcon.INFO)
+            return
+        }
+        redoStack.add(lastSnapshot)
+        val snap = undoStack.removeAt(undoStack.lastIndex)
+        lastSnapshot = snap
+        restoreSnapshot(snap)
+        updateUndoButtons()
+        toast("Undo", KilatIcon.UNDO)
+    }
+
+    private fun redo() {
+        if (redoStack.isEmpty()) {
+            toast("Belum ada yang bisa di-redo", KilatIcon.INFO)
+            return
+        }
+        undoStack.add(lastSnapshot)
+        val snap = redoStack.removeAt(redoStack.lastIndex)
+        lastSnapshot = snap
+        restoreSnapshot(snap)
+        updateUndoButtons()
+        toast("Redo", KilatIcon.REDO)
+    }
+
+    private fun restoreSnapshot(json: String) {
+        val decoded = ProjectStore.decode(json) ?: return
+        if (playing) {
+            playing = false
+            handler.removeCallbacks(ticker)
+        }
+        musicPlayer.sync(project.music, playhead, false)
+        decoded.id = project.id
+        project = decoded
+        if (project.findLayer(selectedId) == null) selectedId = null
+        if (playhead > project.duration) playhead = project.duration
+        preview.project = project
+        timeline.project = project
+        preview.select(selectedId)
+        timeline.selectedId = selectedId
+        nameEdit.setText(project.name)
+        updateBadge()
+        updatePlayButton()
+        if (inspectorPanel.visibility == View.VISIBLE) showInspectorFor(project.findLayer(selectedId))
+        setPlayhead(playhead)
+        preview.invalidate()
+        timeline.invalidate()
+        ProjectLibrary.save(applicationContext, project, touch = false)
+    }
+
     // =====================================================================
     // musik latar
     // =====================================================================
@@ -647,7 +781,7 @@ class EditorActivity : Activity() {
         headRow.orientation = LinearLayout.HORIZONTAL
         headRow.gravity = Gravity.CENTER_VERTICAL
         val mTile = FrameLayout(this)
-        mTile.background = roundedRect(KColors.CardHi, kdpf(10f), KColors.Line, dp(1f))
+        mTile.background = roundedRect(KColors.CardHi, kdpf(10f))
         val mIv = IconView(this, KilatIcon.MUSIC, KColors.Accent)
         val mp = dp(8f)
         mIv.setPadding(mp, mp, mp, mp)
@@ -1129,6 +1263,10 @@ class EditorActivity : Activity() {
             - Resize: tarik handle pojok
             - Rotasi: tarik knob di atas layer
             - Timeline: drag bar = geser waktu, ujung kanan = durasi
+            - Undo / Redo: ikon panah melingkar di bar atas (40 langkah riwayat)
+            - Pisah layer: panel Properti, tombol Pisah memotong layer tepat di playhead
+            - Urutan layer: tombol Maju / Mundur; Tengahkan untuk snap ke tengah kanvas
+            - Magnet: ikon magnet di transport untuk snap tengah + rotasi 15 derajat
             - Keyframe: panel Properti, ketuk ikon wajik per properti
             - Preset: Fade, Slide, Zoom, Spin, Bounce, Typing, Ken Burns, Glitch
             - Export MP4 ke galeri (Movies/KilatMotion)
@@ -1146,7 +1284,7 @@ class EditorActivity : Activity() {
     private fun showAbout() {
         KilatSheet.showMessage(
             this, "KILAT Motion",
-            "Motion graphics editor native Android.\n\nVersi 1.1.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa library eksternal.\nSemua ikon digambar manual pakai Canvas.",
+            "Motion graphics editor native Android.\n\nVersi 1.2.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa library eksternal.\nSemua ikon digambar manual pakai Canvas.",
             icon = KilatIcon.BOLT
         )
     }
@@ -1155,10 +1293,10 @@ class EditorActivity : Activity() {
     // misc
     // =====================================================================
     private fun autosave() {
+        pushHistory()
         val token = ++autosaveToken
-        val snapshot = project
         handler.postDelayed({
-            if (token == autosaveToken) ProjectLibrary.save(applicationContext, snapshot, touch = false)
+            if (token == autosaveToken) ProjectLibrary.save(applicationContext, project, touch = false)
         }, 800)
     }
 

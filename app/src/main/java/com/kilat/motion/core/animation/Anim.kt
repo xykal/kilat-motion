@@ -113,6 +113,35 @@ object Anim {
         layer.channels.clear()
     }
 
+    /**
+     * Pisah layer jadi dua tepat di waktu [t] (detik, koordinat project).
+     * Layer asal dipotong berakhir di t; kembalinya layer kedua (mulai di t)
+     * atau null kalau t di luar rentang layer. Keyframe di titik pisah
+     * disisipkan di kedua sisi supaya nilai animasi tidak melompat.
+     */
+    fun splitAt(layer: Layer, t: Float): Layer? {
+        val end = layer.start + layer.dur
+        if (t <= layer.start + 0.05f || t >= end - 0.05f) return null
+        val second = layer.duplicate()
+        second.name = layer.name
+        second.x = layer.x
+        second.y = layer.y
+        // kunci nilai saat ini di titik pisah pada kedua layer
+        for ((key, ch) in layer.channels) {
+            if (ch.keys.isEmpty()) continue
+            val v = value(layer, key, t)
+            setKey(layer, key, t, v)
+            setKey(second, key, t, v)
+        }
+        val eps = 0.004f
+        for (ch in layer.channels.values) ch.keys.retainAll { it.t <= t + eps }
+        for (ch in second.channels.values) ch.keys.retainAll { it.t >= t - eps }
+        second.start = t
+        second.dur = end - t
+        layer.dur = t - layer.start
+        return second
+    }
+
     // ---------------- preset ----------------
     val PRESETS = listOf("fade", "slideUp", "zoom", "spin", "bounce", "typing", "kenBurns", "glitch")
     val PRESET_LABELS = mapOf(

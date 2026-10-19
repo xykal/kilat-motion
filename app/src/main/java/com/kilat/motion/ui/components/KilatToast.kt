@@ -30,7 +30,7 @@ object KilatToast {
         val pill = LinearLayout(activity)
         pill.orientation = LinearLayout.HORIZONTAL
         pill.gravity = Gravity.CENTER_VERTICAL
-        pill.background = roundedRect(0xF2151821.toInt(), activity.dpf(24f), KColors.Line, activity.dp(1f))
+        pill.background = roundedRect(0xF2151821.toInt(), activity.dpf(24f))
         pill.elevation = activity.dpf(10f)
         pill.setPadding(activity.dp(10f), activity.dp(9f), activity.dp(16f), activity.dp(9f))
 
