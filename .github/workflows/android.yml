@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # perlu write agar APK bisa dilampirkan ke GitHub Release saat push tag
 
 jobs:
   build:
