@@ -224,6 +224,16 @@ class Layer {
     }
 }
 
+class Music {
+    var path: String = ""
+    var name: String = "Musik"
+    var start: Float = 0f      // kapan mulai di timeline (detik)
+    var dur: Float = 10f       // berapa lama tampil
+    var offset: Float = 0f     // mulai dari detik berapa di file
+    var volume: Float = 0.8f   // preview (export pakai volume asli file)
+    var wave: FloatArray? = null // envelope waveform (runtime + disimpan)
+}
+
 class Project {
     var name: String = "Project Baru"
     var width: Int = 1080
@@ -232,6 +242,7 @@ class Project {
     var duration: Float = 10f
     var fps: Int = 30
     val layers: MutableList<Layer> = ArrayList()
+    var music: Music? = null
 
     fun findLayer(id: String?): Layer? {
         if (id == null) return null

@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
+import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.net.Uri
@@ -32,6 +33,46 @@ object Exporter {
         var muxer: MediaMuxer? = null
         var track = -1
         var started = false
+        var audioTrack = -1
+    }
+
+    /** Penulis audio progresif: salin sample terkompresi dari file musik ke muxer. */
+    private class AudioWriter(
+        val extractor: MediaExtractor,
+        val muxer: MediaMuxer,
+        val track: Int,
+        val startUs: Long,
+        val offsetUs: Long,
+        val endUs: Long
+    ) {
+        val info = MediaCodec.BufferInfo()
+        val buf: java.nio.ByteBuffer = java.nio.ByteBuffer.allocateDirect(1 shl 19)
+        var pending = false
+        var eof = false
+
+        fun writeUntil(untilUs: Long) {
+            while (!eof) {
+                if (!pending) {
+                    buf.clear()
+                    val size = try { extractor.readSampleData(buf, 0) } catch (e: Throwable) { -1 }
+                    if (size < 0) { eof = true; break }
+                    info.offset = 0
+                    info.size = size
+                    info.presentationTimeUs = extractor.sampleTime
+                    info.flags = if (extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0)
+                        MediaCodec.BUFFER_FLAG_KEY_FRAME else 0
+                    pending = true
+                    try { extractor.advance() } catch (e: Throwable) { eof = true }
+                }
+                val adj = startUs + (info.presentationTimeUs - offsetUs)
+                if (adj < 0) { pending = false; continue }
+                if (adj > endUs) { eof = true; break }
+                if (adj > untilUs) break
+                info.presentationTimeUs = adj
+                try { muxer.writeSampleData(track, buf, info) } catch (e: Throwable) {}
+                pending = false
+            }
+        }
     }
 
     fun exportVideo(
@@ -79,6 +120,41 @@ object Exporter {
             val state = MuxState()
             state.muxer = muxer
 
+            // ---- siapkan audio (kalau ada musik latar) ----
+            var audioExtractor: MediaExtractor? = null
+            var audioWriter: AudioWriter? = null
+            val music = project.music
+            if (music != null && music.path.isNotEmpty()) {
+                try {
+                    val ex = MediaExtractor()
+                    ex.setDataSource(music.path)
+                    var ai = -1
+                    var afmt: MediaFormat? = null
+                    for (i in 0 until ex.trackCount) {
+                        val f = ex.getTrackFormat(i)
+                        val mime = f.getString(MediaFormat.KEY_MIME) ?: continue
+                        if (mime.startsWith("audio/")) { ai = i; afmt = f; break }
+                    }
+                    if (ai >= 0 && afmt != null) {
+                        ex.selectTrack(ai)
+                        state.audioTrack = muxer.addTrack(afmt)
+                        audioExtractor = ex
+                        try { ex.seekTo((music.offset * 1_000_000f).toLong(), MediaExtractor.SEEK_TO_CLOSEST_SYNC) } catch (e: Throwable) {}
+                        audioWriter = AudioWriter(
+                            ex, muxer, state.audioTrack,
+                            (music.start * 1_000_000f).toLong(),
+                            (music.offset * 1_000_000f).toLong(),
+                            ((music.start + music.dur) * 1_000_000f).toLong()
+                        )
+                    } else {
+                        ex.release()
+                    }
+                } catch (e: Throwable) {
+                    audioExtractor = null
+                    audioWriter = null
+                }
+            }
+
             val scaleX = outW.toFloat() / project.width
             val scaleY = outH.toFloat() / project.height
             val frameNs = 1_000_000_000L / frameRate
@@ -113,6 +189,9 @@ object Exporter {
                     surface.unlockCanvasAndPost(canvas)
                 }
                 drain(codec, state, false)
+                if (state.started) {
+                    try { audioWriter?.writeUntil((t * 1_000_000f).toLong() + 200_000L) } catch (e: Throwable) {}
+                }
 
                 val pct = (frame * 100 / totalFrames)
                 if (pct != lastPct) {
@@ -123,6 +202,8 @@ object Exporter {
 
             codec.signalEndOfInputStream()
             drain(codec, state, true)
+            try { audioWriter?.writeUntil(Long.MAX_VALUE / 4) } catch (e: Throwable) {}
+            try { audioExtractor?.release() } catch (e: Throwable) {}
             onProgress(1f)
 
             try {
@@ -173,8 +254,10 @@ object Exporter {
                 }
                 status == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
                     val m = state.muxer ?: return true
-                    if (!state.started) {
+                    if (state.track < 0) {
                         state.track = m.addTrack(codec.outputFormat)
+                    }
+                    if (!state.started) {
                         m.start()
                         state.started = true
                     }

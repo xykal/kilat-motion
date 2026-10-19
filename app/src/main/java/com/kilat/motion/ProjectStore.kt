@@ -42,6 +42,21 @@ object ProjectStore {
         val arr = JSONArray()
         for (l in p.layers) arr.put(layerToJson(l))
         o.put("layers", arr)
+        p.music?.let { m ->
+            val mo = JSONObject()
+            mo.put("path", m.path)
+            mo.put("name", m.name)
+            mo.put("start", m.start.toDouble())
+            mo.put("dur", m.dur.toDouble())
+            mo.put("offset", m.offset.toDouble())
+            mo.put("volume", m.volume.toDouble())
+            m.wave?.let { w ->
+                val wa = JSONArray()
+                for (v in w) wa.put(v.toDouble())
+                mo.put("wave", wa)
+            }
+            o.put("music", mo)
+        }
         return o
     }
 
@@ -189,7 +204,42 @@ object ProjectStore {
             }
             p.layers.add(l)
         }
+        val mo = pj.optJSONObject("music")
+        if (mo != null) {
+            val m = Music()
+            m.path = mo.optString("path", "")
+            m.name = mo.optString("name", "Musik")
+            m.start = mo.optDouble("start", 0.0).toFloat()
+            m.dur = mo.optDouble("dur", p.duration.toDouble()).toFloat()
+            m.offset = mo.optDouble("offset", 0.0).toFloat()
+            m.volume = mo.optDouble("volume", 0.8).toFloat()
+            val wa = mo.optJSONArray("wave")
+            if (wa != null && wa.length() > 0) {
+                val w = FloatArray(wa.length())
+                for (i in 0 until wa.length()) w[i] = wa.optDouble(i, 0.0).toFloat()
+                m.wave = w
+            }
+            if (m.path.isNotEmpty() && File(m.path).exists()) p.music = m
+        }
         return p
+    }
+
+    // ---------------- AUDIO IMPORT ----------------
+    fun importAudio(ctx: Context, uri: Uri, displayName: String?): String? {
+        return try {
+            val safe = (displayName ?: "audio").replace(Regex("[^A-Za-z0-9._-]"), "_").take(28)
+            val name = "aud_" + UUID.randomUUID().toString().substring(0, 6) + "_" + safe
+            val dest = File(imagesDir(ctx).parentFile, "audio").let { d ->
+                if (!d.exists()) d.mkdirs()
+                File(d, name)
+            }
+            ctx.contentResolver.openInputStream(uri)?.use { input ->
+                dest.outputStream().use { output -> input.copyTo(output) }
+            } ?: return null
+            dest.absolutePath
+        } catch (e: Throwable) {
+            null
+        }
     }
 
     // ---------------- IMAGE IMPORT ----------------

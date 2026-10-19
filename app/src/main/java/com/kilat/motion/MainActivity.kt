@@ -51,6 +51,7 @@ class MainActivity : Activity() {
     private lateinit var badge: TextView
 
     private val handler = Handler(Looper.getMainLooper())
+    private val musicPlayer by lazy { MusicPlayer(applicationContext) }
     private val density by lazy { resources.displayMetrics.density }
     private fun dp(v: Float): Int = (v * density).roundToInt()
 
@@ -80,9 +81,15 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         playing = false
+        musicPlayer.sync(project.music, playhead, false)
         updatePlayButton()
         ProjectStore.save(applicationContext, project)
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        musicPlayer.release()
+        super.onDestroy()
     }
 
     override fun onBackPressed() {
@@ -283,6 +290,18 @@ class MainActivity : Activity() {
                 timeline.invalidate()
                 autosave()
             }
+
+            override fun onMusicTap() {
+                if (project.music != null) showMusicDialog()
+            }
+
+            override fun onMusicEdited(commit: Boolean) {
+                timeline.invalidate()
+                if (commit) {
+                    autosave()
+                    musicPlayer.sync(project.music, playhead, playing)
+                }
+            }
         }
         main.addView(timeline, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(172f)))
 
@@ -445,6 +464,7 @@ class MainActivity : Activity() {
     private fun stopPlay() {
         playing = false
         handler.removeCallbacks(ticker)
+        musicPlayer.sync(project.music, playhead, false)
         updatePlayButton()
         ProjectStore.save(applicationContext, project)
     }
@@ -478,6 +498,7 @@ class MainActivity : Activity() {
 
     private fun setPlayhead(t: Float) {
         playhead = t.coerceIn(0f, project.duration)
+        if (playing) musicPlayer.sync(project.music, playhead, true)
         preview.updateTime(playhead)
         timeline.playhead = playhead
         timeline.invalidate()
@@ -582,6 +603,142 @@ class MainActivity : Activity() {
     }
 
     // =====================================================================
+    // musik latar
+    // =====================================================================
+    private fun showMusicDialog() {
+        val m = project.music
+        if (m == null) {
+            AlertDialog.Builder(this)
+                .setTitle("Musik latar")
+                .setMessage("Tambahkan musik dari galeri. Musik akan ikut ter-export ke MP4 (volume di video mengikuti file asli).")
+                .setPositiveButton("Pilih musik") { _, _ -> pickAudio() }
+                .setNegativeButton("Batal", null)
+                .show()
+            return
+        }
+        val wrap = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20f), dp(10f), dp(20f), dp(2f))
+        }
+        wrap.addView(textView("♫ ${m.name}", 13f, cText, true))
+        wrap.addView(textView("Durasi file: ${"%.1f".format(AudioUtil.durationSeconds(m.path))}s", 11f, cDim))
+
+        var vol = m.volume
+        val volLabel = textView("Volume preview: ${(vol * 100).toInt()}%", 11.5f, cMuted)
+        val lpV = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpV.topMargin = dp(12f)
+        wrap.addView(volLabel, lpV)
+        val seek = SeekBar(this)
+        seek.max = 100
+        seek.progress = (vol * 100).toInt().coerceIn(0, 100)
+        seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                vol = progress / 100f
+                volLabel.text = "Volume preview: $progress%"
+                project.music?.volume = vol
+                musicPlayer.sync(project.music, playhead, playing)
+            }
+            override fun onStartTrackingTouch(sb: SeekBar?) {}
+            override fun onStopTrackingTouch(sb: SeekBar?) { autosave() }
+        })
+        wrap.addView(seek)
+
+        val posLabel = textView("Mulai: ${"%.1f".format(m.start)}s · Durasi: ${"%.1f".format(m.dur)}s", 11.5f, cMuted)
+        val lpP = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpP.topMargin = dp(8f)
+        wrap.addView(posLabel, lpP)
+        val startSeek = SeekBar(this)
+        val maxStart = max(1, project.duration.toInt() - 1)
+        startSeek.max = maxStart
+        startSeek.progress = m.start.toInt().coerceIn(0, maxStart)
+        startSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                val mm = project.music ?: return
+                mm.start = progress.toFloat()
+                if (mm.start + mm.dur > project.duration) mm.dur = max(0.5f, project.duration - mm.start)
+                posLabel.text = "Mulai: ${"%.1f".format(mm.start)}s · Durasi: ${"%.1f".format(mm.dur)}s"
+                timeline.invalidate()
+                musicPlayer.sync(project.music, playhead, playing)
+            }
+            override fun onStartTrackingTouch(sb: SeekBar?) {}
+            override fun onStopTrackingTouch(sb: SeekBar?) { autosave() }
+        })
+        wrap.addView(startSeek)
+
+        AlertDialog.Builder(this)
+            .setTitle("Musik latar")
+            .setView(ScrollView(this).apply { addView(wrap) })
+            .setPositiveButton("Tutup") { _, _ -> autosave() }
+            .setNeutralButton("Ganti") { _, _ -> pickAudio() }
+            .setNegativeButton("Hapus") { _, _ ->
+                project.music = null
+                musicPlayer.release()
+                timeline.invalidate()
+                autosave()
+                toast("Musik dihapus")
+            }
+            .show()
+    }
+
+    private fun pickAudio() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "audio/*"
+        }
+        try {
+            startActivityForResult(intent, REQ_AUDIO)
+        } catch (e: Throwable) {
+            toast("Tidak bisa membuka file audio")
+        }
+    }
+
+    private fun importAudioFrom(uri: Uri) {
+        toast("Mengimpor musik…")
+        Thread {
+            val ctx = applicationContext
+            val name = queryDisplayName(uri) ?: "musik"
+            val path = ProjectStore.importAudio(ctx, uri, name)
+            if (path == null) {
+                runOnUiThread { toast("Gagal mengimpor musik") }
+                return@Thread
+            }
+            val durSec = AudioUtil.durationSeconds(path)
+            val wave = AudioUtil.decodeEnvelope(path)
+            runOnUiThread {
+                val p = project
+                val m = Music()
+                m.path = path
+                m.name = name.substringBeforeLast('.').take(24)
+                m.start = 0f
+                m.dur = min(p.duration, if (durSec > 0.5f) durSec else p.duration)
+                m.offset = 0f
+                m.volume = 0.8f
+                m.wave = wave
+                p.music = m
+                timeline.project = p
+                timeline.invalidate()
+                autosave()
+                musicPlayer.sync(p.music, playhead, playing)
+                toast(if (wave != null) "Musik ditambahkan 🎵" else "Musik ditambahkan (waveform tidak tersedia)")
+                showMusicDialog()
+            }
+        }.start()
+    }
+
+    private fun queryDisplayName(uri: Uri): String? {
+        return try {
+            contentResolver.query(uri, null, null, null, null)?.use { c ->
+                val idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (idx >= 0 && c.moveToFirst()) c.getString(idx) else null
+            }
+        } catch (e: Throwable) {
+            null
+        }
+    }
+
+    // =====================================================================
     // image pick
     // =====================================================================
     private var pendingImageLayer: Layer? = null
@@ -601,7 +758,13 @@ class MainActivity : Activity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != REQ_IMAGE || resultCode != RESULT_OK) return
+        if (resultCode != RESULT_OK) return
+        if (requestCode == REQ_AUDIO) {
+            val auri: Uri = data?.data ?: return
+            importAudioFrom(auri)
+            return
+        }
+        if (requestCode != REQ_IMAGE) return
         val uri: Uri = data?.data ?: return
         toast("Mengimpor gambar…")
         Thread {
@@ -664,6 +827,7 @@ class MainActivity : Activity() {
 
     private fun runExport(longSide: Int) {
         if (playing) stopPlay()
+        musicPlayer.sync(project.music, playhead, false)
         val p = project
         val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
@@ -755,6 +919,7 @@ class MainActivity : Activity() {
     // =====================================================================
     private fun showMenu() {
         val items = arrayOf(
+            "🎵 Musik latar",
             "⚙ Pengaturan project",
             "💾 Simpan sekarang",
             "⚡ Muat demo",
@@ -766,13 +931,14 @@ class MainActivity : Activity() {
         AlertDialog.Builder(this)
             .setItems(items) { _, which ->
                 when (which) {
-                    0 -> showProjectSettings()
-                    1 -> { ProjectStore.save(applicationContext, project); toast("Project disimpan") }
-                    2 -> { loadDemo() }
-                    3 -> { newProject() }
-                    4 -> exportPng()
-                    5 -> showGuide()
-                    6 -> showAbout()
+                    0 -> showMusicDialog()
+                    1 -> showProjectSettings()
+                    2 -> { ProjectStore.save(applicationContext, project); toast("Project disimpan") }
+                    3 -> { loadDemo() }
+                    4 -> { newProject() }
+                    5 -> exportPng()
+                    6 -> showGuide()
+                    7 -> showAbout()
                 }
             }
             .show()
@@ -905,6 +1071,7 @@ class MainActivity : Activity() {
     }
 
     private fun loadDemo() {
+        musicPlayer.release()
         project = Demo.build()
         selectedId = null
         playhead = 0f
@@ -927,6 +1094,7 @@ class MainActivity : Activity() {
             .setTitle("Project baru?")
             .setMessage("Layer yang sekarang akan diganti. Project tersimpan otomatis, tapi belum ada riwayat versi.")
             .setPositiveButton("Buat baru") { _, _ ->
+                musicPlayer.release()
                 project = Demo.newProject()
                 selectedId = null
                 playhead = 0f
@@ -995,5 +1163,6 @@ class MainActivity : Activity() {
 
     companion object {
         private const val REQ_IMAGE = 1001
+        private const val REQ_AUDIO = 1002
     }
 }

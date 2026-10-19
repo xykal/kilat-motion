@@ -24,6 +24,8 @@ class TimelineView(context: Context) : View(context) {
         fun onSelect(id: String?)
         fun onTimesChanged(commit: Boolean)
         fun onVisibilityToggle(id: String)
+        fun onMusicTap()
+        fun onMusicEdited(commit: Boolean)
     }
 
     var project: Project? = null
@@ -99,9 +101,14 @@ class TimelineView(context: Context) : View(context) {
 
     private fun timeToX(t: Float): Float = leftW + t * pxPerSec()
 
+    private fun musicLaneH(): Float {
+        val p = project ?: return 0f
+        return if (p.music != null) dp(30f) else 0f
+    }
+
     private fun rowHeight(): Float {
         val p = project ?: return dp(30f)
-        val avail = height - rulerH
+        val avail = height - rulerH - musicLaneH()
         if (p.layers.isEmpty()) return dp(30f)
         return min(dp(34f), max(dp(16f), avail / p.layers.size))
     }
@@ -117,6 +124,8 @@ class TimelineView(context: Context) : View(context) {
         val rh = rowHeight()
         return ((y - rulerH) / rh).toInt()
     }
+
+    private fun c2EE6C0(): Int = 0xFF2EE6C0.toInt()
 
     private fun kindColor(kind: String): Int = when (kind) {
         KIND_TEXT -> 0xFF6EA8FF.toInt()
@@ -205,6 +214,50 @@ class TimelineView(context: Context) : View(context) {
             row++
         }
 
+        // ---- lane musik ----
+        val music = p.music
+        val mlh = musicLaneH()
+        if (music != null && mlh > 0f) {
+            val laneTop = height - mlh
+            canvas.drawLine(0f, laneTop, width.toFloat(), laneTop, linePaint)
+            val x1 = timeToX(music.start)
+            val x2 = timeToX(music.start + music.dur)
+            val bt = laneTop + dp(4f)
+            val bb = height - dp(4f)
+            barPaint.shader = null
+            barPaint.color = 0x3333FFCC
+            val rr = dp(5f)
+            canvas.drawRoundRect(x1, bt, max(x1 + dp(2f), x2), bb, rr, rr, barPaint)
+            barEdgePaint.color = 0xAA2EE6C0.toInt()
+            canvas.drawRoundRect(x1, bt, max(x1 + dp(2f), x2), bb, rr, rr, barEdgePaint)
+
+            // waveform
+            val wave = music.wave
+            if (wave != null && wave.isNotEmpty() && x2 > x1 + 2f) {
+                val wp = Paint(Paint.ANTI_ALIAS_FLAG)
+                wp.color = 0xAA2EE6C0.toInt()
+                val midY = (bt + bb) / 2f
+                val halfH = (bb - bt) / 2f - dp(1.5f)
+                val n = wave.size
+                var bx = x1 + dp(2f)
+                val bxEnd = x2 - dp(2f)
+                while (bx < bxEnd) {
+                    val frac = ((bx - x1) / max(1f, x2 - x1)).coerceIn(0f, 1f)
+                    val idx = (frac * (n - 1)).toInt().coerceIn(0, n - 1)
+                    val amp = wave[idx].coerceIn(0f, 1f)
+                    val hh = max(dp(0.6f), amp * halfH)
+                    canvas.drawRect(bx, midY - hh, bx + dp(1.6f), midY + hh, wp)
+                    bx += dp(2.6f)
+                }
+            }
+            // label musik di kolom kiri
+            namePaint.alpha = 255
+            canvas.drawText("♫ ${music.name}".take(16), dp(8f), laneTop + mlh / 2f + dp(3.6f), namePaint)
+            canvas.drawCircle(leftW - dp(12f), laneTop + mlh / 2f, dp(4f), dotPaint.apply { color = c2EE6C0() })
+
+            // playhead di lane
+        }
+
         // playhead
         val px = timeToX(playhead)
         canvas.drawLine(px, 0f, px, height.toFloat(), playheadPaint)
@@ -264,6 +317,23 @@ class TimelineView(context: Context) : View(context) {
                 if (event.y <= rulerH) {
                     dragMode = MODE_SEEK
                     listener?.onSeek(tAt(event.x))
+                    return true
+                }
+                // lane musik
+                val music = p.music
+                val mlh = musicLaneH()
+                if (music != null && mlh > 0f && event.y > height - mlh) {
+                    val x1 = timeToX(music.start)
+                    val x2 = timeToX(music.start + music.dur)
+                    listener?.onMusicTap()
+                    if (event.x >= x1 - dp(6f) && event.x <= x2 + dp(6f)) {
+                        origStart = music.start
+                        origDur = music.dur
+                        dragMode = if (event.x > x2 - dp(16f)) MODE_MUSIC_TRIM else MODE_MUSIC_MOVE
+                    } else {
+                        dragMode = MODE_NONE
+                    }
+                    invalidate()
                     return true
                 }
                 // klik kolom nama
@@ -345,11 +415,31 @@ class TimelineView(context: Context) : View(context) {
                         listener?.onTimesChanged(false)
                         invalidate()
                     }
+                    MODE_MUSIC_MOVE -> {
+                        val m = p.music ?: return true
+                        val dt = (event.x - downX) / z
+                        var ns = snap(origStart + dt, null)
+                        ns = ns.coerceIn(0f, max(0f, p.duration - 0.3f))
+                        m.start = round(ns * 1000f) / 1000f
+                        if (m.start + m.dur > p.duration) m.dur = p.duration - m.start
+                        listener?.onMusicEdited(false)
+                        invalidate()
+                    }
+                    MODE_MUSIC_TRIM -> {
+                        val m = p.music ?: return true
+                        val dt = (event.x - downX) / z
+                        var end = snap(origStart + origDur + dt, null)
+                        end = end.coerceIn(m.start + 0.3f, p.duration)
+                        m.dur = round((end - m.start) * 1000f) / 1000f
+                        listener?.onMusicEdited(false)
+                        invalidate()
+                    }
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 parent?.requestDisallowInterceptTouchEvent(false)
                 if (dragMode == MODE_MOVE || dragMode == MODE_TRIM) listener?.onTimesChanged(true)
+                if (dragMode == MODE_MUSIC_MOVE || dragMode == MODE_MUSIC_TRIM) listener?.onMusicEdited(true)
                 dragging = false
                 dragMode = MODE_NONE
                 dragLayer = null
@@ -365,5 +455,7 @@ class TimelineView(context: Context) : View(context) {
         const val MODE_SEEK = 1
         const val MODE_MOVE = 2
         const val MODE_TRIM = 3
+        const val MODE_MUSIC_MOVE = 4
+        const val MODE_MUSIC_TRIM = 5
     }
 }

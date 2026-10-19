@@ -3,7 +3,7 @@
 Motion graphics editor **native Android** (Kotlin), alur kerja ala **Alight Motion** + UI gelap ala **CapCut**.
 Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK dibuild otomatis via **GitHub Actions**.
 
-![status](https://img.shields.io/badge/build-passing-2ee6c0) ![minSdk](https://img.shields.io/badge/minSdk-29-blue) ![size](https://img.shields.io/badge/APK-2.1--2.6%20MB-lightgrey)
+![status](https://img.shields.io/badge/build-passing-2ee6c0) ![minSdk](https://img.shields.io/badge/minSdk-29-blue) ![size](https://img.shields.io/badge/APK-2.2--2.7%20MB-lightgrey) ![tests](https://img.shields.io/badge/tests-19%20passing-2ee6c0)
 
 ---
 
@@ -25,6 +25,12 @@ Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK 
 - **Blend mode**: Normal, Screen, Multiply, Overlay, Lighten, Darken, Color Dodge, Soft Light
 - Semua efek bisa di-keyframe
 
+**Audio (baru)**
+- Import **musik latar** dari galeri (mp3/m4a/wav/ogg/aac)
+- **Waveform** digambar di timeline (decode native via MediaCodec)
+- Drag bar musik = geser posisi, ujung kanan = atur durasi, dialog untuk volume & trim
+- **Audio ikut ter-mux ke MP4** saat export (MediaExtractor + MediaMuxer, tanpa FFmpeg)
+
 **Output & project**
 - **Export MP4 (H.264)** via MediaCodec + MediaMuxer → galeri `Movies/KilatMotion` (720p/1080p, auto-fallback)
 - **Export frame PNG** → `Pictures/KilatMotion`
@@ -40,7 +46,7 @@ Butuh **JDK 17** + **Android SDK (platform 34, build-tools 34.0.0)**.
 ```bash
 ./gradlew :app:assembleDebug      # APK debug
 ./gradlew :app:assembleRelease    # APK release (signed pakai debug key → bisa langsung sideload)
-./gradlew :app:testDebugUnitTest  # 12 unit test engine animasi
+./gradlew :app:testDebugUnitTest  # 19 unit test (engine animasi + waveform)
 ```
 
 APK ada di:
@@ -75,6 +81,9 @@ Setelah push, buka tab **Actions** — build otomatis jalan, APK muncul di **Art
 | `Exporter.kt` | MediaCodec H.264 (input Surface) + MediaMuxer → MP4, PNG frame |
 | `ProjectStore.kt` | Save/load JSON + import gambar ke storage app |
 | `MainActivity.kt` | Shell UI, playback, dialog, wiring semua komponen |
+| `MusicPlayer.kt` | Preview musik latar, sinkron dengan playhead |
+| `AudioUtil.kt` | Decode audio → envelope waveform (MediaCodec) |
+| `Waveform.kt` | Utilitas murni: envelope & mono-mix (di-unit-test) |
 | `Demo.kt` | Demo project (glow + bintang + teks typing) |
 
 **Kenapa tanpa library eksternal?** APK kecil (~2 MB), build cepat di CI, nol risiko dependency drift, dan semua bagian penting (render + encode) sepenuhnya di tangan kita.
@@ -83,7 +92,9 @@ Setelah push, buka tab **Actions** — build otomatis jalan, APK muncul di **Art
 
 ## ⚠️ Batasan v1 (jujur)
 
-- **Video layer & audio belum ada** (fase berikutnya pakai Media3/ExoPlayer + audio track di muxer)
+- **Video layer belum ada** (fase berikutnya pakai Media3/ExoPlayer)
+- **Export audio** menyalin track asli (volume export = volume file; slider volume hanya untuk preview)
+- Satu musik latar per project (belum multi-track audio)
 - **Pinch-to-zoom** belum; resize lewat handle pojok
 - Export berjalan **real-time** (durasi export ≈ durasi project). Belum faster-than-realtime (butuh EGL + `eglPresentationTimeANDROID`)
 - Preset Glitch memakai jitter keyframe `x`; belum ada RGB split per-channel
@@ -92,7 +103,7 @@ Setelah push, buka tab **Actions** — build otomatis jalan, APK muncul di **Art
 
 ## 🗺 Roadmap
 
-1. **Audio** (import, waveform, volume keyframe) + transisi antar scene
+1. ~~Audio dasar~~ ✅ (musik latar + waveform + mux export) → lanjut: multi-track + volume keyframe
 2. **Video layer** (Media3 decoder → GL texture) + speed ramp
 3. Masking/crop, chroma key, motion blur, particle
 4. Text styles (gradient stroke, shadow, animasi per kata)
