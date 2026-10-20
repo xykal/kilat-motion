@@ -161,21 +161,17 @@ class EditorActivity : Activity() {
         col.orientation = LinearLayout.VERTICAL
         col.gravity = Gravity.CENTER
         col.isClickable = true
-        col.setPadding(dp(2f), dp(5f), dp(2f), dp(4f))
-        val tile = FrameLayout(this)
-        tile.background = if (accent) kilatSolid(kdpf(13f))
-        else roundedRect(KColors.CardHi, kdpf(13f))
-        val iv = IconView(this, icon, if (accent) 0xFF05131F.toInt() else KColors.Text)
-        val pad = dp(10f)
-        iv.setPadding(pad, pad, pad, pad)
-        tile.addView(iv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        col.addView(tile, LinearLayout.LayoutParams(dp(42f), dp(42f)))
-        val tv = kText(label, 9.5f, if (accent) KColors.Accent else KColors.Muted, bold = true)
+        col.setPadding(dp(2f), dp(8f), dp(2f), dp(6f))
+        // Gaya CapCut: ikon polos tanpa kotak, label kecil di bawah.
+        val iv = IconView(this, icon, if (accent) KColors.Accent else KColors.Text)
+        iv.iconInset = 0.1f
+        col.addView(iv, LinearLayout.LayoutParams(dp(26f), dp(26f)))
+        val tv = kText(label, 10.5f, KColors.Muted, bold = false)
         tv.gravity = Gravity.CENTER
         val lpTv = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        lpTv.topMargin = dp(4f)
+        lpTv.topMargin = dp(5f)
         col.addView(tv, lpTv)
-        col.pressEffect(0.93f)
+        col.pressEffect(0.92f)
         col.setOnClickListener { onClick() }
         return col
     }
@@ -199,16 +195,6 @@ class EditorActivity : Activity() {
         backBtn.setOnClickListener { finish() }
         top.addView(backBtn, LinearLayout.LayoutParams(dp(34f), dp(34f)))
 
-        val logoTile = FrameLayout(this)
-        logoTile.background = kilatSolid(kdpf(10f))
-        val bolt = IconView(this, KilatIcon.BOLT, 0xFF05131F.toInt())
-        val lpBoltPad = dp(7f)
-        bolt.setPadding(lpBoltPad, lpBoltPad, lpBoltPad, lpBoltPad)
-        logoTile.addView(bolt, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        val lpLogo = LinearLayout.LayoutParams(dp(32f), dp(32f))
-        lpLogo.leftMargin = dp(4f)
-        top.addView(logoTile, lpLogo)
-
         undoBtn = KilatIconButton(this, KilatIcon.UNDO, KColors.Faint, filled = false, sizeDp = 34f)
         undoBtn.setOnClickListener { undo() }
         val lpUndo = LinearLayout.LayoutParams(dp(34f), dp(34f))
@@ -220,8 +206,9 @@ class EditorActivity : Activity() {
 
         nameEdit = EditText(this)
         nameEdit.setText(project.name)
-        nameEdit.setTextColor(KColors.Muted)
-        nameEdit.textSize = 12f
+        nameEdit.setTextColor(KColors.Text)
+        nameEdit.textSize = 14f
+        nameEdit.typeface = android.graphics.Typeface.DEFAULT_BOLD
         nameEdit.setSingleLine(true)
         nameEdit.background = null
         nameEdit.setPadding(dp(10f), dp(6f), dp(6f), dp(6f))
@@ -238,7 +225,20 @@ class EditorActivity : Activity() {
         lpName.marginStart = dp(2f)
         top.addView(nameEdit, lpName)
 
-        val menuBtn = KilatIconButton(this, KilatIcon.MORE, KColors.Muted, filled = true, sizeDp = 34f)
+        // Tombol ekspor utama: pill teal solid di kanan atas (gaya CapCut).
+        val exportBtn = TextView(this).apply {
+            text = "Ekspor"
+            setTextColor(KColors.AccentInk)
+            textSize = 13f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(dp(14f), 0, dp(14f), 0)
+            background = kilatSolid(kdpf(17f))
+            setOnClickListener { showExportDialog() }
+        }
+        top.addView(exportBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34f)).apply { marginEnd = dp(6f) })
+
+        val menuBtn = KilatIconButton(this, KilatIcon.MORE, KColors.Muted, filled = false, sizeDp = 34f)
         menuBtn.setOnClickListener { showMenu() }
         top.addView(menuBtn, LinearLayout.LayoutParams(dp(34f), dp(34f)))
 
@@ -453,13 +453,12 @@ class EditorActivity : Activity() {
             Triple(KilatIcon.PENCIL, "Coret") { toggleDrawMode() },
             Triple(KilatIcon.VECTOR, "SVG") { pickSvg() },
             Triple(KilatIcon.CUBE, "3D") { show3DPicker() },
-            Triple(KilatIcon.SLIDERS, "Properti") { showPanel() },
-            Triple(KilatIcon.EXPORT, "Export") { showExportDialog() }
+            Triple(KilatIcon.SLIDERS, "Properti") { showPanel() }
         )
-        for ((i, triple) in tools.withIndex()) {
+        for ((_, triple) in tools.withIndex()) {
             val (icon, label, action) = triple
-            val item = toolItem(icon, label, accent = i == tools.size - 1) { action() }
-            bottom.addView(item, LinearLayout.LayoutParams(dp(66f), ViewGroup.LayoutParams.WRAP_CONTENT))
+            val item = toolItem(icon, label, accent = false) { action() }
+            bottom.addView(item, LinearLayout.LayoutParams(dp(64f), ViewGroup.LayoutParams.WRAP_CONTENT))
         }
         bottomScroll.addView(bottom)
         main.addView(bottomScroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
