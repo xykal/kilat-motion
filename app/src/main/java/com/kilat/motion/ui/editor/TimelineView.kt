@@ -9,16 +9,15 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.Shader
 import android.text.TextUtils
 import android.view.MotionEvent
 import android.view.View
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 @SuppressLint("ClickableViewAccessibility")
@@ -36,11 +35,23 @@ class TimelineView(context: Context) : View(context) {
     var project: Project? = null
         set(value) {
             field = value
+            clampScroll()
             invalidate()
         }
     var playhead: Float = 0f
+        set(value) {
+            field = value
+            ensurePlayheadVisible()
+        }
     var selectedId: String? = null
     var listener: Listener? = null
+
+    // ---- viewport timeline: bisa digeser (pan) & di-zoom (pinch / tombol) ----
+    var zoom: Float = 1f
+        private set
+    var scrollSec: Float = 0f
+        private set
+    var onZoomChanged: ((Float) -> Unit)? = null
 
     private val density = resources.displayMetrics.density
     private fun dp(v: Float) = v * density
@@ -51,11 +62,11 @@ class TimelineView(context: Context) : View(context) {
     private val bgPaint = Paint().apply { color = 0xFF0D0F15.toInt() }
     private val leftBgPaint = Paint().apply { color = 0xFF111319.toInt() }
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x14FFFFFF
+        color = 0xFF1B202D.toInt()
         strokeWidth = dp(1f)
     }
     private val tickPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x22FFFFFF
+        color = 0xFF232A3A.toInt()
         strokeWidth = dp(1f)
     }
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -82,7 +93,7 @@ class TimelineView(context: Context) : View(context) {
         style = Paint.Style.FILL
     }
     private val diamondStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xCCFFFFFF.toInt()
+        color = 0xFFE9EEF7.toInt()
         style = Paint.Style.STROKE
         strokeWidth = dp(1.2f)
     }
@@ -96,16 +107,71 @@ class TimelineView(context: Context) : View(context) {
     }
     private val playheadHead = Path()
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val wavePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xAA2EE6C0.toInt() }
+    private val wavePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF25C4A2.toInt() }
 
-    private fun pxPerSec(): Float {
+    private fun basePxPerSec(): Float {
         val p = project ?: return 60f
         val usable = width - leftW - dp(10f)
         if (usable <= 0f) return 60f
         return usable / max(1f, p.duration)
     }
 
-    private fun timeToX(t: Float): Float = leftW + t * pxPerSec()
+    private fun pxPerSec(): Float = basePxPerSec() * zoom
+
+    private fun visibleSec(): Float {
+        val z = pxPerSec()
+        return if (z <= 0f) 0f else (width - leftW) / z
+    }
+
+    private fun clampScroll() {
+        val p = project ?: return
+        if (width <= 0) return
+        scrollSec = scrollSec.coerceIn(0f, max(0f, p.duration - visibleSec()))
+    }
+
+    private fun ensurePlayheadVisible() {
+        if (width <= 0) return
+        val vis = visibleSec()
+        if (vis <= 0f) return
+        val before = scrollSec
+        if (playhead < scrollSec) scrollSec = playhead
+        else if (playhead > scrollSec + vis) scrollSec = playhead - vis * 0.12f
+        clampScroll()
+        if (scrollSec != before) invalidate()
+    }
+
+    /** Zoom timeline di sekitar titik fokus layar (default tengah area trek). */
+    fun setZoom(newZoom: Float, focalX: Float = leftW + (width - leftW) / 2f) {
+        val oldZ = pxPerSec()
+        val focalT = scrollSec + (focalX - leftW) / oldZ
+        zoom = newZoom.coerceIn(1f, 10f)
+        scrollSec = focalT - (focalX - leftW) / pxPerSec()
+        clampScroll()
+        if (zoom <= 1.01f) scrollSec = 0f
+        invalidate()
+        onZoomChanged?.invoke(zoom)
+    }
+
+    fun zoomBy(factor: Float) = setZoom(zoom * factor)
+
+    fun zoomFit() {
+        zoom = 1f
+        scrollSec = 0f
+        invalidate()
+        onZoomChanged?.invoke(zoom)
+    }
+
+    private fun timeToX(t: Float): Float = leftW + (t - scrollSec) * pxPerSec()
+
+    /** Campur warna ke arah permukaan gelap secara opaque (bar solid, bukan kaca). */
+    private fun solidMix(c: Int, f: Float = 0.42f): Int {
+        val bg = 0xFF12151D.toInt()
+        fun ch(a: Int, b: Int) = (b + (a - b) * (1f - f)).toInt().coerceIn(0, 255)
+        return (0xFF shl 24) or
+            (ch((c shr 16) and 0xFF, (bg shr 16) and 0xFF) shl 16) or
+            (ch((c shr 8) and 0xFF, (bg shr 8) and 0xFF) shl 8) or
+            ch(c and 0xFF, bg and 0xFF)
+    }
 
     private fun musicLaneH(): Float {
         val p = project ?: return 0f
@@ -155,17 +221,28 @@ class TimelineView(context: Context) : View(context) {
             z >= 20f -> 2f
             else -> 5f
         }
-        var t = 0f
-        while (t <= p.duration + 0.001f) {
+        var t = (scrollSec / step).toInt() * step
+        val tEnd = min(p.duration, scrollSec + visibleSec() + step)
+        while (t <= tEnd + 0.001f) {
             val x = timeToX(t)
-            canvas.drawLine(x, 0f, x, height.toFloat(), tickPaint)
-            if (x < width - dp(14f)) {
-                val label = if (step < 1f) Format.dec(t) + "s" else "${t.roundToInt()}s"
-                canvas.drawText(label, x + dp(3f), dp(10f), labelPaint)
+            if (x >= leftW) {
+                canvas.drawLine(x, 0f, x, height.toFloat(), tickPaint)
+                if (x < width - dp(14f)) {
+                    val label = if (step < 1f) Format.dec(t) + "s" else "${t.roundToInt()}s"
+                    canvas.drawText(label, x + dp(3f), dp(10f), labelPaint)
+                }
             }
             t += step
         }
         canvas.drawLine(0f, rulerH, width.toFloat(), rulerH, linePaint)
+        // scrollbar mini saat ter-zoom: posisi jendela terlihat
+        if (zoom > 1.01f && p.duration > 0f) {
+            val usable = width - leftW
+            val thumbW = max(dp(28f), usable * (visibleSec() / p.duration))
+            val thumbX = leftW + usable * (scrollSec / p.duration)
+            dotPaint.color = 0xFF2EE6C0.toInt()
+            canvas.drawRoundRect(thumbX, rulerH - dp(3.4f), thumbX + thumbW, rulerH - dp(0.8f), dp(1.3f), dp(1.3f), dotPaint)
+        }
 
         // rows
         val rh = rowHeight()
@@ -185,20 +262,27 @@ class TimelineView(context: Context) : View(context) {
             dotPaint.color = if (layer.hidden) 0xFF394155.toInt() else 0xFF2EE6C0.toInt()
             canvas.drawCircle(leftW - dp(12f), top + rh / 2f, dp(4f), dotPaint)
 
-            // bar
+            // bar (solid flat, ter-clip di area trek agar tidak bocor ke kolom nama)
+            canvas.save()
+            canvas.clipRect(leftW, 0f, width.toFloat(), height.toFloat())
             val x1 = timeToX(layer.start)
             val x2 = timeToX(layer.start + layer.dur)
             val bt = top + dp(4f)
             val bb = top + rh - dp(4f)
             val c = kindColor(layer.kind)
-            barPaint.shader = LinearGradient(x1, 0f, x2, 0f, (c and 0x00FFFFFF) or 0x55000000, c and 0x33FFFFFF, Shader.TileMode.CLAMP)
+            barPaint.color = solidMix(c)
             val rr = dp(5f)
             canvas.drawRoundRect(x1, bt, max(x1 + dp(2f), x2), bb, rr, rr, barPaint)
-            barPaint.shader = null
-            barEdgePaint.color = (c and 0x00FFFFFF) or 0x88000000.toInt()
+            barEdgePaint.color = c
             canvas.drawRoundRect(x1, bt, max(x1 + dp(2f), x2), bb, rr, rr, barEdgePaint)
             if (layer.id == selectedId) {
                 canvas.drawRoundRect(x1, bt, max(x1 + dp(2f), x2), bb, rr, rr, selBarPaint)
+                // grip trim di ujung kanan bar terpilih
+                dotPaint.color = 0xFF2EE6C0.toInt()
+                val gy0 = bt + dp(4f)
+                val gy1 = bb - dp(4f)
+                canvas.drawRoundRect(x2 - dp(8f), gy0, x2 - dp(6.4f), gy1, dp(1f), dp(1f), dotPaint)
+                canvas.drawRoundRect(x2 - dp(4.6f), gy0, x2 - dp(3f), gy1, dp(1f), dp(1f), dotPaint)
             }
 
             // diamonds keyframe
@@ -217,6 +301,7 @@ class TimelineView(context: Context) : View(context) {
                 canvas.drawPath(playheadHead, if (abs(kt - playhead) < 0.03f) diamondActive else diamondPaint)
                 canvas.drawPath(playheadHead, diamondStroke)
             }
+            canvas.restore()
             row++
         }
 
@@ -230,11 +315,12 @@ class TimelineView(context: Context) : View(context) {
             val x2 = timeToX(music.start + music.dur)
             val bt = laneTop + dp(4f)
             val bb = height - dp(4f)
-            barPaint.shader = null
-            barPaint.color = 0x3333FFCC
+            canvas.save()
+            canvas.clipRect(leftW, 0f, width.toFloat(), height.toFloat())
+            barPaint.color = solidMix(0xFF2EE6C0.toInt(), 0.55f)
             val rr = dp(5f)
             canvas.drawRoundRect(x1, bt, max(x1 + dp(2f), x2), bb, rr, rr, barPaint)
-            barEdgePaint.color = 0xAA2EE6C0.toInt()
+            barEdgePaint.color = 0xFF2EE6C0.toInt()
             canvas.drawRoundRect(x1, bt, max(x1 + dp(2f), x2), bb, rr, rr, barEdgePaint)
 
             // waveform
@@ -255,6 +341,7 @@ class TimelineView(context: Context) : View(context) {
                     bx += dp(2.6f)
                 }
             }
+            canvas.restore()
             // label musik di kolom kiri
             namePaint.alpha = 255
             IconPainter.draw(canvas, KilatIcon.MUSIC, dp(7f), laneTop + mlh / 2f - dp(7f), dp(14f), c2EE6C0())
@@ -266,6 +353,7 @@ class TimelineView(context: Context) : View(context) {
 
         // playhead
         val px = timeToX(playhead)
+        if (px < leftW) return
         canvas.drawLine(px, 0f, px, height.toFloat(), playheadPaint)
         playheadHead.reset()
         playheadHead.moveTo(px - dp(7f), 0f)
@@ -278,13 +366,24 @@ class TimelineView(context: Context) : View(context) {
     // ---------------- touch ----------------
     private var dragging = false
     private var dragMode = MODE_NONE
+    private var lastPanX = 0f
+    private var panMoved = false
+    private var musicTapCandidate = false
+    private var pinchActive = false
+    private var pinchStartDist = 1f
+    private var pinchStartZoom = 1f
+
+    private fun pointerDist(e: MotionEvent): Float =
+        hypot(e.getX(0) - e.getX(1), e.getY(0) - e.getY(1))
+
+    private fun pointerMidX(e: MotionEvent): Float = (e.getX(0) + e.getX(1)) / 2f
     private var dragLayer: Layer? = null
     private var downX = 0f
     private var downY = 0f
     private var origStart = 0f
     private var origDur = 0f
 
-    private fun tAt(x: Float): Float = ((x - leftW) / pxPerSec()).coerceIn(0f, project?.duration ?: 10f)
+    private fun tAt(x: Float): Float = (((x - leftW) / pxPerSec()) + scrollSec).coerceIn(0f, project?.duration ?: 10f)
 
     private fun snap(t: Float, exclude: Layer?): Float {
         val p = project ?: return t
@@ -331,13 +430,15 @@ class TimelineView(context: Context) : View(context) {
                 if (music != null && mlh > 0f && event.y > height - mlh) {
                     val x1 = timeToX(music.start)
                     val x2 = timeToX(music.start + music.dur)
-                    listener?.onMusicTap()
-                    if (event.x >= x1 - dp(6f) && event.x <= x2 + dp(6f)) {
+                    if (event.x >= x1 - dp(8f) && event.x <= x2 + dp(8f)) {
                         origStart = music.start
                         origDur = music.dur
-                        dragMode = if (event.x > x2 - dp(16f)) MODE_MUSIC_TRIM else MODE_MUSIC_MOVE
+                        musicTapCandidate = true
+                        dragMode = if (event.x > x2 - dp(20f)) MODE_MUSIC_TRIM else MODE_MUSIC_MOVE
                     } else {
-                        dragMode = MODE_NONE
+                        dragMode = MODE_PAN
+                        lastPanX = event.x
+                        panMoved = false
                     }
                     invalidate()
                     return true
@@ -362,8 +463,9 @@ class TimelineView(context: Context) : View(context) {
                 val row = rowAtY(event.y)
                 val layer = layerAtRow(row)
                 if (layer == null) {
-                    dragMode = MODE_SEEK
-                    listener?.onSeek(tAt(event.x))
+                    dragMode = MODE_PAN
+                    lastPanX = event.x
+                    panMoved = false
                     return true
                 }
 
@@ -373,7 +475,7 @@ class TimelineView(context: Context) : View(context) {
 
                 // diamond kena?
                 for (kt in Anim.allKeyTimes(layer)) {
-                    if (abs(timeToX(kt) - event.x) < dp(9f)) {
+                    if (abs(timeToX(kt) - event.x) < dp(11f)) {
                         selectedId = layer.id
                         listener?.onSelect(layer.id)
                         listener?.onSeek(kt)
@@ -383,25 +485,61 @@ class TimelineView(context: Context) : View(context) {
                     }
                 }
 
-                if (event.x >= x1 - dp(4f) && event.x <= x2 + dp(4f)) {
+                if (event.x >= x1 - dp(6f) && event.x <= x2 + dp(6f)) {
                     selectedId = layer.id
                     listener?.onSelect(layer.id)
                     dragLayer = layer
                     origStart = layer.start
                     origDur = layer.dur
-                    dragMode = if (event.x > x2 - dp(16f)) MODE_TRIM else MODE_MOVE
+                    dragMode = if (event.x > x2 - dp(20f)) MODE_TRIM else MODE_MOVE
                     invalidate()
                 } else {
                     selectedId = layer.id
                     listener?.onSelect(layer.id)
-                    dragMode = MODE_SEEK
-                    listener?.onSeek(t)
+                    dragMode = MODE_PAN
+                    lastPanX = event.x
+                    panMoved = false
                     invalidate()
                 }
             }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                if (event.pointerCount >= 2) {
+                    if (dragMode == MODE_MOVE || dragMode == MODE_TRIM) listener?.onTimesChanged(true)
+                    if (dragMode == MODE_MUSIC_MOVE || dragMode == MODE_MUSIC_TRIM) listener?.onMusicEdited(true)
+                    pinchActive = true
+                    pinchStartDist = max(1f, pointerDist(event))
+                    pinchStartZoom = zoom
+                    dragMode = MODE_NONE
+                    dragLayer = null
+                    musicTapCandidate = false
+                }
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                if (pinchActive) {
+                    pinchActive = false
+                    dragging = false
+                    dragMode = MODE_NONE
+                }
+            }
             MotionEvent.ACTION_MOVE -> {
+                if (pinchActive) {
+                    if (event.pointerCount >= 2 && pinchStartDist > 1f) {
+                        setZoom(pinchStartZoom * pointerDist(event) / pinchStartDist, pointerMidX(event))
+                    }
+                    return true
+                }
                 if (!dragging) return true
                 when (dragMode) {
+                    MODE_PAN -> {
+                        val dx = event.x - lastPanX
+                        if (abs(event.x - downX) > dp(6f)) panMoved = true
+                        if (panMoved) {
+                            scrollSec -= dx / z
+                            clampScroll()
+                            invalidate()
+                        }
+                        lastPanX = event.x
+                    }
                     MODE_SEEK -> listener?.onSeek(tAt(event.x))
                     MODE_MOVE -> {
                         val l = dragLayer ?: return true
@@ -444,11 +582,21 @@ class TimelineView(context: Context) : View(context) {
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 parent?.requestDisallowInterceptTouchEvent(false)
+                val tapLike = abs(event.x - downX) < dp(8f) && abs(event.y - downY) < dp(8f)
+                if (dragMode == MODE_PAN && !panMoved && event.actionMasked == MotionEvent.ACTION_UP) {
+                    listener?.onSeek(tAt(downX))
+                }
                 if (dragMode == MODE_MOVE || dragMode == MODE_TRIM) listener?.onTimesChanged(true)
-                if (dragMode == MODE_MUSIC_MOVE || dragMode == MODE_MUSIC_TRIM) listener?.onMusicEdited(true)
+                if (dragMode == MODE_MUSIC_MOVE || dragMode == MODE_MUSIC_TRIM) {
+                    if (musicTapCandidate && tapLike && event.actionMasked == MotionEvent.ACTION_UP) listener?.onMusicTap()
+                    else listener?.onMusicEdited(true)
+                }
                 dragging = false
                 dragMode = MODE_NONE
                 dragLayer = null
+                pinchActive = false
+                musicTapCandidate = false
+                panMoved = false
             }
         }
         return true
@@ -463,5 +611,6 @@ class TimelineView(context: Context) : View(context) {
         const val MODE_TRIM = 3
         const val MODE_MUSIC_MOVE = 4
         const val MODE_MUSIC_TRIM = 5
+        const val MODE_PAN = 6
     }
 }

@@ -11,7 +11,7 @@ import com.kilat.motion.ui.theme.KColors
 import com.kilat.motion.ui.theme.dp
 import com.kilat.motion.ui.theme.dpf
 import com.kilat.motion.ui.theme.kText
-import com.kilat.motion.ui.theme.kilatGradientOval
+import com.kilat.motion.ui.theme.kilatSolidOval
 import com.kilat.motion.ui.theme.pressEffect
 import com.kilat.motion.ui.theme.roundedRect
 import com.kilat.motion.ui.theme.roundedTop
@@ -84,7 +84,7 @@ class KilatBottomNav(context: Context) : FrameLayout(context) {
 
         // FAB Buat di tengah, mengambang di atas bar
         val fab = FrameLayout(context)
-        fab.background = kilatGradientOval()
+        fab.background = kilatSolidOval()
         fab.elevation = dpf(14f)
         fab.isClickable = true
         val plus = IconView(context, KilatIcon.PLUS, 0xFF05131F.toInt())

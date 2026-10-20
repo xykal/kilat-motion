@@ -106,6 +106,16 @@ class AnimTest {
     }
 
     @Test
+    fun `preset jedag bikin punch skala di playhead`() {
+        val l = Layer().apply { kind = KIND_TEXT; start = 0f; dur = 4f; x = 540f; scale = 1f }
+        assertTrue(Anim.applyPreset(l, "jedag", 1f, 10f))
+        val scaleKeys = l.channels["scale"]!!.keys
+        assertTrue(scaleKeys.size >= 3)
+        assertTrue("punch harus di atas skala dasar", scaleKeys.maxOf { it.v } > 1.2f)
+        assertTrue("shake x harus ada", l.channels["x"]!!.keys.size >= 4)
+    }
+
+    @Test
     fun `format waktu dan warna`() {
         assertEquals("00:01.50", Format.time(1.5f))
         assertEquals("#FF2EE6C0", Format.color(0xFF2EE6C0.toInt()))

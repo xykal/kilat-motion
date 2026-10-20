@@ -143,10 +143,10 @@ object Anim {
     }
 
     // ---------------- preset ----------------
-    val PRESETS = listOf("fade", "slideUp", "zoom", "spin", "bounce", "typing", "kenBurns", "glitch")
+    val PRESETS = listOf("fade", "slideUp", "zoom", "spin", "bounce", "typing", "kenBurns", "glitch", "jedag")
     val PRESET_LABELS = mapOf(
         "fade" to "Fade", "slideUp" to "Slide Up", "zoom" to "Zoom Pop", "spin" to "Spin In",
-        "bounce" to "Bounce In", "typing" to "Typing", "kenBurns" to "Ken Burns", "glitch" to "Glitch"
+        "bounce" to "Bounce In", "typing" to "Typing", "kenBurns" to "Ken Burns", "glitch" to "Glitch", "jedag" to "JJ Zoom"
     )
 
     /** Terapkan preset di sekitar playhead (kecuali kenBurns di seluruh durasi layer). */
@@ -227,6 +227,18 @@ object Anim {
                 setKey(layer, "alpha", round((a + 0.14f) * 1000f) / 1000f, 1f, "linear")
                 setKey(layer, "alpha", round((a + 0.2f) * 1000f) / 1000f, 0.6f, "linear")
                 setKey(layer, "alpha", round((a + 0.3f) * 1000f) / 1000f, layer.alpha, "easeOut")
+            }
+            "jedag" -> {
+                // Jedag Jedug ala AM/TikTok: zoom menghentak 128% lalu balik cepat + goyang kecil meluruh.
+                reset("scale", "x")
+                fun ms(v: Float) = (round(v * 1000f) / 1000f).coerceIn(start, end)
+                setKey(layer, "scale", ms(a - 0.03f), layer.scale, "linear")
+                setKey(layer, "scale", ms(a), layer.scale * 1.28f, "easeOut")
+                setKey(layer, "scale", ms(a + 0.12f), layer.scale, "easeOut")
+                setKey(layer, "x", ms(a), layer.x + 14f, "linear")
+                setKey(layer, "x", ms(a + 0.05f), layer.x - 10f, "linear")
+                setKey(layer, "x", ms(a + 0.11f), layer.x + 5f, "linear")
+                setKey(layer, "x", ms(a + 0.2f), layer.x, "easeOut")
             }
             else -> return false
         }

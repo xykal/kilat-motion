@@ -21,7 +21,7 @@ import com.kilat.motion.ui.theme.KColors
 import com.kilat.motion.ui.theme.dp
 import com.kilat.motion.ui.theme.dpf
 import com.kilat.motion.ui.theme.kText
-import com.kilat.motion.ui.theme.kilatGradient
+import com.kilat.motion.ui.theme.kilatSolid
 import com.kilat.motion.ui.theme.roundedRect
 import kotlin.math.abs
 
@@ -85,7 +85,7 @@ class OnboardingActivity : Activity() {
         top.orientation = LinearLayout.HORIZONTAL
         top.gravity = Gravity.CENTER_VERTICAL
         val tile = FrameLayout(this)
-        tile.background = kilatGradient(dpf(9f))
+        tile.background = kilatSolid(dpf(9f))
         val bolt = IconView(this, KilatIcon.BOLT, 0xFF05131F.toInt())
         val bp = dp(6f)
         bolt.setPadding(bp, bp, bp, bp)
@@ -141,7 +141,7 @@ class OnboardingActivity : Activity() {
         val lpBack = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpBack.rightMargin = dp(10f)
         btnRow.addView(backBtn, lpBack)
-        nextBtn = KilatButton(this, "Lanjut", KilatIcon.NEXT, KilatButtonStyle.GRADIENT, 13f)
+        nextBtn = KilatButton(this, "Lanjut", KilatIcon.NEXT, KilatButtonStyle.PRIMARY, 13f)
         nextBtn.setOnClickListener {
             if (index == pages.size - 1) finishOnboarding() else goTo(index + 1)
         }

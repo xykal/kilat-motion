@@ -3,11 +3,36 @@
 Motion graphics editor **native Android** (Kotlin), alur kerja ala **Alight Motion** + UI gelap ala **CapCut**.
 Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK dibuild otomatis via **GitHub Actions**.
 
-![status](https://img.shields.io/badge/build-passing-2ee6c0) ![minSdk](https://img.shields.io/badge/minSdk-29-blue) ![size](https://img.shields.io/badge/APK-2.3--2.9%20MB-lightgrey) ![tests](https://img.shields.io/badge/tests-28%20passing-2ee6c0)
+![status](https://img.shields.io/badge/build-passing-2ee6c0) ![minSdk](https://img.shields.io/badge/minSdk-29-blue) ![size](https://img.shields.io/badge/APK-2.3--2.9%20MB-lightgrey) ![tests](https://img.shields.io/badge/tests-30%20passing-2ee6c0)
 
 ---
 
-## Baru di v1.2.0 — Flat Borderless, Ikon Presisi, Editor Makin Lengkap
+## Baru di v1.3.0 — Solid Flat Total, Timeline Bisa Digeser & Zoom, Template ala TikTok
+
+- **UI solid flat 100%**: semua gradient dan warna transparan di UI dicabut —
+  tombol aksen, ubin logo, FAB, badge, toast, bar timeline, sampai duotone
+  ikon sekarang memakai warna **solid opaque**. Nol kesan kaca/glassmorphism.
+- **Timeline bisa digeser & di-zoom**: geser area kosong untuk **pan**,
+  **pinch dua jari** atau tombol -/+ untuk **zoom 100%–1000%**, tombol rasio
+  untuk kembali fit. Playhead otomatis diikuti saat memutar, ada scrollbar
+  mini, zona trim & titik keyframe lebih lebar, dan dialog musik sekarang
+  membuka saat diketuk (bukan saat mulai drag).
+- **Header timeline baru**: nama layer terpilih + aksi cepat (Pisah, Duplikat,
+  Sembunyi/Tampil, Hapus) tepat di atas timeline.
+- **Ikon v3 (49 ikon)**: poles detail — gir Settings jadi ring berjari-jari,
+  gunting berbilah solid, Maju/Mundur chevron ganda, kepala not miring
+  ala notasi asli, duotone jadi campuran warna opaque.
+- **3 template viral baru** (total **11**): **Jedag Jedug (JJ)** — hentakan
+  zoom + flash putih per beat di grid 120 BPM ala TikTok/Alight Motion,
+  tinggal pasang musik; **Morph Shape** — bulat→kotak→bintang berubah mulus
+  pakai blur + skala + rotasi; **RGB Glitch** — teks pecah merah-cyan +
+  scanline + indikator REC.
+- **Preset baru "JJ Zoom"**: satu ketuk bikin hentakan Jedag Jedug
+  (zoom 128%→100% dalam 0,12 dtk + shake meluruh) di posisi playhead.
+
+---
+
+## v1.2.0 — Flat Borderless, Ikon Presisi, Editor Makin Lengkap
 
 - **UI flat tanpa garis border**: semua kartu, tombol, field, sheet, dan navigasi
   digambar ulang tanpa stroke pinggir; pemisahan antar-permukaan murni dari
@@ -114,8 +139,8 @@ Tes JVM meniru struktur yang sama di `app/src/test/java/com/kilat/motion/`.
 
 | Build | Link |
 |---|---|
-| Release (signed, sideload-ready) | https://github.com/xykal/kilat-motion/releases/download/v1.2.0/app-release.apk |
-| Debug | https://github.com/xykal/kilat-motion/releases/download/v1.2.0/app-debug.apk |
+| Release (signed, sideload-ready) | https://github.com/xykal/kilat-motion/releases/download/v1.3.0/app-release.apk |
+| Debug | https://github.com/xykal/kilat-motion/releases/download/v1.3.0/app-debug.apk |
 
 APK baru otomatis dibuat setiap push & setiap tag `v*` lewat GitHub Actions.
 

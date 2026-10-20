@@ -33,8 +33,8 @@ import com.kilat.motion.ui.theme.dp
 import com.kilat.motion.ui.theme.dpf
 import com.kilat.motion.ui.theme.kSectionLabel
 import com.kilat.motion.ui.theme.kText
-import com.kilat.motion.ui.theme.kilatGradient
-import com.kilat.motion.ui.theme.kilatGradientOval
+import com.kilat.motion.ui.theme.kilatSolid
+import com.kilat.motion.ui.theme.kilatSolidOval
 import com.kilat.motion.ui.theme.ovalBg
 import com.kilat.motion.ui.theme.pressEffect
 import com.kilat.motion.ui.theme.roundedRect
@@ -89,7 +89,7 @@ class HomeActivity : Activity() {
         header.setBackgroundColor(KColors.BgTop)
         header.setPadding(dp(16f), dp(10f), dp(12f), dp(10f))
         val tile = FrameLayout(this)
-        tile.background = kilatGradient(dpf(11f))
+        tile.background = kilatSolid(dpf(11f))
         val bolt = IconView(this, KilatIcon.BOLT, 0xFF05131F.toInt())
         val bp = dp(8f)
         bolt.setPadding(bp, bp, bp, bp)
@@ -250,10 +250,10 @@ class HomeActivity : Activity() {
 
         // kartu Buat Project (hero gradient)
         val hero = FrameLayout(this)
-        hero.background = kilatGradient(dpf(20f))
+        hero.background = kilatSolid(dpf(20f))
         hero.isClickable = true
         hero.elevation = dpf(8f)
-        val decor = IconView(this, KilatIcon.BOLT, 0x2E05131F)
+        val decor = IconView(this, KilatIcon.BOLT, 0xFF1FA98F.toInt())
         val lpDecor = FrameLayout.LayoutParams(dp(150f), dp(150f), Gravity.END or Gravity.CENTER_VERTICAL)
         lpDecor.rightMargin = -dp(30f)
         hero.addView(decor, lpDecor)
@@ -453,7 +453,7 @@ class HomeActivity : Activity() {
             val lpD = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             lpD.topMargin = dp(6f)
             empty.addView(d, lpD)
-            val btn = KilatButton(this, "Buat Project", KilatIcon.PLUS, KilatButtonStyle.GRADIENT)
+            val btn = KilatButton(this, "Buat Project", KilatIcon.PLUS, KilatButtonStyle.PRIMARY)
             btn.setOnClickListener { showCreateSheet() }
             val lpB = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             lpB.topMargin = dp(18f)
@@ -582,7 +582,7 @@ class HomeActivity : Activity() {
         head.orientation = LinearLayout.HORIZONTAL
         head.gravity = Gravity.CENTER_VERTICAL
         val avatar = FrameLayout(this)
-        avatar.background = kilatGradientOval()
+        avatar.background = kilatSolidOval()
         val av = IconView(this, KilatIcon.USER, 0xFF05131F.toInt())
         val ap = dp(16f)
         av.setPadding(ap, ap, ap, ap)
@@ -591,7 +591,7 @@ class HomeActivity : Activity() {
         val nameCol = LinearLayout(this)
         nameCol.orientation = LinearLayout.VERTICAL
         nameCol.addView(kText("Kreator Kilat", 17f, KColors.Text, bold = true))
-        nameCol.addView(kText("KILAT Motion 1.2.0", 11f, KColors.Dim))
+        nameCol.addView(kText("KILAT Motion 1.3.0", 11f, KColors.Dim))
         val lpN = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpN.marginStart = dp(13f)
         head.addView(nameCol, lpN)
@@ -646,7 +646,7 @@ class HomeActivity : Activity() {
             i.putExtra(OnboardingActivity.EXTRA_REPLAY, true)
             startActivity(i)
         })
-        addSpaced(col, menuRow(KilatIcon.INFO, KColors.Muted, "Tentang KILAT Motion", "Versi 1.2.0 - native, tanpa iklan") { showAbout() })
+        addSpaced(col, menuRow(KilatIcon.INFO, KColors.Muted, "Tentang KILAT Motion", "Versi 1.3.0 - native, tanpa iklan") { showAbout() })
         addSpaced(col, menuRow(KilatIcon.TRASH, KColors.Rose, "Hapus Semua Project", "Kosongkan pustaka project di HP ini", danger = true) {
             KilatSheet.showConfirm(
                 this, "Hapus semua project?",
@@ -730,7 +730,7 @@ class HomeActivity : Activity() {
     private fun showAbout() {
         KilatSheet.showMessage(
             this, "KILAT Motion",
-            "Motion graphics editor native Android.\n\nVersi 1.2.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa watermark, tanpa library eksternal.\nSeluruh tampilan dan ikon dibuat custom pakai Canvas.",
+            "Motion graphics editor native Android.\n\nVersi 1.3.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa watermark, tanpa library eksternal.\nSeluruh tampilan dan ikon dibuat custom pakai Canvas.",
             icon = KilatIcon.BOLT
         )
     }

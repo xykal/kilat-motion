@@ -67,13 +67,21 @@ class OnboardingArtView(context: Context, page: Int, accent: Int) : View(context
         val cy = h / 2f
         val unit = min(w, h)
 
-        // cahaya latar lembut dua warna
-        glow.color = withAlpha(accent, 26)
-        canvas.drawCircle(cx - unit * 0.22f, cy - unit * 0.18f, unit * 0.34f, glow)
-        glow.color = withAlpha(KColors.Violet, 20)
-        canvas.drawCircle(cx + unit * 0.26f, cy + unit * 0.2f, unit * 0.3f, glow)
-        glow.color = withAlpha(accent, 14)
-        canvas.drawCircle(cx, cy, unit * 0.46f, glow)
+        // dekor latar geometris SOLID flat (tanpa glow/transparansi)
+        glow.color = 0xFF11151F.toInt()
+        canvas.drawCircle(cx + unit * 0.26f, cy - unit * 0.2f, unit * 0.3f, glow)
+        glow.color = 0xFF0E1119.toInt()
+        canvas.drawCircle(cx - unit * 0.28f, cy + unit * 0.24f, unit * 0.23f, glow)
+        stroke.color = 0xFF1C2333.toInt()
+        stroke.strokeWidth = dpf(2.5f)
+        canvas.drawCircle(cx, cy, unit * 0.45f, stroke)
+        // pola titik grid di pojok kiri-atas dan kanan-bawah
+        fill.color = 0xFF232C40.toInt()
+        val gap = unit * 0.075f
+        for (gy in 0 until 4) for (gx in 0 until 4) {
+            canvas.drawCircle(cx - unit * 0.46f + gx * gap, cy - unit * 0.44f + gy * gap, dpf(1.6f), fill)
+            canvas.drawCircle(cx + unit * 0.28f + gx * gap, cy + unit * 0.34f + gy * gap, dpf(1.6f), fill)
+        }
 
         when (page) {
             0 -> drawWelcome(canvas, cx, cy, unit)
@@ -92,7 +100,7 @@ class OnboardingArtView(context: Context, page: Int, accent: Int) : View(context
         fill.color = KColors.CardHi
         rf.set(-size / 2, -size / 2, size / 2, size / 2)
         canvas.drawRoundRect(rf, size * 0.26f, size * 0.26f, fill)
-        stroke.color = withAlpha(accent, 120)
+        stroke.color = solidOnDark(accent, 120)
         stroke.strokeWidth = dpf(1.5f)
         canvas.drawRoundRect(rf, size * 0.26f, size * 0.26f, stroke)
         val iconSize = size * 0.62f
@@ -136,7 +144,7 @@ class OnboardingArtView(context: Context, page: Int, accent: Int) : View(context
             val by = y0 + cardH * (0.34f + i * 0.2f)
             val bx0 = x0 + cardW * b.first
             val bx1 = bx0 + cardW * b.second * 0.8f
-            fill.color = withAlpha(b.third, 64)
+            fill.color = solidOnDark(b.third, 64)
             rf.set(bx0, by, bx1, by + cardH * 0.13f)
             canvas.drawRoundRect(rf, dpf(7f), dpf(7f), fill)
             stroke.color = b.third
@@ -173,7 +181,7 @@ class OnboardingArtView(context: Context, page: Int, accent: Int) : View(context
             fill.color = if (i == 2) KColors.CardHi else KColors.Panel
             rf.set(-cardW / 2, -cardH / 2, cardW / 2, cardH / 2)
             canvas.drawRoundRect(rf, dpf(16f), dpf(16f), fill)
-            stroke.color = withAlpha(c.third.second, 150)
+            stroke.color = solidOnDark(c.third.second, 150)
             stroke.strokeWidth = dpf(1.4f)
             canvas.drawRoundRect(rf, dpf(16f), dpf(16f), stroke)
             val isz = u * 0.17f
@@ -197,7 +205,7 @@ class OnboardingArtView(context: Context, page: Int, accent: Int) : View(context
         fill.color = KColors.Panel
         rf.set(x0, y0, x0 + phoneW, y0 + phoneH)
         canvas.drawRoundRect(rf, dpf(22f), dpf(22f), fill)
-        stroke.color = withAlpha(accent, 140)
+        stroke.color = solidOnDark(accent, 140)
         stroke.strokeWidth = dpf(1.5f)
         canvas.drawRoundRect(rf, dpf(22f), dpf(22f), stroke)
 
@@ -231,6 +239,14 @@ class OnboardingArtView(context: Context, page: Int, accent: Int) : View(context
         IconPainter.draw(canvas, KilatIcon.STAR, cx + phoneW * 0.62f, y0 + phoneH * 0.78f, u * 0.09f, KColors.Amber)
     }
 
-    private fun withAlpha(color: Int, a: Int): Int =
-        (a.coerceIn(0, 255) shl 24) or (color and 0x00FFFFFF)
+    /** Campurkan warna secara OPAQUE ke latar gelap (pengganti alpha). */
+    private fun solidOnDark(color: Int, a: Int): Int {
+        val f = a.coerceIn(0, 255) / 255f
+        val bg = 0xFF0A0B0F.toInt()
+        fun ch(c: Int, b: Int) = (b + (c - b) * f).toInt().coerceIn(0, 255)
+        val r = ch((color shr 16) and 0xFF, (bg shr 16) and 0xFF)
+        val g = ch((color shr 8) and 0xFF, (bg shr 8) and 0xFF)
+        val b = ch(color and 0xFF, bg and 0xFF)
+        return (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+    }
 }

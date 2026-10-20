@@ -167,7 +167,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
             val d = GradientDrawable()
             d.shape = GradientDrawable.OVAL
             d.setColor(c)
-            d.setStroke(dp(if (c == selected) 2.4f else 1f).toInt(), if (c == selected) cAccent else 0x33FFFFFF)
+            d.setStroke(dp(if (c == selected) 2.4f else 1f).toInt(), if (c == selected) cAccent else 0xFF2A3040.toInt())
             v.background = d
             val lp = LayoutParams(dp(24f).toInt(), dp(24f).toInt())
             lp.rightMargin = dp(6f).toInt()

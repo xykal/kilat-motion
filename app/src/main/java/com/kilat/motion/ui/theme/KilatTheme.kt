@@ -68,22 +68,18 @@ fun ovalBg(fill: Int, stroke: Int? = null, strokePx: Int = 1): GradientDrawable 
     return d
 }
 
-/** Gradient diagonal khas KILAT untuk hero / FAB / logo tile. */
-fun kilatGradient(radiusPx: Float): GradientDrawable {
-    val d = GradientDrawable(
-        GradientDrawable.Orientation.TL_BR,
-        intArrayOf(0xFF2EE6C0.toInt(), 0xFF35B6FF.toInt(), 0xFF8B7CFF.toInt())
-    )
+/** Aksen solid rata khas KILAT (tanpa gradient, tanpa transparansi). */
+fun kilatSolid(radiusPx: Float): GradientDrawable {
+    val d = GradientDrawable()
     d.cornerRadius = radiusPx
+    d.setColor(KColors.Accent)
     return d
 }
 
-fun kilatGradientOval(): GradientDrawable {
-    val d = GradientDrawable(
-        GradientDrawable.Orientation.TL_BR,
-        intArrayOf(0xFF2EE6C0.toInt(), 0xFF35B6FF.toInt(), 0xFF8B7CFF.toInt())
-    )
+fun kilatSolidOval(): GradientDrawable {
+    val d = GradientDrawable()
     d.shape = GradientDrawable.OVAL
+    d.setColor(KColors.Accent)
     return d
 }
 

@@ -36,7 +36,7 @@ import com.kilat.motion.ui.theme.KColors
 import com.kilat.motion.ui.theme.dp as kdp
 import com.kilat.motion.ui.theme.dpf as kdpf
 import com.kilat.motion.ui.theme.kText
-import com.kilat.motion.ui.theme.kilatGradient
+import com.kilat.motion.ui.theme.kilatSolid
 import com.kilat.motion.ui.theme.ovalBg
 import com.kilat.motion.ui.theme.pressEffect
 import com.kilat.motion.ui.theme.roundedRect
@@ -71,6 +71,9 @@ class EditorActivity : Activity() {
     private lateinit var undoBtn: KilatIconButton
     private lateinit var redoBtn: KilatIconButton
     private lateinit var magnetBtn: KilatIconButton
+    private lateinit var selLabel: TextView
+    private lateinit var zoomPct: TextView
+    private lateinit var eyeBtn: KilatIconButton
 
     // riwayat undo/redo berbasis snapshot JSON project
     private val undoStack = ArrayList<String>()
@@ -152,7 +155,7 @@ class EditorActivity : Activity() {
         col.isClickable = true
         col.setPadding(dp(2f), dp(5f), dp(2f), dp(4f))
         val tile = FrameLayout(this)
-        tile.background = if (accent) kilatGradient(kdpf(13f))
+        tile.background = if (accent) kilatSolid(kdpf(13f))
         else roundedRect(KColors.CardHi, kdpf(13f))
         val iv = IconView(this, icon, if (accent) 0xFF05131F.toInt() else KColors.Text)
         val pad = dp(10f)
@@ -189,7 +192,7 @@ class EditorActivity : Activity() {
         top.addView(backBtn, LinearLayout.LayoutParams(dp(34f), dp(34f)))
 
         val logoTile = FrameLayout(this)
-        logoTile.background = kilatGradient(kdpf(10f))
+        logoTile.background = kilatSolid(kdpf(10f))
         val bolt = IconView(this, KilatIcon.BOLT, 0xFF05131F.toInt())
         val lpBoltPad = dp(7f)
         bolt.setPadding(lpBoltPad, lpBoltPad, lpBoltPad, lpBoltPad)
@@ -259,7 +262,7 @@ class EditorActivity : Activity() {
 
         badge = kText("", 9.5f, KColors.Dim, bold = true)
         badge.setPadding(dp(8f), dp(4f), dp(8f), dp(4f))
-        badge.background = roundedRect(0xCC0A0C11.toInt(), kdpf(6f))
+        badge.background = roundedRect(0xFF171B27.toInt(), kdpf(6f))
         val lpBadge = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpBadge.gravity = Gravity.TOP or Gravity.START
         lpBadge.leftMargin = dp(10f)
@@ -360,7 +363,53 @@ class EditorActivity : Activity() {
                 }
             }
         }
-        main.addView(timeline, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(172f)))
+        // ---------- header timeline: aksi cepat layer + kontrol zoom ----------
+        val tlHead = LinearLayout(this)
+        tlHead.orientation = LinearLayout.HORIZONTAL
+        tlHead.gravity = Gravity.CENTER_VERTICAL
+        tlHead.setPadding(dp(12f), dp(2f), dp(8f), dp(2f))
+        tlHead.setBackgroundColor(KColors.BgTop)
+        selLabel = kText("Timeline", 10.5f, KColors.Dim, bold = true)
+        selLabel.maxLines = 1
+        tlHead.addView(selLabel, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+
+        fun selectedLayerOrToast(): Layer? {
+            val l = project.findLayer(selectedId)
+            if (l == null) toast("Pilih layer dulu di timeline", KilatIcon.INFO)
+            return l
+        }
+        fun quickBtn(icon: KilatIcon, tint: Int = KColors.Muted, act: () -> Unit): KilatIconButton {
+            val b = KilatIconButton(this, icon, tint, filled = false, sizeDp = 31f)
+            b.setOnClickListener { act() }
+            tlHead.addView(b, LinearLayout.LayoutParams(dp(31f), dp(31f)))
+            return b
+        }
+        quickBtn(KilatIcon.SCISSORS) { selectedLayerOrToast()?.let { splitLayerAtPlayhead(it) } }
+        quickBtn(KilatIcon.COPY) { selectedLayerOrToast()?.let { duplicateLayer(it) } }
+        eyeBtn = quickBtn(KilatIcon.EYE) {
+            selectedLayerOrToast()?.let { l ->
+                l.hidden = !l.hidden
+                preview.invalidate()
+                timeline.invalidate()
+                updateTimelineHeader()
+                autosave()
+                toast(if (l.hidden) "Layer disembunyikan" else "Layer ditampilkan", if (l.hidden) KilatIcon.EYE_OFF else KilatIcon.EYE)
+            }
+        }
+        quickBtn(KilatIcon.TRASH, KColors.Rose) { selectedLayerOrToast()?.let { deleteLayer(it) } }
+
+        val spacer = View(this)
+        tlHead.addView(spacer, LinearLayout.LayoutParams(dp(6f), dp(31f)))
+        quickBtn(KilatIcon.MINUS) { timeline.zoomBy(0.8f) }
+        zoomPct = kText("100%", 10f, KColors.Muted, bold = true, font = "monospace")
+        zoomPct.gravity = Gravity.CENTER
+        tlHead.addView(zoomPct, LinearLayout.LayoutParams(dp(42f), ViewGroup.LayoutParams.WRAP_CONTENT))
+        quickBtn(KilatIcon.PLUS) { timeline.zoomBy(1.25f) }
+        quickBtn(KilatIcon.RATIO) { timeline.zoomFit() }
+        timeline.onZoomChanged = { z -> zoomPct.text = "${(z * 100).toInt()}%" }
+        main.addView(tlHead, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+
+        main.addView(timeline, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(176f)))
 
         // ---------- bottom toolbar ----------
         val bottom = LinearLayout(this)
@@ -565,11 +614,23 @@ class EditorActivity : Activity() {
         timecode.text = "${Format.time(playhead)} / ${Format.time(project.duration)}"
     }
 
+    private fun updateTimelineHeader() {
+        if (!::selLabel.isInitialized) return
+        val l = project.findLayer(selectedId)
+        selLabel.text = if (l == null) "Timeline" else l.name
+        selLabel.setTextColor(if (l == null) KColors.Dim else KColors.Text)
+        if (::eyeBtn.isInitialized && l != null) {
+            eyeBtn.setIcon(if (l.hidden) KilatIcon.EYE_OFF else KilatIcon.EYE)
+            eyeBtn.setTint(if (l.hidden) KColors.Faint else KColors.Muted)
+        }
+    }
+
     // =====================================================================
     // selection & layer ops
     // =====================================================================
     private fun selectLayer(id: String?, openPanel: Boolean) {
         selectedId = id
+        updateTimelineHeader()
         preview.select(id)
         timeline.selectedId = id
         timeline.invalidate()
@@ -588,6 +649,7 @@ class EditorActivity : Activity() {
         timeline.invalidate()
         preview.invalidate()
         if (inspectorPanel.visibility == View.VISIBLE) showInspectorFor(project.findLayer(selectedId))
+        updateTimelineHeader()
         autosave()
     }
 
@@ -1144,7 +1206,7 @@ class EditorActivity : Activity() {
         fun refreshSwatches() {
             for (i in 0 until swRow.childCount) {
                 val dd = swRow.getChildAt(i).background as GradientDrawable
-                dd.setStroke(dp(2f), if (bgColors[i] == newBg) KColors.Accent else 0x33FFFFFF)
+                dd.setStroke(dp(2f), if (bgColors[i] == newBg) KColors.Accent else 0xFF2A3040.toInt())
             }
         }
         for (c in bgColors) {
@@ -1152,7 +1214,7 @@ class EditorActivity : Activity() {
             val d = GradientDrawable()
             d.shape = GradientDrawable.OVAL
             d.setColor(c)
-            d.setStroke(dp(2f), if (c == newBg) KColors.Accent else 0x33FFFFFF)
+            d.setStroke(dp(2f), if (c == newBg) KColors.Accent else 0xFF2A3040.toInt())
             v.background = d
             val lp = LinearLayout.LayoutParams(dp(30f), dp(30f))
             lp.rightMargin = dp(7f)
@@ -1284,7 +1346,7 @@ class EditorActivity : Activity() {
     private fun showAbout() {
         KilatSheet.showMessage(
             this, "KILAT Motion",
-            "Motion graphics editor native Android.\n\nVersi 1.2.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa library eksternal.\nSemua ikon digambar manual pakai Canvas.",
+            "Motion graphics editor native Android.\n\nVersi 1.3.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa library eksternal.\nSemua ikon digambar manual pakai Canvas.",
             icon = KilatIcon.BOLT
         )
     }

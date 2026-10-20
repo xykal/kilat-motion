@@ -52,7 +52,7 @@ class PreviewView(context: Context) : View(context) {
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = dp(1f)
-        color = 0x22FFFFFF
+        color = 0xFF252B3A.toInt()
     }
     private val selPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE

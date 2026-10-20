@@ -65,7 +65,7 @@ object KilatSheet {
     ): Triple<FrameLayout, LinearLayout, LinearLayout> {
         val root = activity.window.decorView as ViewGroup
         val overlay = FrameLayout(activity)
-        overlay.setBackgroundColor(0xB3050609.toInt())
+        overlay.setBackgroundColor(0xD9050609.toInt())
         overlay.alpha = 0f
 
         val sheet = LinearLayout(activity)

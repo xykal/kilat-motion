@@ -20,7 +20,7 @@ import com.kilat.motion.ui.theme.KColors
 import com.kilat.motion.ui.theme.dp
 import com.kilat.motion.ui.theme.dpf
 import com.kilat.motion.ui.theme.kText
-import com.kilat.motion.ui.theme.kilatGradient
+import com.kilat.motion.ui.theme.kilatSolid
 
 /**
  * Layar pembuka: splash singkat logo KILAT, lalu diarahkan ke onboarding
@@ -42,7 +42,7 @@ class LauncherActivity : Activity() {
         root.fitsSystemWindows = true
 
         val tile = FrameLayout(this)
-        tile.background = kilatGradient(dpf(26f))
+        tile.background = kilatSolid(dpf(26f))
         tile.elevation = dpf(16f)
         val bolt = IconView(this, KilatIcon.BOLT, 0xFF05131F.toInt())
         val p = dp(22f)

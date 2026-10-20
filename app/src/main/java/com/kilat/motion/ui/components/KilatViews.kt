@@ -18,7 +18,6 @@ import com.kilat.motion.ui.theme.KColors
 import com.kilat.motion.ui.theme.dp
 import com.kilat.motion.ui.theme.dpf
 import com.kilat.motion.ui.theme.kText
-import com.kilat.motion.ui.theme.kilatGradient
 import com.kilat.motion.ui.theme.pressEffect
 import com.kilat.motion.ui.theme.roundedRect
 import kotlin.math.roundToInt
@@ -26,7 +25,7 @@ import kotlin.math.roundToInt
 // =====================================================================
 // Tombol custom KILAT (bukan Button bawaan Android)
 // =====================================================================
-enum class KilatButtonStyle { PRIMARY, GRADIENT, GHOST, SOFT, DANGER_SOFT }
+enum class KilatButtonStyle { PRIMARY, GHOST, SOFT, DANGER_SOFT }
 
 class KilatButton(
     context: Context,
@@ -46,14 +45,12 @@ class KilatButton(
         isFocusable = true
         val ink = when (style) {
             KilatButtonStyle.PRIMARY -> KColors.AccentInk
-            KilatButtonStyle.GRADIENT -> 0xFF05131F.toInt()
             KilatButtonStyle.GHOST -> KColors.Text
             KilatButtonStyle.SOFT -> KColors.Muted
             KilatButtonStyle.DANGER_SOFT -> KColors.Rose
         }
         background = when (style) {
             KilatButtonStyle.PRIMARY -> roundedRect(KColors.Accent, dpf(11f))
-            KilatButtonStyle.GRADIENT -> kilatGradient(dpf(11f))
             KilatButtonStyle.GHOST -> roundedRect(KColors.CardHi, dpf(11f))
             KilatButtonStyle.SOFT -> roundedRect(KColors.Field, dpf(11f))
             KilatButtonStyle.DANGER_SOFT -> roundedRect(KColors.DangerInk, dpf(11f))
