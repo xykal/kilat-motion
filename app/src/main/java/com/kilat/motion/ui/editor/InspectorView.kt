@@ -99,10 +99,10 @@ class InspectorView(context: Context) : LinearLayout(context) {
     private fun card(): LinearLayout {
         val c = LinearLayout(context)
         c.orientation = VERTICAL
-        c.background = roundRectBg(cCard)
-        c.setPadding(dp(12f).toInt(), dp(10f).toInt(), dp(12f).toInt(), dp(12f).toInt())
+        c.background = roundRectBg(cCard, radius = dp(14f))
+        c.setPadding(dp(14f).toInt(), dp(12f).toInt(), dp(14f).toInt(), dp(14f).toInt())
         val lp = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        lp.topMargin = dp(8f).toInt()
+        lp.topMargin = dp(10f).toInt()
         c.layoutParams = lp
         return c
     }
@@ -112,11 +112,10 @@ class InspectorView(context: Context) : LinearLayout(context) {
         row.orientation = HORIZONTAL
         row.gravity = Gravity.CENTER_VERTICAL
         val tv = TextView(context)
-        tv.text = title.uppercase()
-        tv.setTextColor(cDim)
-        tv.textSize = 9.5f
-        tv.letterSpacing = 0.12f
-        tv.typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+        tv.text = title
+        tv.setTextColor(cText)
+        tv.textSize = 13f
+        tv.typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
         row.addView(tv, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         if (action != null) row.addView(action)
         val lp = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)

@@ -79,15 +79,6 @@ class TimelineView(context: Context) : View(context) {
         textSize = dp(10.5f)
     }
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val barEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = dp(1f)
-    }
-    private val selBarPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = dp(1.6f)
-        color = 0xFF2EE6C0.toInt()
-    }
     private val diamondPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0xFF0A0C11.toInt()
         style = Paint.Style.FILL
@@ -280,13 +271,12 @@ class TimelineView(context: Context) : View(context) {
             val bt = top + dp(4f)
             val bb = top + rh - dp(4f)
             val c = kindColor(layer.kind)
-            barPaint.color = solidMix(c)
-            val rr = dp(5f)
+            // Tanpa garis tepi: klip dibedakan lewat isi. Yang terpilih pakai warna penuh.
+            val selected = layer.id == selectedId
+            barPaint.color = if (selected) c else solidMix(c)
+            val rr = dp(6f)
             canvas.drawRoundRect(x1, bt, max(x1 + dp(2f), x2), bb, rr, rr, barPaint)
-            barEdgePaint.color = c
-            canvas.drawRoundRect(x1, bt, max(x1 + dp(2f), x2), bb, rr, rr, barEdgePaint)
-            if (layer.id == selectedId) {
-                canvas.drawRoundRect(x1, bt, max(x1 + dp(2f), x2), bb, rr, rr, selBarPaint)
+            if (selected) {
                 // grip trim di ujung kanan bar terpilih
                 dotPaint.color = 0xFF2EE6C0.toInt()
                 val gy0 = bt + dp(4f)
@@ -330,8 +320,6 @@ class TimelineView(context: Context) : View(context) {
             barPaint.color = solidMix(0xFF2EE6C0.toInt(), 0.55f)
             val rr = dp(5f)
             canvas.drawRoundRect(x1, bt, max(x1 + dp(2f), x2), bb, rr, rr, barPaint)
-            barEdgePaint.color = 0xFF2EE6C0.toInt()
-            canvas.drawRoundRect(x1, bt, max(x1 + dp(2f), x2), bb, rr, rr, barEdgePaint)
 
             // waveform
             val wave = music.wave
