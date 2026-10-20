@@ -7,6 +7,24 @@ Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK 
 
 ---
 
+## Baru di v1.9.0 — Fondasi Material Components (Fase UI 1 dari 4)
+
+- **Library UI dipakai**: Material Components 1.12 (Material3 dark) sebagai dasar tema. Palet
+  KILAT dipetakan ke atribut Material (warna primer, permukaan, kontrol, EditText, dan kursor),
+  jadi widget default ikut tampil gelap-flat, bukan stock Android.
+- **Batasan lama dicabut**: sekarang AndroidX aktif (`android.useAndroidX=true`).
+- **R8 aktif di release** (minify + shrink resource). APK release turun dari ~10,4 MB
+  (tanpa shrink) ke ~2,2 MB. Kode app tidak memakai reflection, jadi aman.
+
+**Belum selesai di fase UI ini:** komponen editor (timeline, inspector, sheet) masih custom
+Canvas/View, dan ikon masih buatan sendiri. Migrasi ke komponen Material per layar dan
+ikon dari library adalah langkah berikutnya.
+
+**Urutan berikutnya:** (b) video layer + keyframe speed, (c) akun Google + backend Cloudflare,
+(d) AI assistant + plugin.
+
+---
+
 ## Baru di v1.8.0 — Pengaturan Export Lengkap, Fix Overlay Navigasi, Logo Baru
 
 - **Pengaturan export**: pilih resolusi (720p / 1080p / 1440p / 4K), frame rate

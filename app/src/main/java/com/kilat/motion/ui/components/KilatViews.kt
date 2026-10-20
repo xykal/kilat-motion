@@ -299,6 +299,8 @@ class KilatSwitch(context: Context) : View(context) {
     }
 }
 
+// Chip digambar sendiri (flat, tanpa default style AppCompat), jadi TextView biasa cukup.
+@SuppressLint("AppCompatCustomView")
 class KilatChip(context: Context, label: String) : TextView(context) {
 
     var chipSelected: Boolean = false

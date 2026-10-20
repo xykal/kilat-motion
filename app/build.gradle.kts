@@ -11,13 +11,15 @@ android {
         applicationId = "com.kilat.motion"
         minSdk = 29
         targetSdk = 34
-        versionCode = 10
-        versionName = "1.8.0"
+        versionCode = 11
+        versionName = "1.9.0"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 aktif: Material/AndroidX ikut masuk, tanpa shrink APK release jadi ~10 MB
+            isMinifyEnabled = true
+            isShrinkResources = true
             // supaya APK release bisa langsung di-install (sideload) tanpa keystore sendiri
             signingConfig = signingConfigs.getByName("debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -43,7 +45,9 @@ android {
 }
 
 dependencies {
-    // app: sengaja tanpa dependency eksternal — murni Android framework + Kotlin stdlib
+    // UI: Material Components (Material3) untuk tema dasar, widget default, dan kontrol sistem.
+    // Komponen editor tetap custom (Canvas/View) agar tampilan flat KILAT konsisten.
+    implementation("com.google.android.material:material:1.12.0")
     // test: JUnit untuk memverifikasi engine animasi di JVM
     testImplementation("junit:junit:4.13.2")
 }

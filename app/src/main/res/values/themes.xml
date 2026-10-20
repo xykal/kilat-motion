@@ -1,12 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Tema dasar: Material Components (Material3) dark dengan palet KILAT.
+     Komponen custom tetap dipakai di layar; tema ini mengatur widget default
+     (EditText, scrollbar, dialog, kontrol sistem) supaya tidak tampak stock Android. -->
 <resources>
-    <style name="Theme.Kilat" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.Kilat" parent="Theme.Material3.Dark.NoActionBar">
         <item name="android:windowBackground">#0A0B0F</item>
         <item name="android:statusBarColor">#0D0F15</item>
         <item name="android:navigationBarColor">#0A0B0F</item>
-        <item name="android:colorAccent">#2EE6C0</item>
-        <item name="android:colorPrimary">#0D0F15</item>
-        <item name="android:colorPrimaryDark">#0A0B0F</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:colorBackground">#0A0B0F</item>
+
+        <item name="colorPrimary">#2EE6C0</item>
+        <item name="colorOnPrimary">#06231D</item>
+        <item name="colorSecondary">#8B7CFF</item>
+        <item name="colorOnSecondary">#0A0B0F</item>
+        <item name="colorSurface">#171B27</item>
+        <item name="colorOnSurface">#EEF2F8</item>
+        <item name="colorSurfaceVariant">#212738</item>
+        <item name="colorOnSurfaceVariant">#98A3B8</item>
+        <item name="colorOutline">#222837</item>
+        <item name="colorError">#FF5C7A</item>
+        <item name="colorControlActivated">#2EE6C0</item>
+        <item name="colorControlNormal">#687389</item>
+        <item name="colorControlHighlight">#22FFFFFF</item>
+        <item name="android:colorAccent">#2EE6C0</item>
+        <item name="android:textColorPrimary">#EEF2F8</item>
+        <item name="android:textColorSecondary">#98A3B8</item>
+        <item name="android:textColorHint">#4D5871</item>
+        <item name="android:editTextColor">#EEF2F8</item>
+        <item name="android:textCursorDrawable">@null</item>
     </style>
 </resources>
