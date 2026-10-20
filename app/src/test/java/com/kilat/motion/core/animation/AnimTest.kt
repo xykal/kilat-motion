@@ -173,6 +173,20 @@ class AnimTest {
     }
 
     @Test
+    fun `salin tempel keyframe antar waktu`() {
+        val l = Layer().apply { kind = KIND_TEXT; start = 0f; dur = 8f; x = 0f }
+        Anim.setKey(l, "x", 1f, 111f, "back")
+        Anim.setKey(l, "scale", 1f, 1.5f, "easeOut")
+        Anim.setKey(l, "x", 5f, 400f, "linear")
+        val clip = Anim.copyKeysAt(l, 1f)
+        assertEquals(2, clip.size)
+        Anim.pasteKeysAt(l, clip, 3f)
+        assertEquals(111f, Anim.value(l, "x", 3f), 0.001f)
+        assertEquals(1.5f, Anim.value(l, "scale", 3f), 0.001f)
+        assertEquals("back", Anim.keyAt(l, "x", 3f)!!.ease)
+    }
+
+    @Test
     fun `format waktu dan warna`() {
         assertEquals("00:01.50", Format.time(1.5f))
         assertEquals("#FF2EE6C0", Format.color(0xFF2EE6C0.toInt()))

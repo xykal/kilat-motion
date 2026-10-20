@@ -257,6 +257,48 @@ class KeyframeButton(context: Context) : View(context) {
 // =====================================================================
 // Chip pill (preset, rasio, filter)
 // =====================================================================
+
+/** Toggle switch custom solid flat (pengganti tombol teks Ya/Tidak). */
+class KilatSwitch(context: Context) : View(context) {
+
+    var checked: Boolean = false
+        set(v) {
+            field = v
+            invalidate()
+        }
+    var onToggle: ((Boolean) -> Unit)? = null
+
+    private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val knobPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
+    private val rf = RectF()
+
+    init {
+        isClickable = true
+        setOnClickListener {
+            checked = !checked
+            onToggle?.invoke(checked)
+        }
+        pressEffect(0.94f)
+    }
+
+    override fun onMeasure(wSpec: Int, hSpec: Int) {
+        setMeasuredDimension(dp(48f), dp(28f))
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val h = height.toFloat()
+        val w = width.toFloat()
+        val r = h / 2f
+        trackPaint.color = if (checked) KColors.Accent else 0xFF2A3040.toInt()
+        rf.set(0f, 0f, w, h)
+        canvas.drawRoundRect(rf, r, r, trackPaint)
+        val knobR = r - dpf(3.5f)
+        val cx = if (checked) w - r else r
+        canvas.drawCircle(cx, r, knobR, knobPaint)
+    }
+}
+
 class KilatChip(context: Context, label: String) : TextView(context) {
 
     var chipSelected: Boolean = false

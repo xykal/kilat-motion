@@ -3,11 +3,37 @@
 Motion graphics editor **native Android** (Kotlin), alur kerja ala **Alight Motion** + UI gelap ala **CapCut**.
 Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK dibuild otomatis via **GitHub Actions**.
 
-![status](https://img.shields.io/badge/build-passing-2ee6c0) ![minSdk](https://img.shields.io/badge/minSdk-29-blue) ![size](https://img.shields.io/badge/APK-2.4--3.1%20MB-lightgrey) ![tests](https://img.shields.io/badge/tests-42%20passing-2ee6c0)
+![status](https://img.shields.io/badge/build-passing-2ee6c0) ![minSdk](https://img.shields.io/badge/minSdk-29-blue) ![size](https://img.shields.io/badge/APK-2.4--3.1%20MB-lightgrey) ![tests](https://img.shields.io/badge/tests-43%20passing-2ee6c0)
 
 ---
 
-## Baru di v1.4.1 — Keyframe Ikut Klip, Nol Shadow Glass, Ikon v5
+## Baru di v1.5.0 — Color Picker Sendiri, Efek Bergambar, Layer Terkunci
+
+- **Color picker custom penuh** (`KilatColorPicker`): bidang saturasi/value HSV
+  yang bisa diseret, bilah hue pelangi, bilah alpha checkerboard, input hex +
+  readout RGB, dan 16 palet cepat. Muncul dari tile **+** di semua baris warna
+  Inspector dan dari tombol **Warna Custom** di Pengaturan Project. Semua warna
+  tetap solid flat, tanpa gradient chrome UI.
+- **Efek & filter sekarang bergambar**: preset animasi jadi tile ikon custom,
+  dan 7 filter (Normal/Vivid/Hangat/Dingin/Mono/Sepia/Pudar) ditampilkan sebagai
+  **thumbnail foto contoh yang benar-benar difilter** oleh `Renderer.filterFor`,
+  bukan sekadar teks.
+- **Toggle custom** (`KilatSwitch`): saklar ON/OFF solid ala CapCut menggantikan
+  chip teks untuk Balik Mask dan garis Tertutup vektor.
+- **Kunci layer**: tombol gembok di header timeline (ikon LOCK/UNLOCK baru,
+  total 55 ikon). Layer terkunci tidak bisa diseret di kanvas, digeser/ditrim
+  di timeline, apalagi keyframenya — dan ditandai ikon gembok di klipnya.
+- **Salin/Tempel keyframe**: salin semua keyframe di playhead lalu tempel di
+  waktu lain (easing ikut), untuk pola JJ berulang yang presisi.
+- **Scrub ruler nempel (snap)**: menggeser playhead di ruler sekarang magnet ke
+  tepi klip/keyframe/musik terdekat, jadi pas beat makin gampang.
+- **Teks & bentuk makin lengkap**: slider **Spasi Huruf** dan **Spasi Baris**
+  untuk tipografi, plus bentuk **Segi Banyak** dengan jumlah sisi 3–12 yang
+  bisa diatur. Semua tersimpan di file project.
+
+---
+
+## v1.4.1 — Keyframe Ikut Klip, Nol Shadow Glass, Ikon v5
 
 - **Keyframe sekarang patuh**: menggeser klip di timeline **menggeser semua
   keyframe-nya ikut** (dulu diam di waktu absolut). Diamond keyframe juga bisa

@@ -75,6 +75,16 @@ object Renderer {
         else -> null
     }
 
+    /** Filter warna publik (dipakai thumbnail preset filter di Inspector). */
+    fun filterFor(brightness: Float, contrast: Float, saturate: Float, hue: Float): ColorMatrixColorFilter {
+        val m = HashMap<String, Float>()
+        m["fx.brightness"] = brightness
+        m["fx.contrast"] = contrast
+        m["fx.saturate"] = saturate
+        m["fx.hue"] = hue
+        return colorFilterFor(m)
+    }
+
     private fun colorFilterFor(fx: HashMap<String, Float>): ColorMatrixColorFilter {
         val sat = fx["fx.saturate"] ?: 100f
         val contrast = (fx["fx.contrast"] ?: 100f) / 100f
@@ -230,6 +240,8 @@ object Renderer {
         sp.typeface = fp.typeface
         fp.style = Paint.Style.FILL
         sp.style = Paint.Style.STROKE
+        fp.letterSpacing = layer.letterSpacing
+        sp.letterSpacing = layer.letterSpacing
         sp.strokeWidth = max(0f, layer.strokeW)
         if (isGlow) {
             fp.color = Color.WHITE // ditint oleh colorFilter SRC_IN pada pass siluet
@@ -240,7 +252,7 @@ object Renderer {
 
         val lines = layer.text.split("\n")
         if (lines.isEmpty()) return
-        val lineH = size * 1.24f
+        val lineH = size * layer.lineSpacing.coerceIn(0.8f, 2f)
         var maxW = 0f
         val widths = FloatArray(lines.size)
         for (i in lines.indices) {
@@ -333,6 +345,16 @@ object Renderer {
                     val ang = -Math.PI / 2 + i * Math.PI / 5
                     val px = (Math.cos(ang) * r).toFloat()
                     val py = (Math.sin(ang) * r).toFloat()
+                    if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+                }
+                path.close()
+            }
+            "polygon" -> {
+                val sides = layer.shapeSides.coerceIn(3, 24)
+                for (i in 0 until sides) {
+                    val ang = -Math.PI / 2 + i * 2 * Math.PI / sides
+                    val px = (Math.cos(ang) * w / 2f).toFloat()
+                    val py = (Math.sin(ang) * h / 2f).toFloat()
                     if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
                 }
                 path.close()

@@ -261,9 +261,16 @@ class TimelineView(context: Context) : View(context) {
             namePaint.alpha = if (layer.hidden) 90 else 255
             val label = TextUtils.ellipsize(layer.name, android.text.TextPaint(namePaint), leftW - dp(30f), TextUtils.TruncateAt.END).toString()
             canvas.drawText(label, dp(8f), nameY, namePaint)
-            // dot visibility
-            dotPaint.color = if (layer.hidden) 0xFF394155.toInt() else 0xFF2EE6C0.toInt()
-            canvas.drawCircle(leftW - dp(12f), top + rh / 2f, dp(4f), dotPaint)
+            // dot visibility / ikon kunci
+            if (layer.locked) {
+                com.kilat.motion.ui.components.IconPainter.draw(
+                    canvas, com.kilat.motion.ui.components.KilatIcon.LOCK,
+                    leftW - dp(19f), top + rh / 2f - dp(7f), dp(14f), 0xFFFFD166.toInt()
+                )
+            } else {
+                dotPaint.color = if (layer.hidden) 0xFF394155.toInt() else 0xFF2EE6C0.toInt()
+                canvas.drawCircle(leftW - dp(12f), top + rh / 2f, dp(4f), dotPaint)
+            }
 
             // bar (solid flat, ter-clip di area trek agar tidak bocor ke kolom nama)
             canvas.save()
@@ -391,6 +398,25 @@ class TimelineView(context: Context) : View(context) {
 
     private fun tAt(x: Float): Float = (((x - leftW) / pxPerSec()) + scrollSec).coerceIn(0f, project?.duration ?: 10f)
 
+    /** Snap playhead saat scrub: nempel ke tepi klip & keyframe terdekat. */
+    private fun snapSeek(t: Float): Float {
+        val p = project ?: return t
+        val th = dp(8f) / pxPerSec()
+        var best = t
+        var bd = th
+        fun consider(c: Float) {
+            val d = abs(c - t)
+            if (d < bd) { bd = d; best = c }
+        }
+        consider(0f); consider(p.duration)
+        for (l in p.layers) {
+            consider(l.start); consider(l.start + l.dur)
+            for (kt in Anim.allKeyTimes(l)) consider(kt)
+        }
+        p.music?.let { consider(it.start); consider(it.start + it.dur) }
+        return best
+    }
+
     private fun snap(t: Float, exclude: Layer?): Float {
         val p = project ?: return t
         val th = dp(7f) / pxPerSec()
@@ -427,7 +453,7 @@ class TimelineView(context: Context) : View(context) {
 
                 if (event.y <= rulerH) {
                     dragMode = MODE_SEEK
-                    listener?.onSeek(tAt(event.x))
+                    listener?.onSeek(snapSeek(tAt(event.x)))
                     return true
                 }
                 // lane musik
@@ -485,6 +511,11 @@ class TimelineView(context: Context) : View(context) {
                         selectedId = layer.id
                         listener?.onSelect(layer.id)
                         listener?.onSeek(kt)
+                        if (layer.locked) {
+                            dragMode = MODE_NONE
+                            invalidate()
+                            return true
+                        }
                         dragLayer = layer
                         dragKeyFrom = kt
                         dragKeyNow = kt
@@ -498,6 +529,13 @@ class TimelineView(context: Context) : View(context) {
                 if (event.x >= x1 - dp(6f) && event.x <= x2 + dp(6f)) {
                     selectedId = layer.id
                     listener?.onSelect(layer.id)
+                    if (layer.locked) {
+                        dragMode = MODE_PAN
+                        lastPanX = event.x
+                        panMoved = false
+                        invalidate()
+                        return true
+                    }
                     dragLayer = layer
                     origStart = layer.start
                     origDur = layer.dur
@@ -550,7 +588,7 @@ class TimelineView(context: Context) : View(context) {
                         }
                         lastPanX = event.x
                     }
-                    MODE_SEEK -> listener?.onSeek(tAt(event.x))
+                    MODE_SEEK -> listener?.onSeek(snapSeek(tAt(event.x)))
                     MODE_MOVE -> {
                         val l = dragLayer ?: return true
                         val dt = (event.x - downX) / z

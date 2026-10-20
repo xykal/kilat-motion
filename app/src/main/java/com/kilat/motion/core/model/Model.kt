@@ -30,9 +30,9 @@ val BLEND_LABELS = mapOf(
     "colorDodge" to "Color Dodge", "softLight" to "Soft Light"
 )
 
-val SHAPE_TYPES = listOf("rect", "circle", "triangle", "star")
+val SHAPE_TYPES = listOf("rect", "circle", "triangle", "star", "polygon")
 val SHAPE_LABELS = mapOf(
-    "rect" to "Kotak", "circle" to "Lingkaran", "triangle" to "Segitiga", "star" to "Bintang"
+    "rect" to "Kotak", "circle" to "Lingkaran", "triangle" to "Segitiga", "star" to "Bintang", "polygon" to "Segi Banyak"
 )
 
 val FONT_KEYS = listOf(
@@ -54,6 +54,7 @@ class Layer {
     var start: Float = 0f
     var dur: Float = 4f
     var hidden: Boolean = false
+    var locked: Boolean = false
 
     // transform
     var x: Float = 540f
@@ -108,6 +109,8 @@ class Layer {
     var color: Int = 0xFFFFFFFF.toInt()
     var strokeW: Float = 0f
     var strokeColor: Int = 0xFF000000.toInt()
+    var letterSpacing: Float = 0f   // em (Paint.letterSpacing)
+    var lineSpacing: Float = 1.24f  // pengali tinggi baris
 
     // shape
     var shape: String = "rect"
@@ -115,6 +118,7 @@ class Layer {
     var h: Float = 320f
     var radius: Float = 0f
     var fill: Int = 0xFF2EE6C0.toInt()
+    var shapeSides: Int = 6         // jumlah sisi untuk shape "polygon"
     var shapeStrokeW: Float = 0f
     var shapeStrokeColor: Int = 0xFFFFFFFF.toInt()
 
@@ -244,6 +248,7 @@ class Layer {
         c.start = start
         c.dur = dur
         c.hidden = hidden
+        c.locked = locked
         c.x = x + 40f
         c.y = y + 30f
         c.scale = scale
@@ -277,12 +282,15 @@ class Layer {
         c.align = align
         c.color = color
         c.strokeW = strokeW
+        c.letterSpacing = letterSpacing
+        c.lineSpacing = lineSpacing
         c.strokeColor = strokeColor
         c.shape = shape
         c.w = w
         c.h = h
         c.radius = radius
         c.fill = fill
+        c.shapeSides = shapeSides
         c.shapeStrokeW = shapeStrokeW
         c.shapeStrokeColor = shapeStrokeColor
         c.imgPath = imgPath

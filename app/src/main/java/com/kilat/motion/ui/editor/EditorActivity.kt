@@ -28,7 +28,10 @@ import com.kilat.motion.ui.components.IconView
 import com.kilat.motion.ui.components.KilatDropdown
 import com.kilat.motion.ui.components.KilatIcon
 import com.kilat.motion.ui.components.KilatIconButton
+import com.kilat.motion.ui.components.KilatButton
+import com.kilat.motion.ui.components.KilatButtonStyle
 import com.kilat.motion.ui.components.KilatSheet
+import com.kilat.motion.ui.components.KilatColorPicker
 import com.kilat.motion.ui.components.KilatSlider
 import com.kilat.motion.ui.components.KilatToast
 import com.kilat.motion.ui.components.kEditText
@@ -74,6 +77,7 @@ class EditorActivity : Activity() {
     private lateinit var selLabel: TextView
     private lateinit var zoomPct: TextView
     private lateinit var eyeBtn: KilatIconButton
+    private lateinit var lockBtn: KilatIconButton
 
     // riwayat undo/redo berbasis snapshot JSON project
     private val undoStack = ArrayList<String>()
@@ -402,6 +406,15 @@ class EditorActivity : Activity() {
                 toast(if (l.hidden) "Layer disembunyikan" else "Layer ditampilkan", if (l.hidden) KilatIcon.EYE_OFF else KilatIcon.EYE)
             }
         }
+        lockBtn = quickBtn(KilatIcon.UNLOCK) {
+            selectedLayerOrToast()?.let { l ->
+                l.locked = !l.locked
+                timeline.invalidate()
+                updateTimelineHeader()
+                autosave()
+                toast(if (l.locked) "Layer dikunci (tidak bisa digeser)" else "Kunci layer dibuka", if (l.locked) KilatIcon.LOCK else KilatIcon.UNLOCK)
+            }
+        }
         quickBtn(KilatIcon.TRASH, KColors.Rose) { selectedLayerOrToast()?.let { deleteLayer(it) } }
 
         val spacer = View(this)
@@ -648,6 +661,10 @@ class EditorActivity : Activity() {
         if (::eyeBtn.isInitialized && l != null) {
             eyeBtn.setIcon(if (l.hidden) KilatIcon.EYE_OFF else KilatIcon.EYE)
             eyeBtn.setTint(if (l.hidden) KColors.Faint else KColors.Muted)
+        }
+        if (::lockBtn.isInitialized && l != null) {
+            lockBtn.setIcon(if (l.locked) KilatIcon.LOCK else KilatIcon.UNLOCK)
+            lockBtn.setTint(if (l.locked) KColors.Amber else KColors.Muted)
         }
     }
 
@@ -1450,6 +1467,17 @@ class EditorActivity : Activity() {
             }
         }
         wrap.addView(swRow)
+        val customBgBtn = KilatButton(this, "Warna Custom...", KilatIcon.SPARK, KilatButtonStyle.GHOST, 11.5f)
+        customBgBtn.setOnClickListener {
+            KilatColorPicker.show(this, newBg, "Warna Latar Custom") { col ->
+                newBg = col
+                bgLabel.text = "Warna latar: " + com.kilat.motion.core.model.Format.color(col)
+                refreshSwatches()
+            }
+        }
+        val lpCB = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpCB.topMargin = dp(10f)
+        wrap.addView(customBgBtn, lpCB)
 
         KilatSheet.show(
             this, "Pengaturan project", wrap,

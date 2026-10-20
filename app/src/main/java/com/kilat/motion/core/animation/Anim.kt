@@ -134,6 +134,23 @@ object Anim {
         return list
     }
 
+    data class KeyCopy(val v: Float, val ease: String)
+
+    /** Salin semua keyframe tepat di waktu [t] (untuk tempel di waktu lain). */
+    fun copyKeysAt(layer: Layer, t: Float): Map<String, KeyCopy> {
+        val out = LinkedHashMap<String, KeyCopy>()
+        for ((key, ch) in layer.channels) {
+            val k = ch.keys.firstOrNull { abs(it.t - t) < 0.03f } ?: continue
+            out[key] = KeyCopy(k.v, k.ease)
+        }
+        return out
+    }
+
+    /** Tempel hasil salinan keyframe ke waktu [t]. */
+    fun pasteKeysAt(layer: Layer, clip: Map<String, KeyCopy>, t: Float) {
+        for ((key, c) in clip) setKey(layer, key, t, c.v, c.ease)
+    }
+
     fun hasKeys(layer: Layer): Boolean = layer.channels.values.any { it.keys.isNotEmpty() }
 
     /** Geser SEMUA keyframe layer sejauh [delta] detik (dipakai saat klip dipindah di timeline). */

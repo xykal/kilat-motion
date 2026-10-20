@@ -3,17 +3,27 @@ package com.kilat.motion.ui.editor
 import com.kilat.motion.core.model.*
 import com.kilat.motion.core.animation.Anim
 
+import android.app.Activity
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.drawable.GradientDrawable
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.kilat.motion.core.render.Renderer
+import com.kilat.motion.ui.components.IconView
 import com.kilat.motion.ui.components.KeyframeButton
+import com.kilat.motion.ui.components.KilatColorPicker
+import com.kilat.motion.ui.components.KilatSwitch
 import com.kilat.motion.ui.components.KilatButton
 import com.kilat.motion.ui.components.KilatButtonStyle
 import com.kilat.motion.ui.components.KilatChip
@@ -47,6 +57,9 @@ class InspectorView(context: Context) : LinearLayout(context) {
     private var binding = false
     private var defaultEase = "easeOut"
     private var activeCat = "Konten"
+    private var keyClipboard: Map<String, Anim.KeyCopy> = emptyMap()
+    private var filterSample: Bitmap? = null
+    private val filterThumbs = HashMap<String, Bitmap>()
 
     private class RowRef(
         val key: String,
@@ -176,6 +189,27 @@ class InspectorView(context: Context) : LinearLayout(context) {
             row.addView(v, lp)
             v.setOnClickListener {
                 onPick(c)
+                listener?.onEdited(true)
+                rebind()
+            }
+        }
+        // tile pelangi: buka color picker custom (HSV + alpha + hex)
+        val custom = TextView(context)
+        custom.text = "+"
+        custom.textSize = 15f
+        custom.gravity = Gravity.CENTER
+        custom.setTextColor(cText)
+        val cd = GradientDrawable()
+        cd.shape = GradientDrawable.OVAL
+        cd.setColor(0xFF171B27.toInt())
+        cd.setStroke(dp(1.6f).toInt(), cAccent)
+        custom.background = cd
+        val lpC = LayoutParams(dp(24f).toInt(), dp(24f).toInt())
+        row.addView(custom, lpC)
+        custom.setOnClickListener {
+            val act = context as? Activity ?: return@setOnClickListener
+            KilatColorPicker.show(act, selected) { col ->
+                onPick(col)
                 listener?.onEdited(true)
                 rebind()
             }
@@ -368,14 +402,34 @@ class InspectorView(context: Context) : LinearLayout(context) {
         chipRow.orientation = HORIZONTAL
         val scroll = android.widget.HorizontalScrollView(context)
         scroll.isHorizontalScrollBarEnabled = false
+        val presetIcons = mapOf(
+            "fade" to KilatIcon.EYE, "slideUp" to KilatIcon.LAYER_UP, "zoom" to KilatIcon.PLUS,
+            "spin" to KilatIcon.LOOP, "bounce" to KilatIcon.CHEVRON_DOWN, "typing" to KilatIcon.TEXT,
+            "kenBurns" to KilatIcon.IMAGE, "glitch" to KilatIcon.WAND, "jedag" to KilatIcon.BOLT
+        )
         for (id in Anim.PRESETS) {
             if (id == "typing" && l.kind != KIND_TEXT) continue
             if (id == "kenBurns" && l.kind != KIND_IMAGE) continue
-            val chip = KilatChip(context, Anim.PRESET_LABELS[id] ?: id)
-            val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-            lp.rightMargin = dp(6f).toInt()
-            chipRow.addView(chip, lp)
-            chip.setOnClickListener { listener?.onApplyPreset(l, id) }
+            val tile = LinearLayout(context)
+            tile.orientation = VERTICAL
+            tile.gravity = Gravity.CENTER_HORIZONTAL
+            tile.isClickable = true
+            val box = android.widget.FrameLayout(context)
+            box.background = roundRectBg(0xFF11141C.toInt(), dp(12f))
+            val iv = IconView(context, presetIcons[id] ?: KilatIcon.SPARK, cAccent)
+            val padIv = dp(11f).toInt()
+            iv.setPadding(padIv, padIv, padIv, padIv)
+            box.addView(iv, android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            tile.addView(box, LayoutParams(dp(46f).toInt(), dp(46f).toInt()))
+            val lbl = labelTv(Anim.PRESET_LABELS[id] ?: id, 9f, cMuted)
+            lbl.gravity = Gravity.CENTER
+            val lpLbl = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            lpLbl.topMargin = dp(4f).toInt()
+            tile.addView(lbl, lpLbl)
+            val lp = LayoutParams(dp(60f).toInt(), LayoutParams.WRAP_CONTENT)
+            lp.rightMargin = dp(7f).toInt()
+            chipRow.addView(tile, lp)
+            tile.setOnClickListener { listener?.onApplyPreset(l, id) }
         }
         scroll.addView(chipRow)
         presetCard.addView(scroll)
@@ -539,6 +593,8 @@ class InspectorView(context: Context) : LinearLayout(context) {
         sizeRow.addView(sizeSeek, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         sizeRow.addView(sizeVal, LayoutParams(dp(36f).toInt(), LayoutParams.WRAP_CONTENT))
         c.addView(sizeRow, lpSize)
+        staticSlider(c, "Spasi huruf", l.letterSpacing, 60, 100f) { l.letterSpacing = it }
+        staticSlider(c, "Spasi baris", l.lineSpacing, 120, 100f, 0.8f) { l.lineSpacing = it }
 
         val alignRow = LinearLayout(context)
         alignRow.orientation = HORIZONTAL
@@ -613,6 +669,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val sp = dropdown(SHAPE_TYPES.map { SHAPE_LABELS[it] ?: it }, SHAPE_TYPES.indexOf(l.shape), "Jenis bentuk") { idx ->
             l.shape = SHAPE_TYPES[idx]
             listener?.onEdited(true)
+            rebind()
         }
         typeRow.addView(sp, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         c.addView(typeRow)
@@ -641,6 +698,9 @@ class InspectorView(context: Context) : LinearLayout(context) {
         dimRow("Lebar", l.w, 2000) { l.w = maxOf(10f, it) }
         dimRow("Tinggi", l.h, 2000) { l.h = maxOf(10f, it) }
         dimRow("Radius", l.radius, 400) { l.radius = it }
+        if (l.shape == "polygon") {
+            dimRow("Jumlah sisi", l.shapeSides.toFloat(), 12) { l.shapeSides = it.toInt().coerceIn(3, 12) }
+        }
 
         val fillLbl = labelTv("Isi", widthDp = 84f)
         val lpFill = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
@@ -694,11 +754,11 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val seek = KilatSlider(context)
         seek.max = maxInt
         seek.progress = ((value - minV) * div).toInt().coerceIn(0, maxInt)
-        val valTv = labelTv(Format.dec(value, if (div > 1f) 1 else 0), 11f, cText)
+        val valTv = labelTv(Format.dec(value, if (div > 10f) 2 else if (div > 1f) 1 else 0), 11f, cText)
         seek.onProgress = { progress ->
             val v = minV + progress / div
             onChange(v)
-            valTv.text = Format.dec(v, if (div > 1f) 1 else 0)
+            valTv.text = Format.dec(v, if (div > 10f) 2 else if (div > 1f) 1 else 0)
             listener?.onEdited(false)
         }
         seek.onReleased = { listener?.onEdited(true) }
@@ -716,6 +776,34 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpS = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         lpS.topMargin = dp(6f).toInt()
         parent.addView(sw, lpS)
+    }
+
+    private fun filterThumb(vals: FloatArray): Bitmap {
+        val key = vals.joinToString(",")
+        filterThumbs[key]?.let { return it }
+        val sample = filterSample ?: run {
+            val b = Bitmap.createBitmap(120, 120, Bitmap.Config.ARGB_8888)
+            val cv = Canvas(b)
+            val pt = Paint(Paint.ANTI_ALIAS_FLAG)
+            pt.color = 0xFF4FB2FF.toInt(); cv.drawRect(0f, 0f, 120f, 120f, pt)
+            pt.color = 0xFFFFD166.toInt(); cv.drawCircle(88f, 30f, 15f, pt)
+            val mtn = Path()
+            mtn.moveTo(0f, 120f); mtn.lineTo(34f, 58f); mtn.lineTo(68f, 120f); mtn.close()
+            pt.color = 0xFF6C4BD8.toInt(); cv.drawPath(mtn, pt)
+            val mtn2 = Path()
+            mtn2.moveTo(44f, 120f); mtn2.lineTo(86f, 52f); mtn2.lineTo(120f, 120f); mtn2.close()
+            pt.color = 0xFF22C55E.toInt(); cv.drawPath(mtn2, pt)
+            pt.color = 0xFFFF8A3D.toInt(); cv.drawRect(0f, 102f, 120f, 120f, pt)
+            filterSample = b
+            b
+        }
+        val out = Bitmap.createBitmap(120, 120, Bitmap.Config.ARGB_8888)
+        val oc = Canvas(out)
+        val op = Paint(Paint.ANTI_ALIAS_FLAG)
+        op.colorFilter = Renderer.filterFor(vals[0], vals[1], vals[2], vals[3])
+        oc.drawBitmap(sample, 0f, 0f, op)
+        filterThumbs[key] = out
+        return out
     }
 
     // ---------------- Warna & Filter ----------------
@@ -736,11 +824,23 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val scF = android.widget.HorizontalScrollView(context)
         scF.isHorizontalScrollBarEnabled = false
         for ((fname, vals) in filters.map { it.first to it.second }) {
-            val chip = KilatChip(context, fname)
-            val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-            lp.rightMargin = dp(6f).toInt()
-            rowF.addView(chip, lp)
-            chip.setOnClickListener {
+            val tile = LinearLayout(context)
+            tile.orientation = VERTICAL
+            tile.gravity = Gravity.CENTER_HORIZONTAL
+            tile.isClickable = true
+            val iv = ImageView(context)
+            iv.setImageBitmap(filterThumb(vals))
+            iv.scaleType = ImageView.ScaleType.CENTER_CROP
+            tile.addView(iv, LayoutParams(dp(54f).toInt(), dp(54f).toInt()))
+            val lbl = labelTv(fname, 9.5f, cMuted)
+            lbl.gravity = Gravity.CENTER
+            val lpLbl = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            lpLbl.topMargin = dp(4f).toInt()
+            tile.addView(lbl, lpLbl)
+            val lp = LayoutParams(dp(62f).toInt(), LayoutParams.WRAP_CONTENT)
+            lp.rightMargin = dp(8f).toInt()
+            rowF.addView(tile, lp)
+            tile.setOnClickListener {
                 applyValue(l, "fx.brightness", vals[0])
                 applyValue(l, "fx.contrast", vals[1])
                 applyValue(l, "fx.saturate", vals[2])
@@ -790,14 +890,20 @@ class InspectorView(context: Context) : LinearLayout(context) {
         }
         maskRow.addView(maskDrop, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         c3.addView(maskRow)
-        val invBtn = miniBtn(if (l.maskInvert) "Mask dibalik: YA (ketuk ubah)" else "Mask dibalik: Tidak (ketuk ubah)") {
-            l.maskInvert = !l.maskInvert
+        val invRow = LinearLayout(context)
+        invRow.orientation = HORIZONTAL
+        invRow.gravity = Gravity.CENTER_VERTICAL
+        val lpInv = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpInv.topMargin = dp(10f).toInt()
+        invRow.addView(labelTv("Balik mask", widthDp = 84f))
+        val invSwitch = KilatSwitch(context)
+        invSwitch.checked = l.maskInvert
+        invSwitch.onToggle = { on ->
+            l.maskInvert = on
             listener?.onEdited(true)
-            rebind()
         }
-        val lpInv = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-        lpInv.topMargin = dp(8f).toInt()
-        c3.addView(invBtn, lpInv)
+        invRow.addView(invSwitch)
+        c3.addView(invRow, lpInv)
         val hintMask = labelTv("Mask memotong layer mengikuti bentuk. Untuk sudut membulat di gambar, pakai Kotak lembut.", 10f, cDim)
         val lpHint = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         lpHint.topMargin = dp(8f).toInt()
@@ -889,6 +995,28 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpDelK = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         lpDelK.topMargin = dp(7f).toInt()
         c.addView(delKeyBtn, lpDelK)
+        val cpRow = LinearLayout(context)
+        cpRow.orientation = HORIZONTAL
+        val lpCP = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpCP.topMargin = dp(7f).toInt()
+        val copyKBtn = KilatButton(context, "Salin Keyframe", KilatIcon.COPY, KilatButtonStyle.GHOST, 11f)
+        copyKBtn.setOnClickListener {
+            keyClipboard = Anim.copyKeysAt(l, curPlayhead)
+            listener?.onEdited(false)
+        }
+        cpRow.addView(copyKBtn, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        val pasteKBtn = KilatButton(context, "Tempel di Sini", KilatIcon.KEYFRAME, KilatButtonStyle.GHOST, 11f)
+        pasteKBtn.setOnClickListener {
+            if (keyClipboard.isNotEmpty()) {
+                Anim.pasteKeysAt(l, keyClipboard, curPlayhead)
+                listener?.onEdited(true)
+                syncValues()
+            }
+        }
+        val lpPaste = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+        lpPaste.leftMargin = dp(7f).toInt()
+        cpRow.addView(pasteKBtn, lpPaste)
+        c.addView(cpRow, lpCP)
 
         val applyRow = LinearLayout(context)
         applyRow.orientation = HORIZONTAL
@@ -930,15 +1058,21 @@ class InspectorView(context: Context) : LinearLayout(context) {
         staticSlider(c, "Tebal garis", l.vecStrokeW, 80, 1f) { l.vecStrokeW = maxOf(1f, it) }
         swatchBlock(c, "Warna garis", l.color) { col -> l.color = col }
         swatchBlock(c, "Warna isi (tertutup)", l.fill) { col -> l.fill = col }
-        val closedBtn = miniBtn(if (l.vecClosed) "Bentuk tertutup: YA" else "Bentuk tertutup: Tidak") {
-            l.vecClosed = !l.vecClosed
+        val closedRow = LinearLayout(context)
+        closedRow.orientation = HORIZONTAL
+        closedRow.gravity = Gravity.CENTER_VERTICAL
+        val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lp.topMargin = dp(10f).toInt()
+        closedRow.addView(labelTv("Bentuk tertutup", widthDp = 110f))
+        val closedSwitch = KilatSwitch(context)
+        closedSwitch.checked = l.vecClosed
+        closedSwitch.onToggle = { on ->
+            l.vecClosed = on
             l.vecSrc = ""
             listener?.onEdited(true)
-            rebind()
         }
-        val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-        lp.topMargin = dp(10f).toInt()
-        c.addView(closedBtn, lp)
+        closedRow.addView(closedSwitch)
+        c.addView(closedRow, lp)
         parent.addView(c)
     }
 

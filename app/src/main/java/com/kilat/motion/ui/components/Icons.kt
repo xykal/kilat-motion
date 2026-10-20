@@ -30,7 +30,7 @@ enum class KilatIcon {
     MUSIC, SETTINGS, SAVE, TRASH, COPY, CLOSE, BACK, NEXT,
     CHEVRON_DOWN, CHEVRON_RIGHT, MORE, KEYFRAME, EYE, EYE_OFF,
     CHECK, SPARK, FILM, CLOCK, RATIO, BOOK, INFO, GRID, STAR, SHARE, WAND,
-    UNDO, REDO, SCISSORS, LAYER_UP, LAYER_DOWN, MAGNET, SKIP_START, CROSSHAIR, MINUS, PENCIL, VECTOR, CUBE, CURVE
+    UNDO, REDO, SCISSORS, LAYER_UP, LAYER_DOWN, MAGNET, SKIP_START, CROSSHAIR, MINUS, PENCIL, VECTOR, CUBE, CURVE, LOCK, UNLOCK
 }
 
 object IconPainter {
@@ -517,6 +517,26 @@ object IconPainter {
                 path.moveTo(4f, 20f); path.cubicTo(9f, 20f, 9f, 6f, 20f, 6f)
                 canvas.drawPath(path, stroke)
                 canvas.drawCircle(9f, 13f, 1.9f, fill)
+            }
+            KilatIcon.LOCK -> {
+                rf.set(8f, 3.5f, 16f, 11.5f)
+                canvas.drawArc(rf, 180f, 180f, false, stroke)
+                canvas.drawLine(8f, 7.5f, 8f, 11f, stroke)
+                canvas.drawLine(16f, 7.5f, 16f, 11f, stroke)
+                rf.set(5.5f, 10.5f, 18.5f, 20.5f)
+                canvas.drawRoundRect(rf, 2.2f, 2.2f, fill)
+                canvas.drawCircle(12f, 14.6f, 1.5f, fill2)
+                rf.set(11.3f, 14.6f, 12.7f, 17.4f)
+                canvas.drawRoundRect(rf, 0.7f, 0.7f, fill2)
+            }
+            KilatIcon.UNLOCK -> {
+                rf.set(8f, 3.5f, 16f, 11.5f)
+                canvas.drawArc(rf, 180f, 150f, false, stroke)
+                canvas.drawLine(8f, 7.5f, 8f, 11f, stroke)
+                rf.set(5.5f, 10.5f, 18.5f, 20.5f)
+                canvas.drawRoundRect(rf, 2.2f, 2.2f, fill2)
+                canvas.drawRoundRect(rf, 2.2f, 2.2f, stroke)
+                canvas.drawCircle(12f, 15.5f, 1.5f, fill)
             }
         }
         canvas.restore()

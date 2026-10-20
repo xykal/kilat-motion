@@ -201,7 +201,7 @@ class PreviewView(context: Context) : View(context) {
         val p = project ?: return null
         for (i in p.layers.indices.reversed()) {
             val l = p.layers[i]
-            if (l.hidden) continue
+            if (l.hidden || l.locked) continue
             if (playhead < l.start || playhead > l.start + l.dur) continue
             val ev = Anim.evalLayer(l, playhead)
             val cx = ev["x"] ?: l.x
@@ -299,6 +299,7 @@ class PreviewView(context: Context) : View(context) {
                 val hMode = handleHit(event.x, event.y)
                 if (hMode != MODE_NONE) {
                     val sel = p.findLayer(selectedId) ?: return true
+                    if (sel.locked) return true
                     active = sel
                     mode = hMode
                     val ev = Anim.evalLayer(sel, playhead)
