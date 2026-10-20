@@ -298,6 +298,7 @@ class PreviewView(context: Context) : View(context) {
                 startX = px
                 startY = py
                 moved = false
+                dragMoved = false
                 val hMode = handleHit(event.x, event.y)
                 if (hMode != MODE_NONE) {
                     val sel = p.findLayer(selectedId) ?: return true
@@ -339,7 +340,7 @@ class PreviewView(context: Context) : View(context) {
             MotionEvent.ACTION_MOVE -> {
                 val l = active ?: return true
                 val (px, py) = toProject(event.x, event.y)
-                if (hypot(px - startX, py - startY) > 0.6f) moved = true
+                if (hypot(px - startX, py - startY) > 0.6f) { moved = true; dragMoved = true }
                 when (mode) {
                     MODE_MOVE -> {
                         var nx = origX + (px - startX)
