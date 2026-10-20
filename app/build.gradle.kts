@@ -11,8 +11,8 @@ android {
         applicationId = "com.kilat.motion"
         minSdk = 29
         targetSdk = 34
-        versionCode = 16
-        versionName = "1.14.0"
+        versionCode = 17
+        versionName = "1.15.0"
     }
 
     buildTypes {

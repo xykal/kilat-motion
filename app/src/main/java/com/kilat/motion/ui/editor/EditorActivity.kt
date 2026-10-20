@@ -310,6 +310,12 @@ class EditorActivity : Activity() {
         val right = LinearLayout(this)
         right.orientation = LinearLayout.HORIZONTAL
         right.gravity = Gravity.CENTER_VERTICAL or Gravity.END
+        val frameBack = KilatIconButton(this, KilatIcon.BACK, KColors.Muted, filled = false, sizeDp = 34f)
+        frameBack.setOnClickListener { stepFrame(-1) }
+        right.addView(frameBack, LinearLayout.LayoutParams(dp(34f), dp(34f)))
+        val frameNext = KilatIconButton(this, KilatIcon.NEXT, KColors.Muted, filled = false, sizeDp = 34f)
+        frameNext.setOnClickListener { stepFrame(1) }
+        right.addView(frameNext, LinearLayout.LayoutParams(dp(34f), dp(34f)))
         val skipBtn = KilatIconButton(this, KilatIcon.SKIP_START, KColors.Muted, filled = false, sizeDp = 36f)
         skipBtn.setOnClickListener {
             setPlayhead(0f)
@@ -403,7 +409,7 @@ class EditorActivity : Activity() {
             tlHead.addView(b, LinearLayout.LayoutParams(dp(31f), dp(31f)))
             return b
         }
-        quickBtn(KilatIcon.SCISSORS) { selectedLayerOrToast()?.let { splitLayerAtPlayhead(it) } }
+        quickBtn(KilatIcon.SCISSORS) { showCutSheet() }
         quickBtn(KilatIcon.COPY) { selectedLayerOrToast()?.let { duplicateLayer(it) } }
         eyeBtn = quickBtn(KilatIcon.EYE) {
             selectedLayerOrToast()?.let { l ->
@@ -965,6 +971,124 @@ class EditorActivity : Activity() {
         selectedId = copy.id
         afterChange(selectedId)
         toast("Layer diduplikat", KilatIcon.COPY)
+    }
+
+    // ---------------- potong / trim / durasi ----------------
+    private var markIn: Float? = null
+    private var markOut: Float? = null
+
+    /** Buang bagian kiri klip (dari awal sampai playhead). */
+    private fun trimLeftAt(layer: Layer) {
+        val idx = project.layers.indexOf(layer)
+        val right = Anim.splitAt(layer, playhead)
+        if (right == null) {
+            toast("Playhead harus di tengah klip", KilatIcon.SCISSORS)
+            return
+        }
+        project.layers.remove(layer)   // layer sekarang berisi bagian kiri: buang
+        project.layers.add(idx, right)
+        selectedId = right.id
+        afterChange(selectedId, openPanel = false)
+        toast("Bagian kiri dibuang", KilatIcon.SKIP_START)
+    }
+
+    /** Buang bagian kanan klip (dari playhead sampai akhir). */
+    private fun trimRightAt(layer: Layer) {
+        val tail = Anim.splitAt(layer, playhead)
+        if (tail == null) {
+            toast("Playhead harus di tengah klip", KilatIcon.SCISSORS)
+            return
+        }
+        project.layers.remove(tail)
+        selectedId = layer.id
+        afterChange(selectedId, openPanel = false)
+        toast("Bagian kanan dibuang", KilatIcon.NEXT)
+    }
+
+    /** Potong bagian tengah klip antara In dan Out. Sisa kiri dan kanan tetap ada. */
+    private fun cutInOutFrom(layer: Layer) {
+        val a = markIn
+        val b = markOut
+        if (a == null || b == null) {
+            toast("Tandai In dan Out dulu", KilatIcon.LAYER_UP)
+            return
+        }
+        val lo = min(a, b)
+        val hi = max(a, b)
+        if (hi - lo < 0.05f) {
+            toast("Area In-Out terlalu kecil", KilatIcon.LAYER_UP)
+            return
+        }
+        val idx = project.layers.indexOf(layer)
+        val mid = Anim.splitAt(layer, lo)
+        if (mid == null) {
+            toast("In harus berada di dalam klip", KilatIcon.LAYER_UP)
+            return
+        }
+        val after = Anim.splitAt(mid, hi)   // null bila Out sudah melewati akhir klip
+        project.layers.remove(mid)           // buang potongan tengah
+        if (after != null) project.layers.add(idx + 1, after)
+        markIn = null
+        markOut = null
+        selectedId = layer.id
+        afterChange(selectedId, openPanel = false)
+        toast("Area In-Out dipotong", KilatIcon.TRASH)
+    }
+
+    /** Geser playhead satu frame ke depan (dir=1) atau ke belakang (dir=-1). */
+    private fun stepFrame(dir: Int) {
+        if (playing) stopPlay()
+        val fps = project.fps.coerceAtLeast(1).toFloat()
+        val f = Math.round(playhead * fps) + dir
+        setPlayhead(f / fps)
+    }
+
+    /** Samakan durasi project dengan ujung klip paling akhir (bisa mengecil juga). */
+    private fun fitDurationToClips() {
+        val end = project.layers.maxOfOrNull { it.start + it.dur } ?: 0f
+        project.duration = max(0.5f, kotlin.math.ceil(end * 10f) / 10f)
+        setPlayhead(playhead)
+        preview.invalidate()
+        timeline.invalidate()
+        autosave()
+        toast("Durasi pas dengan klip: ${Format.time(project.duration)}", KilatIcon.RATIO)
+    }
+
+    private fun selectedLayerOrToastMember(): Layer? {
+        val l = project.findLayer(selectedId)
+        if (l == null) toast("Pilih layer dulu di timeline", KilatIcon.INFO)
+        return l
+    }
+
+    private fun showCutSheet() {
+        val inTxt = markIn?.let { Format.time(it) } ?: "belum"
+        val outTxt = markOut?.let { Format.time(it) } ?: "belum"
+        val items = listOf(
+            KilatSheet.Item("Potong di playhead", "Pisah klip jadi dua bagian", KilatIcon.SCISSORS, KColors.Accent),
+            KilatSheet.Item("Buang kiri playhead", "Hapus bagian klip di kiri playhead", KilatIcon.SKIP_START, KColors.Sky),
+            KilatSheet.Item("Buang kanan playhead", "Hapus bagian klip di kanan playhead", KilatIcon.NEXT, KColors.Sky),
+            KilatSheet.Item("Tandai In di playhead", "In sekarang: $inTxt", KilatIcon.LAYER_UP, KColors.Amber),
+            KilatSheet.Item("Tandai Out di playhead", "Out sekarang: $outTxt", KilatIcon.LAYER_DOWN, KColors.Amber),
+            KilatSheet.Item("Potong area In-Out", "Buang bagian tengah klip di antara In dan Out", KilatIcon.TRASH, KColors.Rose),
+            KilatSheet.Item("Durasi pas ke klip", "Samakan durasi project dengan ujung klip terakhir", KilatIcon.RATIO, KColors.Green)
+        )
+        KilatSheet.showList(this, "Potong & trim", items) { which ->
+            when (which) {
+                0 -> selectedLayerOrToastMember()?.let { splitLayerAtPlayhead(it) }
+                1 -> selectedLayerOrToastMember()?.let { trimLeftAt(it) }
+                2 -> selectedLayerOrToastMember()?.let { trimRightAt(it) }
+                3 -> {
+                    markIn = playhead
+                    toast("In di ${Format.time(playhead)}", KilatIcon.LAYER_UP)
+                }
+                4 -> {
+                    markOut = playhead
+                    toast("Out di ${Format.time(playhead)}", KilatIcon.LAYER_DOWN)
+                }
+                5 -> selectedLayerOrToastMember()?.let { cutInOutFrom(it) }
+                6 -> fitDurationToClips()
+            }
+        }
     }
 
     private fun splitLayerAtPlayhead(layer: Layer) {
