@@ -13,6 +13,7 @@ import com.kilat.motion.ui.theme.KColors
 import com.kilat.motion.ui.theme.dp
 import com.kilat.motion.ui.theme.dpf
 import com.kilat.motion.ui.theme.kText
+import com.kilat.motion.ui.theme.navBottomInset
 import com.kilat.motion.ui.theme.roundedRect
 import com.kilat.motion.ui.theme.roundedTop
 
@@ -71,7 +72,7 @@ object KilatSheet {
         val sheet = LinearLayout(activity)
         sheet.orientation = LinearLayout.VERTICAL
         sheet.background = roundedTop(KColors.BgTop, activity.dpf(22f))
-        sheet.setPadding(activity.dp(18f), activity.dp(10f), activity.dp(18f), activity.dp(20f))
+        sheet.setPadding(activity.dp(18f), activity.dp(10f), activity.dp(18f), activity.dp(20f) + navBottomInset(activity))
 
         // pill handle
         val strip = View(activity)

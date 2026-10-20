@@ -11,6 +11,7 @@ import com.kilat.motion.data.Templates
 import com.kilat.motion.core.audio.VideoAudio
 import com.kilat.motion.ui.picker.MediaPickerActivity
 import com.kilat.motion.ui.export.ExportPreviewActivity
+import com.kilat.motion.ui.export.ExportSettingsSheet
 
 import android.app.Activity
 import android.content.Intent
@@ -1394,28 +1395,13 @@ class EditorActivity : Activity() {
     // export
     // =====================================================================
     private fun showExportDialog() {
-        // resolusi x frame rate. 120fps & 4K butuh encoder yang kuat; kalau HP menolak,
-        // runExport otomatis turun ke pengaturan yang didukung dan memberi tahu user.
-        val opts = listOf(
-            Triple(1280, 30, "720p · 30 fps" to "Ringan, cepat dirender, file kecil"),
-            Triple(1920, 30, "1080p · 30 fps" to "Full HD standar sosmed"),
-            Triple(1920, 60, "1080p · 60 fps" to "Gerakan halus, cocok buat JJ & beat cepat"),
-            Triple(1920, 120, "1080p · 120 fps" to "Slow-motion mulus, butuh HP kuat"),
-            Triple(3840, 30, "4K · 30 fps" to "Ultra HD, render lama"),
-            Triple(3840, 60, "4K · 60 fps" to "Ultra HD halus, butuh encoder 4K"),
-            Triple(3840, 120, "4K · 120 fps" to "Paling berat, hanya HP flagship")
-        )
-        val tints = intArrayOf(KColors.Sky, KColors.Violet, KColors.Accent, KColors.Amber, KColors.Rose, KColors.Rose, KColors.Rose)
-        val items = opts.mapIndexed { i, o ->
-            KilatSheet.Item(o.third.first, o.third.second, KilatIcon.FILM, tints[i])
-        }
-        KilatSheet.showList(this, "Export MP4", items) { which ->
-            val o = opts[which]
-            runExport(o.first, o.second)
+        val p = project
+        ExportSettingsSheet.show(this, p.width, p.height, p.duration) { r ->
+            runExport(r.longSide, r.fps, r.mbps)
         }
     }
 
-    private fun runExport(longSide: Int, fps: Int = 30) {
+    private fun runExport(longSide: Int, fps: Int = 30, mbps: Int = 0) {
         if (playing) stopPlay()
         musicPlayer.sync(project.music, playhead, false)
         val p = project
@@ -1426,7 +1412,7 @@ class EditorActivity : Activity() {
             fun progressFn(f: Float) {
                 runOnUiThread { if (!isFinishing) handle.setProgress(f, "Merender frame video...") }
             }
-            var result = Exporter.exportVideo(ctx, p, longSide, fps) { f -> progressFn(f) }
+            var result = Exporter.exportVideo(ctx, p, longSide, fps, mbps) { f -> progressFn(f) }
             // fallback otomatis: beberapa HP tidak mendukung encode 1080p tertentu
             if (result.error != null && (longSide > 1280 || fps > 30)) {
                 runOnUiThread { if (!isFinishing) handle.setProgress(0f, "Setelan tidak didukung HP ini, turun ke 720p 30fps...") }
@@ -1440,7 +1426,7 @@ class EditorActivity : Activity() {
                 if (res.error != null || f == null) {
                     KilatSheet.showMessage(
                         this, "Export gagal",
-                        "${res.error ?: "File tidak valid"}\n\nCoba resolusi lebih rendah atau pastikan penyimpanan cukup.",
+                        "${res.error ?: "File tidak valid"}\n\nCoba resolusi, fps, atau bitrate yang lebih rendah, lalu pastikan penyimpanan cukup.",
                         icon = KilatIcon.INFO
                     )
                 } else {

@@ -441,7 +441,8 @@ object Renderer {
     }
 
     private fun blurredBitmap(layer: Layer, src: Bitmap, radius: Float): Bitmap {
-        val key = layer.id + "_" + radius.toInt()
+        // kunci ikut ukuran & generasi pixel: blur harus ikut berubah saat konten/keyframe/resolusi berubah
+        val key = layer.id + "_" + radius.toInt() + "_" + src.width + "x" + src.height + "_" + src.generationId
         blurCache[key]?.let { if (!it.isRecycled) return it }
         if (src.width < 4 || src.height < 4) return src
         val factor = (1f + radius / 3f).coerceIn(1f, 24f)

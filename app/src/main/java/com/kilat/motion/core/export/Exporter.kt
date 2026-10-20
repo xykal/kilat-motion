@@ -83,6 +83,7 @@ object Exporter {
         project: Project,
         longSide: Int,
         fps: Int,
+        bitrateMbps: Int = 0,
         onProgress: (Float) -> Unit
     ): VideoResult {
         var codec: MediaCodec? = null
@@ -105,7 +106,13 @@ object Exporter {
             val frameRate = fps.coerceIn(15, 120)
             val totalFrames = max(1, (project.duration * frameRate).roundToInt())
             // bitrate mengikuti luas frame x fps (0.10 bit/pixel/frame), dibatasi aman untuk AVC
-            val bitrate = (outW.toLong() * outH * frameRate * 0.10).toLong().coerceIn(4_000_000L, 80_000_000L).toInt()
+            // bitrate manual (Mbps) dari pengaturan export; 0 = otomatis dari luas frame x fps
+            val bitrate = if (bitrateMbps > 0) {
+                bitrateMbps.coerceIn(1, 80) * 1_000_000
+            } else {
+                (outW.toLong() * outH * frameRate * 0.10).toLong().coerceIn(4_000_000L, 80_000_000L).toInt()
+            }
+            Renderer.invalidateBlurCache()
 
             tmp = File(context.cacheDir, "kilat_export_${System.currentTimeMillis()}.mp4")
             if (tmp.exists()) tmp.delete()

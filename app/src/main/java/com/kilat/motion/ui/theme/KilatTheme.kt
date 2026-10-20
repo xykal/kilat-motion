@@ -119,3 +119,15 @@ fun View.pressEffect(scaleTo: Float = 0.96f) {
         false
     }
 }
+
+
+/** Tinggi navigasi sistem di bagian bawah (tombol/gesture HP). Dipakai supaya sheet & toast tidak ketimpa. */
+fun navBottomInset(activity: android.app.Activity): Int {
+    val ins = activity.window.decorView.rootWindowInsets ?: return 0
+    return if (android.os.Build.VERSION.SDK_INT >= 30) {
+        ins.getInsets(android.view.WindowInsets.Type.navigationBars()).bottom
+    } else {
+        @Suppress("DEPRECATION")
+        ins.systemWindowInsetBottom
+    }
+}

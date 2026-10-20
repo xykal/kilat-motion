@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import com.kilat.motion.ui.theme.navBottomInset
 import com.kilat.motion.ui.theme.KColors
 import com.kilat.motion.ui.theme.dp
 import com.kilat.motion.ui.theme.dpf
@@ -46,7 +47,7 @@ object KilatToast {
 
         val lp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-        lp.bottomMargin = activity.dp(92f)
+        lp.bottomMargin = activity.dp(92f) + navBottomInset(activity)
         pill.layoutParams = lp
         pill.alpha = 0f
         pill.translationY = activity.dpf(14f)

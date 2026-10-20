@@ -7,6 +7,23 @@ Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK 
 
 ---
 
+## Baru di v1.8.0 — Pengaturan Export Lengkap, Fix Overlay Navigasi, Logo Baru
+
+- **Pengaturan export**: pilih resolusi (720p / 1080p / 1440p / 4K), frame rate
+  (24 / 30 / 48 / 60 / 120 fps), dan **bitrate manual dalam Mbps** (1–80). Ada rekomendasi
+  bitrate dan perkiraan ukuran file sebelum render.
+- **Efek ikut ke export**: cache blur sekarang dikunci ke ukuran dan generasi pixel konten,
+  dan dibersihkan tiap export. Sebelumnya blur bisa tertahan di frame pertama dan salah skala.
+- **Sheet & toast tidak lagi ketimpa tombol navigasi HP**: tinggi navigasi sistem dihitung
+  saat tampil.
+- **Logo baru**: ring lensa, bolt teal dengan bayangan gerak violet, timeline keyframe,
+  dan sparkle. Nama app tetap KILAT Motion.
+
+**Belum masuk versi ini:** migrasi UI ke library, akun Google, backend Cloudflare Worker,
+video layer, transisi, outline/node editing vektor, template baru, dan AI assistant.
+
+---
+
 ## Baru di v1.7.0 — Preview Export, Bentuk & Kurva Lebih Lengkap
 
 - **Preview hasil export**: setelah render, video langsung bisa diputar di layar preview,
