@@ -44,6 +44,36 @@ val FONT_LABELS = mapOf(
     "mono" to "Mono", "condensed" to "Condensed", "casual" to "Casual", "cursive" to "Cursive"
 )
 
+/**
+ * Efek per layer (stack, urutan = urutan tampil). Parameter umum:
+ * [amount] 0..1 = kekuatan, [size] 0..1 = ukuran/jarak, [color] = warna bila relevan.
+ */
+class LayerEffect(
+    var type: String = "vignette",
+    var amount: Float = 0.5f,
+    var size: Float = 0.5f,
+    var color: Int = 0xFF000000.toInt(),
+    var enabled: Boolean = true
+) {
+    fun copy(): LayerEffect = LayerEffect(type, amount, size, color, enabled)
+}
+
+/** Jenis efek yang didukung renderer. */
+val EFFECT_TYPES = listOf(
+    "vignette", "scanlines", "grain", "lightleak", "tint", "glitch", "rgbsplit"
+)
+val EFFECT_LABELS = mapOf(
+    "vignette" to "Vignette",
+    "scanlines" to "Scanlines",
+    "grain" to "Film grain",
+    "lightleak" to "Light leak",
+    "tint" to "Tint warna",
+    "glitch" to "Glitch slice",
+    "rgbsplit" to "RGB split"
+)
+/** Efek yang memakai warna. */
+val EFFECT_USES_COLOR = setOf("vignette", "lightleak", "tint")
+
 class Keyframe(var t: Float = 0f, var v: Float = 0f, var ease: String = "easeOut")
 
 class Channel(val keys: MutableList<Keyframe> = ArrayList())
@@ -137,6 +167,8 @@ class Layer {
     var fxGlow: Float = 0f
     var glowColor: Int = 0xFF2EE6C0.toInt()
     var blend: String = "normal"
+    /** Stack efek (renderer menerapkan sesuai urutan). */
+    val effects: MutableList<LayerEffect> = ArrayList()
 
     // animation channels: propKey -> Channel
     val channels: MutableMap<String, Channel> = LinkedHashMap()
@@ -310,6 +342,7 @@ class Layer {
             for (kf in ch.keys) n.keys.add(Keyframe(kf.t, kf.v, kf.ease))
             c.channels[k] = n
         }
+        for (e in effects) c.effects.add(e.copy())
         return c
     }
 }

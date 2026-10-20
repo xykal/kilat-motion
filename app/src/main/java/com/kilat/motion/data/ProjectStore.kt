@@ -131,6 +131,17 @@ object ProjectStore {
         o.put("fxGlow", l.fxGlow.toDouble())
         o.put("glowColor", Format.color(l.glowColor))
         o.put("blend", l.blend)
+        val fxArr = JSONArray()
+        for (e in l.effects) {
+            val eo = JSONObject()
+            eo.put("type", e.type)
+            eo.put("amount", e.amount.toDouble())
+            eo.put("size", e.size.toDouble())
+            eo.put("color", Format.color(e.color))
+            eo.put("enabled", e.enabled)
+            fxArr.put(eo)
+        }
+        o.put("effects", fxArr)
         o.put("scaleX", l.scaleX.toDouble())
         o.put("scaleY", l.scaleY.toDouble())
         o.put("skewX", l.skewX.toDouble())
@@ -242,6 +253,23 @@ object ProjectStore {
             l.fxGlow = lo.optDouble("fxGlow", 0.0).toFloat()
             l.glowColor = Format.parseColor(lo.optString("glowColor", "#FF2EE6C0"), 0xFF2EE6C0.toInt())
             l.blend = lo.optString("blend", "normal")
+            val efArr = lo.optJSONArray("effects")
+            if (efArr != null) {
+                for (j in 0 until efArr.length()) {
+                    val eo = efArr.optJSONObject(j) ?: continue
+                    val type = eo.optString("type", "")
+                    if (type !in EFFECT_TYPES) continue
+                    l.effects.add(
+                        LayerEffect(
+                            type = type,
+                            amount = eo.optDouble("amount", 0.5).toFloat().coerceIn(0f, 1f),
+                            size = eo.optDouble("size", 0.5).toFloat().coerceIn(0f, 1f),
+                            color = Format.parseColor(eo.optString("color", "#FF000000"), 0xFF000000.toInt()),
+                            enabled = eo.optBoolean("enabled", true)
+                        )
+                    )
+                }
+            }
             l.scaleX = lo.optDouble("scaleX", 1.0).toFloat()
             l.scaleY = lo.optDouble("scaleY", 1.0).toFloat()
             l.skewX = lo.optDouble("skewX", 0.0).toFloat()

@@ -5,6 +5,9 @@ import com.kilat.motion.core.animation.Anim
 import com.kilat.motion.core.vector.SvgPath
 
 import android.graphics.Bitmap
+import android.graphics.Shader
+import android.graphics.RadialGradient
+import android.graphics.BitmapShader
 import android.graphics.BlurMaskFilter
 import android.graphics.Camera
 import android.graphics.Matrix
@@ -21,6 +24,8 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import java.io.File
 import kotlin.math.abs
+import kotlin.math.floor
+import kotlin.math.hypot
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -31,6 +36,9 @@ import kotlin.math.sqrt
  * Renderer project ke Canvas apa pun: preview (View) maupun export (MediaCodec surface).
  * Semua koordinat dalam satuan project (mis. 1080x1920); canvas di-scale oleh pemanggil.
  */
+/** Efek yang ditimpa di atas konten (SRC_ATOP, hanya pada piksel konten). */
+private val OVERLAY_EFFECTS = setOf("vignette", "scanlines", "grain", "lightleak")
+
 object Renderer {
 
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -45,6 +53,10 @@ object Renderer {
     private val rectF = RectF()
     private val blurCache = LinkedHashMap<String, Bitmap>()
     private val typefaceCache = HashMap<String, Typeface>()
+    private val fxOverlay = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val fxLayerPaint = Paint()
+    private val fxBounds = RectF()
+    private var grainTile: Bitmap? = null
 
     private fun typefaceFor(key: String): Typeface = typefaceCache.getOrPut(key) {
         try {
@@ -216,11 +228,177 @@ object Renderer {
             if (layer.maskInvert) canvas.clipOutPath(maskPath) else canvas.clipPath(maskPath)
         }
 
-        drawContent(canvas, layer, fx, fillPaint, strokePaint, isGlow = false)
+        drawWithEffects(canvas, layer, fx, t, fillPaint, strokePaint)
         canvas.restore()
     }
 
+    // ---------------- EFEK (stack per layer) ----------------
+
+    /**
+     * Terapkan stack efek di ruang lokal layer. Efek yang butuh offscreen
+     * (tint, rgb split, overlay) memakai saveLayer. Glitch cukup memotong
+     * konten per irisan horizontal. Urutan tampil = urutan di [Layer.effects].
+     */
+    private fun drawWithEffects(canvas: Canvas, layer: Layer, fx: HashMap<String, Float>, t: Float, fp: Paint, sp: Paint) {
+        val active = layer.effects.filter { it.enabled && it.amount > 0.001f }
+        if (active.isEmpty()) {
+            drawContent(canvas, layer, fx, fp, sp, isGlow = false)
+            return
+        }
+        val (cw, ch) = contentDims(layer)
+        val pad = max(cw, ch) * 0.5f + 60f
+        fxBounds.set(-cw / 2f - pad, -ch / 2f - pad, cw / 2f + pad, ch / 2f + pad)
+
+        val glitch = active.firstOrNull { it.type == "glitch" }
+        val rgb = active.firstOrNull { it.type == "rgbsplit" }
+        val tint = active.firstOrNull { it.type == "tint" }
+        val overlays = active.filter { it.type in OVERLAY_EFFECTS }
+        val needsLayer = rgb != null || tint != null || overlays.isNotEmpty()
+
+        if (needsLayer) {
+            // Mode blend & alpha layer dipindah ke saveLayer supaya tetap berlaku.
+            fxLayerPaint.reset()
+            fxLayerPaint.alpha = fp.alpha
+            fxLayerPaint.xfermode = fp.xfermode
+            fp.alpha = 255
+            sp.alpha = 255
+            fp.xfermode = null
+            canvas.saveLayer(fxBounds, fxLayerPaint)
+        }
+
+        when {
+            glitch != null -> drawGlitch(canvas, layer, fx, fp, sp, glitch, t, cw)
+            rgb != null -> drawRgbSplit(canvas, layer, fx, fp, sp, rgb)
+            else -> drawContent(canvas, layer, fx, fp, sp, isGlow = false)
+        }
+
+        if (tint != null) {
+            fxOverlay.reset()
+            fxOverlay.isAntiAlias = true
+            fxOverlay.color = withAlpha(tint.color, (tint.amount * 255f).toInt())
+            fxOverlay.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
+            canvas.drawRect(fxBounds, fxOverlay)
+        }
+        for (e in overlays) drawOverlay(canvas, e, cw, ch, t)
+
+        if (needsLayer) canvas.restore()
+    }
+
+    /** Irisan horizontal yang digeser acak, berubah 12 kali per detik. */
+    private fun drawGlitch(canvas: Canvas, layer: Layer, fx: HashMap<String, Float>, fp: Paint, sp: Paint, e: LayerEffect, t: Float, cw: Float) {
+        val bands = (3f + e.size * 9f).toInt().coerceIn(3, 12)
+        val seed = floor(t * 12f).toInt()
+        val h = fxBounds.height() / bands
+        val maxShift = e.amount * 0.14f * cw
+        for (i in 0 until bands) {
+            val top = fxBounds.top + i * h
+            val pick = hash01(seed * 31 + i)
+            val dx = if (pick < 0.4f) 0f else (hash01(seed * 17 + i * 7 + 3) * 2f - 1f) * maxShift
+            canvas.save()
+            canvas.clipRect(fxBounds.left, top, fxBounds.right, top + h + 0.5f)
+            canvas.translate(dx, 0f)
+            drawContent(canvas, layer, fx, fp, sp, isGlow = false)
+            canvas.restore()
+        }
+    }
+
+    /** Pisah kanal R/G/B dengan offset horizontal, digabung aditif. */
+    private fun drawRgbSplit(canvas: Canvas, layer: Layer, fx: HashMap<String, Float>, fp: Paint, sp: Paint, e: LayerEffect) {
+        val d = e.amount * 36f * (0.5f + e.size)
+        val channels = listOf(
+            floatArrayOf(1f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 1f, 0f) to -d,
+            floatArrayOf(0f, 0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 1f, 0f) to 0f,
+            floatArrayOf(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 0f, 1f, 0f) to d
+        )
+        for ((m, dx) in channels) {
+            val pf = Paint(fp)
+            pf.colorFilter = ColorMatrixColorFilter(ColorMatrix(m))
+            pf.xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+            pf.alpha = 255
+            val ps = Paint(sp)
+            ps.colorFilter = pf.colorFilter
+            ps.xfermode = pf.xfermode
+            ps.alpha = 255
+            canvas.save()
+            canvas.translate(dx, 0f)
+            drawContent(canvas, layer, fx, pf, ps, isGlow = false)
+            canvas.restore()
+        }
+    }
+
+    private fun drawOverlay(canvas: Canvas, e: LayerEffect, cw: Float, ch: Float, t: Float) {
+        fxOverlay.reset()
+        fxOverlay.isAntiAlias = true
+        fxOverlay.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
+        val a = (e.amount * 255f).toInt().coerceIn(0, 255)
+        when (e.type) {
+            "vignette" -> {
+                val r = max(1f, hypot(cw, ch) / 2f * (0.35f + 0.65f * (1f - e.size)))
+                fxOverlay.shader = RadialGradient(
+                    0f, 0f, r,
+                    intArrayOf(withAlpha(e.color, 0), withAlpha(e.color, a)),
+                    floatArrayOf(0.55f, 1f), Shader.TileMode.CLAMP
+                )
+                canvas.drawRect(fxBounds, fxOverlay)
+            }
+            "lightleak" -> {
+                val cx = -cw / 2f + e.size * cw
+                val cy = -ch / 2f
+                fxOverlay.shader = RadialGradient(
+                    cx, cy, max(cw, ch) * 0.9f,
+                    intArrayOf(withAlpha(e.color, a), withAlpha(e.color, 0)),
+                    floatArrayOf(0f, 1f), Shader.TileMode.CLAMP
+                )
+                canvas.drawRect(fxBounds, fxOverlay)
+            }
+            "scanlines" -> {
+                val step = 4f + e.size * 16f
+                val thick = step * 0.45f
+                fxOverlay.color = withAlpha(0xFF000000.toInt(), a)
+                var y = fxBounds.top
+                while (y < fxBounds.bottom) {
+                    canvas.drawRect(fxBounds.left, y, fxBounds.right, min(fxBounds.bottom, y + thick), fxOverlay)
+                    y += step
+                }
+            }
+            "grain" -> {
+                val tile = grainBitmap()
+                val shader = android.graphics.BitmapShader(tile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+                val seed = floor(t * 24f).toInt()
+                val m = Matrix()
+                m.setTranslate(hash01(seed) * tile.width, hash01(seed + 7) * tile.height)
+                shader.setLocalMatrix(m)
+                fxOverlay.shader = shader
+                fxOverlay.alpha = a
+                canvas.drawRect(fxBounds, fxOverlay)
+            }
+        }
+    }
+
+    private fun grainBitmap(): Bitmap {
+        grainTile?.let { return it }
+        val n = 96
+        val b = Bitmap.createBitmap(n, n, Bitmap.Config.ARGB_8888)
+        for (y in 0 until n) for (x in 0 until n) {
+            val v = (hash01(x * 97 + y * 131 + 5) * 255f).toInt()
+            b.setPixel(x, y, Color.argb(70, v, v, v))
+        }
+        grainTile = b
+        return b
+    }
+
+    private fun withAlpha(color: Int, a: Int): Int = (color and 0x00FFFFFF) or (a.coerceIn(0, 255) shl 24)
+
+    /** Hash deterministik ke 0..1 (dipakai efek acak yang stabil per frame). */
+    private fun hash01(n: Int): Float {
+        var x = n * 374761393 + 668265263
+        x = (x xor (x ushr 13)) * 1274126177
+        x = x xor (x ushr 16)
+        return (x and 0x7fffffff).toFloat() / 2147483647f
+    }
+
     private fun drawContent(canvas: Canvas, layer: Layer, fx: HashMap<String, Float>, fp: Paint, sp: Paint, isGlow: Boolean) {
+
         when (layer.kind) {
             KIND_TEXT -> drawTextLayer(canvas, layer, fx, fp, sp, isGlow)
             KIND_SHAPE -> drawShapeLayer(canvas, layer, fp, sp, isGlow)

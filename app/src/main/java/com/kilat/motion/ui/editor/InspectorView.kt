@@ -406,7 +406,11 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val presetIcons = mapOf(
             "fade" to KilatIcon.EYE, "slideUp" to KilatIcon.LAYER_UP, "zoom" to KilatIcon.PLUS,
             "spin" to KilatIcon.LOOP, "bounce" to KilatIcon.CHEVRON_DOWN, "typing" to KilatIcon.TEXT,
-            "kenBurns" to KilatIcon.IMAGE, "glitch" to KilatIcon.WAND, "jedag" to KilatIcon.BOLT
+            "kenBurns" to KilatIcon.IMAGE, "glitch" to KilatIcon.WAND, "jedag" to KilatIcon.BOLT,
+            "slideDown" to KilatIcon.CHEVRON_DOWN, "slideLeft" to KilatIcon.BACK, "zoomOut" to KilatIcon.RATIO,
+            "popIn" to KilatIcon.PLUS, "rotateIn" to KilatIcon.LOOP, "flipX" to KilatIcon.TRANSFORM,
+            "blurIn" to KilatIcon.EYE, "shake" to KilatIcon.CROSSHAIR, "wobble" to KilatIcon.MAGNET,
+            "pulse" to KilatIcon.SPARK, "flash" to KilatIcon.BOLT, "fadeOut" to KilatIcon.EYE_OFF
         )
         for (id in Anim.PRESETS) {
             if (id == "typing" && l.kind != KIND_TEXT) continue
@@ -519,6 +523,9 @@ class InspectorView(context: Context) : LinearLayout(context) {
         blendRow.addView(blendDrop, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         fx.addView(blendRow, lpBlend)
         efekCat.addView(fx)
+        val stackCard = card()
+        buildEffectStack(l, stackCard)
+        efekCat.addView(stackCard)
         buildColorCard(l, warnaCat)
         buildStyleCard(l, gayaCat)
         build3DCard(l, d3Cat)
@@ -745,6 +752,88 @@ class InspectorView(context: Context) : LinearLayout(context) {
 
 
     // ---------------- slider statis (bukan keyframe) ----------------
+    private fun defaultEffectColor(type: String): Int = when (type) {
+        "lightleak" -> 0xFFFF8A3D.toInt()
+        "tint" -> 0xFF2EE6C0.toInt()
+        else -> 0xFF000000.toInt()
+    }
+
+    /** Stack efek: deretan chip untuk menambah, lalu kartu per efek (urutan = urutan tampil). */
+    private fun buildEffectStack(l: Layer, parent: LinearLayout) {
+        parent.addView(header("Stack efek"))
+        val addScroll = android.widget.HorizontalScrollView(context)
+        addScroll.isHorizontalScrollBarEnabled = false
+        val addRow = LinearLayout(context)
+        addRow.orientation = HORIZONTAL
+        for (type in EFFECT_TYPES) {
+            val chip = KilatChip(context, "+ " + (EFFECT_LABELS[type] ?: type))
+            chip.setOnClickListener {
+                l.effects.add(LayerEffect(type = type, amount = 0.5f, size = 0.5f, color = defaultEffectColor(type)))
+                listener?.onEdited(true)
+                rebind()
+            }
+            val lpChip = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+            lpChip.rightMargin = dp(6f).toInt()
+            addRow.addView(chip, lpChip)
+        }
+        addScroll.addView(addRow)
+        parent.addView(addScroll, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+
+        if (l.effects.isEmpty()) {
+            val hint = labelTv("Belum ada efek. Ketuk salah satu di atas untuk menambah.", 11f, cDim)
+            val lpHint = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            lpHint.topMargin = dp(8f).toInt()
+            parent.addView(hint, lpHint)
+            return
+        }
+
+        for ((idx, e) in l.effects.withIndex()) {
+            val box = LinearLayout(context)
+            box.orientation = VERTICAL
+            box.background = roundRectBg(0xFF11141C.toInt(), dp(12f))
+            box.setPadding(dp(10f).toInt(), dp(8f).toInt(), dp(10f).toInt(), dp(10f).toInt())
+
+            val head = LinearLayout(context)
+            head.orientation = HORIZONTAL
+            head.gravity = Gravity.CENTER_VERTICAL
+            head.addView(labelTv("${idx + 1}. ${EFFECT_LABELS[e.type] ?: e.type}", 12f, cText), LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+            val sw = KilatSwitch(context)
+            sw.checked = e.enabled
+            sw.onToggle = { v ->
+                e.enabled = v
+                listener?.onEdited(true)
+            }
+            head.addView(sw, LayoutParams(dp(48f).toInt(), dp(28f).toInt()))
+            val del = miniIconBtn(KilatIcon.TRASH, 0xFFFF5C7A.toInt()) {
+                l.effects.remove(e)
+                listener?.onEdited(true)
+                rebind()
+            }
+            head.addView(del, LayoutParams(dp(34f).toInt(), dp(34f).toInt()))
+            box.addView(head, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+
+            staticSlider(box, "Kekuatan", e.amount * 100f, 100, 1f) { v ->
+                e.amount = (v / 100f).coerceIn(0f, 1f)
+            }
+            staticSlider(box, "Ukuran", e.size * 100f, 100, 1f) { v ->
+                e.size = (v / 100f).coerceIn(0f, 1f)
+            }
+            if (e.type in EFFECT_USES_COLOR) {
+                val swRow = swatchRow(e.color) { c ->
+                    e.color = c
+                    listener?.onEdited(true)
+                }
+                val lpSw = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+                lpSw.topMargin = dp(6f).toInt()
+                box.addView(swRow, lpSw)
+            }
+
+            val lpBox = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            lpBox.topMargin = dp(8f).toInt()
+            parent.addView(box, lpBox)
+        }
+    }
+
     private fun staticSlider(parent: LinearLayout, label: String, value: Float, maxInt: Int, div: Float, minV: Float = 0f, onChange: (Float) -> Unit) {
         val row = LinearLayout(context)
         row.orientation = HORIZONTAL

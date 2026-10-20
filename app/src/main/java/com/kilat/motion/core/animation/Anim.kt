@@ -231,10 +231,18 @@ object Anim {
     }
 
     // ---------------- preset ----------------
-    val PRESETS = listOf("fade", "slideUp", "zoom", "spin", "bounce", "typing", "kenBurns", "glitch", "jedag")
+    val PRESETS = listOf(
+        "fade", "slideUp", "slideDown", "slideLeft", "zoom", "zoomOut", "popIn", "spin", "rotateIn",
+        "flipX", "bounce", "blurIn", "shake", "wobble", "pulse", "flash", "fadeOut",
+        "typing", "kenBurns", "glitch", "jedag"
+    )
     val PRESET_LABELS = mapOf(
-        "fade" to "Fade", "slideUp" to "Slide Up", "zoom" to "Zoom Pop", "spin" to "Spin In",
-        "bounce" to "Bounce In", "typing" to "Typing", "kenBurns" to "Ken Burns", "glitch" to "Glitch", "jedag" to "JJ Zoom"
+        "fade" to "Fade", "slideUp" to "Slide Up", "slideDown" to "Slide Down", "slideLeft" to "Slide Kiri",
+        "zoom" to "Zoom Pop", "zoomOut" to "Zoom Out", "popIn" to "Pop In", "spin" to "Spin In",
+        "rotateIn" to "Rotate In", "flipX" to "Flip", "bounce" to "Bounce In", "blurIn" to "Blur In",
+        "shake" to "Shake", "wobble" to "Wobble", "pulse" to "Pulse", "flash" to "Flash",
+        "fadeOut" to "Fade Out", "typing" to "Typing", "kenBurns" to "Ken Burns", "glitch" to "Glitch",
+        "jedag" to "JJ Zoom"
     )
 
     /** Terapkan preset di sekitar playhead (kecuali kenBurns di seluruh durasi layer). */
@@ -327,6 +335,100 @@ object Anim {
                 setKey(layer, "x", ms(a + 0.05f), layer.x - 10f, "linear")
                 setKey(layer, "x", ms(a + 0.11f), layer.x + 5f, "linear")
                 setKey(layer, "x", ms(a + 0.2f), layer.x, "easeOut")
+            }
+            "slideLeft" -> {
+                reset("alpha", "x")
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", b, layer.alpha, "easeOut")
+                setKey(layer, "x", a, layer.x + 260f, "easeOut")
+                setKey(layer, "x", b, layer.x, "easeOut")
+            }
+            "slideDown" -> {
+                reset("alpha", "y")
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", b, layer.alpha, "easeOut")
+                setKey(layer, "y", a, layer.y - 200f, "easeOut")
+                setKey(layer, "y", b, layer.y, "easeOut")
+            }
+            "zoomOut" -> {
+                reset("scale", "alpha")
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", min(b, a + 0.15f), layer.alpha, "linear")
+                setKey(layer, "scale", a, layer.scale * 1.35f, "easeOut")
+                setKey(layer, "scale", b, layer.scale, "easeOut")
+            }
+            "popIn" -> {
+                reset("scale", "alpha")
+                setKey(layer, "alpha", a, 0f, "linear")
+                setKey(layer, "alpha", min(b, a + 0.08f), layer.alpha, "linear")
+                setKey(layer, "scale", a, 0.05f, "easeOut")
+                setKey(layer, "scale", min(b, a + 0.22f), layer.scale * 1.12f, "easeOut")
+                setKey(layer, "scale", b, layer.scale, "easeOut")
+            }
+            "rotateIn" -> {
+                reset("rot", "scale", "alpha")
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", min(b, a + 0.2f), layer.alpha, "linear")
+                setKey(layer, "rot", a, layer.rot - 120f, "back")
+                setKey(layer, "rot", b, layer.rot, "easeOut")
+                setKey(layer, "scale", a, layer.scale * 0.4f, "back")
+                setKey(layer, "scale", b, layer.scale, "easeOut")
+            }
+            "flipX" -> {
+                reset("rotX", "alpha")
+                setKey(layer, "alpha", a, 0f, "linear")
+                setKey(layer, "alpha", min(b, a + 0.12f), layer.alpha, "linear")
+                setKey(layer, "rotX", a, 80f, "easeOut")
+                setKey(layer, "rotX", b, layer.rotX, "easeOut")
+            }
+            "blurIn" -> {
+                reset("fx.blur", "alpha")
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", min(b, a + 0.25f), layer.alpha, "linear")
+                setKey(layer, "fx.blur", a, 22f, "easeOut")
+                setKey(layer, "fx.blur", b, layer.fxBlur, "easeOut")
+            }
+            "shake" -> {
+                // Goyang horizontal yang meluruh: amplitudo turun 8 langkah.
+                reset("x", "y")
+                setKey(layer, "x", a, layer.x, "linear")
+                for (i in 1..8) {
+                    val amp = 22f * (1f - i / 9f) * (if (i % 2 == 1) 1f else -1f)
+                    setKey(layer, "x", round((a + 0.035f * i) * 1000f) / 1000f, layer.x + amp, "linear")
+                }
+                setKey(layer, "x", round((a + 0.035f * 9) * 1000f) / 1000f, layer.x, "easeOut")
+            }
+            "wobble" -> {
+                reset("rot")
+                setKey(layer, "rot", a, layer.rot, "linear")
+                val swings = listOf(10f, -7f, 4f, -2f)
+                for ((i, sw) in swings.withIndex()) {
+                    setKey(layer, "rot", round((a + 0.09f * (i + 1)) * 1000f) / 1000f, layer.rot + sw, "easeOut")
+                }
+                setKey(layer, "rot", round((a + 0.09f * 5) * 1000f) / 1000f, layer.rot, "easeOut")
+            }
+            "pulse" -> {
+                // Denyut 3 kali, tiap 0.25 detik (ketukan).
+                reset("scale")
+                setKey(layer, "scale", a, layer.scale, "linear")
+                for (i in 0 until 3) {
+                    val tu = round((a + 0.25f * i + 0.1f) * 1000f) / 1000f
+                    val td = round((a + 0.25f * i + 0.25f) * 1000f) / 1000f
+                    setKey(layer, "scale", tu, layer.scale * 1.08f, "easeOut")
+                    setKey(layer, "scale", td, layer.scale, "easeOut")
+                }
+            }
+            "flash" -> {
+                // Kilatan terang lalu kembali ke kecerahan normal.
+                reset("fx.brightness")
+                setKey(layer, "fx.brightness", a, 240f, "easeOut")
+                setKey(layer, "fx.brightness", b, layer.fxBright, "easeOut")
+            }
+            "fadeOut" -> {
+                reset("alpha")
+                val fo = max(start, end - 0.5f)
+                setKey(layer, "alpha", fo, layer.alpha, "linear")
+                setKey(layer, "alpha", end, 0f, "easeOut")
             }
             else -> return false
         }
