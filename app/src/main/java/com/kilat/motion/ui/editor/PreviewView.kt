@@ -82,12 +82,14 @@ class PreviewView(context: Context) : View(context) {
     private val knobInner = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF06231D.toInt() }
     private val tmpRect = RectF()
 
+    // Properti dibuka HANYA lewat long-press diam (tanpa geser). Double-tap sengaja
+    // dihapus: dulu double-tap yang tak sengaja pas drag bikin sheet kebuka sendiri.
     private val gesture = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-        override fun onDoubleTap(e: MotionEvent): Boolean {
-            if (selectedId != null) listener?.onRequestProperties()
-            return true
+        override fun onLongPress(e: MotionEvent) {
+            if (selectedId != null && !dragMoved) listener?.onRequestProperties()
         }
-    })
+    }).apply { setIsLongpressEnabled(true) }
+    private var dragMoved = false
 
     fun updateTime(t: Float) {
         if (abs(t - playhead) > 0.0005f) {

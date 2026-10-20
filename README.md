@@ -7,6 +7,27 @@ Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK 
 
 ---
 
+## Baru di v1.6.0 — Fase A: Gesture Aman, Picker Custom, Video→Audio, Export 4K/120fps
+
+- **Sheet tidak kebuka lagi saat geser**: double-tap dihapus dari kanvas (itu penyebab
+  sheet Properti kebuka tak sengaja). Properti sekarang dibuka dengan **long-press diam**
+  atau tombol Properti.
+- **Tombol play di tengah** transport bar; timecode di kiri, aksi (skip/magnet/loop) di kanan.
+- **Durasi mengikuti klip**: klip baru tidak lagi dipotong di akhir project, dan durasi
+  project otomatis melebar ke klip terakhir (tidak pernah mengecil).
+- **Export lebih lengkap**: 720p/1080p/**4K** × 30/60/**120 fps**. Bitrate ikut resolusi
+  dan fps. Kalau HP menolak setelan berat, otomatis turun ke 720p 30fps dan memberi tahu user.
+- **Ubah video → audio**: ambil track AAC dari video (tanpa re-encode) jadi musik latar.
+- **Picker media custom**: grid galeri foto/video dan daftar musik dari MediaStore, digambar
+  sendiri. Kalau izin ditolak, kembali ke pemilih sistem.
+- **Onboarding**: ilustrasi di-generate AI (empat halaman), flat dan tanpa efek kaca.
+
+**Belum masuk versi ini (Fase B & C):** video layer, transisi, keyframe speed, template baru,
+icon/UI redesign penuh, login Google + share preset (Cloudflare Worker), AI assistant
+(Groq/OpenRouter), dan plugin.
+
+---
+
 ## Baru di v1.5.0 — Color Picker Sendiri, Efek Bergambar, Layer Terkunci
 
 - **Color picker custom penuh** (`KilatColorPicker`): bidang saturasi/value HSV

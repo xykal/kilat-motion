@@ -52,7 +52,7 @@ class OnboardingActivity : Activity() {
         ),
         Page(
             "Export MP4 Tanpa Watermark",
-            "Render 720p atau 1080p langsung ke galeri, lengkap dengan musiknya. Tanpa iklan, tanpa watermark, tanpa ribet.",
+            "Render 720p sampai 4K, sampai 120 fps, langsung ke galeri lengkap dengan musiknya. Tanpa iklan, tanpa watermark.",
             KColors.Amber
         )
     )
@@ -60,7 +60,13 @@ class OnboardingActivity : Activity() {
     private var index = 0
     private var replay = false
 
-    private lateinit var art: OnboardingArtView
+    private lateinit var art: android.widget.ImageView
+    private val artRes = intArrayOf(
+        com.kilat.motion.R.drawable.ob_welcome,
+        com.kilat.motion.R.drawable.ob_keyframe,
+        com.kilat.motion.R.drawable.ob_layers,
+        com.kilat.motion.R.drawable.ob_export
+    )
     private lateinit var titleTv: TextView
     private lateinit var descTv: TextView
     private lateinit var dotsRow: LinearLayout
@@ -101,7 +107,10 @@ class OnboardingActivity : Activity() {
         root.addView(top)
 
         // ---------- ilustrasi ----------
-        art = OnboardingArtView(this, 0, pages[0].accent)
+        art = android.widget.ImageView(this).apply {
+            scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
+            setImageResource(artRes[0])
+        }
         val lpArt = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
         root.addView(art, lpArt)
 
@@ -194,8 +203,7 @@ class OnboardingActivity : Activity() {
             v.alpha = 0f
             v.animate().translationX(0f).alpha(1f).setDuration(240).start()
         }
-        art.page = index
-        art.accent = page.accent
+        art.setImageResource(artRes[index.coerceIn(0, artRes.lastIndex)])
         titleTv.text = page.title
         descTv.text = page.desc
         buildDots()

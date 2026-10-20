@@ -8,6 +8,8 @@ import com.kilat.motion.core.export.Exporter
 import com.kilat.motion.data.ProjectLibrary
 import com.kilat.motion.data.ProjectStore
 import com.kilat.motion.data.Templates
+import com.kilat.motion.core.audio.VideoAudio
+import com.kilat.motion.ui.picker.MediaPickerActivity
 
 import android.app.Activity
 import android.content.Intent
@@ -281,20 +283,16 @@ class EditorActivity : Activity() {
         main.addView(previewWrap, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
         // ---------- transport ----------
+        // Tata letak 3 kolom simetris: kiri = timecode, tengah = PLAY (tepat di tengah),
+        // kanan = aksi. Kiri & kanan berbobot sama supaya tombol play selalu di tengah layar.
         val transport = LinearLayout(this)
         transport.orientation = LinearLayout.HORIZONTAL
         transport.gravity = Gravity.CENTER_VERTICAL
         transport.setPadding(dp(14f), dp(4f), dp(14f), dp(6f))
 
-        val skipBtn = KilatIconButton(this, KilatIcon.SKIP_START, KColors.Muted, filled = false, sizeDp = 38f)
-        skipBtn.setOnClickListener {
-            setPlayhead(0f)
-            if (playing) {
-                playStart = 0f
-                playT0 = System.nanoTime()
-            }
-        }
-        transport.addView(skipBtn, LinearLayout.LayoutParams(dp(38f), dp(38f)))
+        timecode = kText("00:00.00 / 00:00.00", 11.5f, KColors.Text, bold = true, font = "monospace")
+        timecode.gravity = Gravity.CENTER_VERTICAL or Gravity.START
+        transport.addView(timecode, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
 
         val playWrap = FrameLayout(this)
         playWrap.background = ovalBg(0xFFFFFFFF.toInt())
@@ -305,28 +303,35 @@ class EditorActivity : Activity() {
         playWrap.addView(playIcon, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         playWrap.pressEffect(0.92f)
         playWrap.setOnClickListener { togglePlay() }
-        transport.addView(playWrap, LinearLayout.LayoutParams(dp(44f), dp(44f)))
+        transport.addView(playWrap, LinearLayout.LayoutParams(dp(50f), dp(50f)))
 
-        timecode = kText("00:00.00 / 00:00.00", 12f, KColors.Text, bold = true, font = "monospace")
-        val lpTc = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        lpTc.marginStart = dp(12f)
-        transport.addView(timecode, lpTc)
-
-        magnetBtn = KilatIconButton(this, KilatIcon.MAGNET, KColors.Accent, filled = false, sizeDp = 38f)
+        val right = LinearLayout(this)
+        right.orientation = LinearLayout.HORIZONTAL
+        right.gravity = Gravity.CENTER_VERTICAL or Gravity.END
+        val skipBtn = KilatIconButton(this, KilatIcon.SKIP_START, KColors.Muted, filled = false, sizeDp = 36f)
+        skipBtn.setOnClickListener {
+            setPlayhead(0f)
+            if (playing) {
+                playStart = 0f
+                playT0 = System.nanoTime()
+            }
+        }
+        right.addView(skipBtn, LinearLayout.LayoutParams(dp(36f), dp(36f)))
+        magnetBtn = KilatIconButton(this, KilatIcon.MAGNET, KColors.Accent, filled = false, sizeDp = 36f)
         magnetBtn.setOnClickListener {
             preview.snapEnabled = !preview.snapEnabled
             magnetBtn.setTint(if (preview.snapEnabled) KColors.Accent else KColors.Dim)
             toast(if (preview.snapEnabled) "Magnet snap: nyala" else "Magnet snap: mati", KilatIcon.MAGNET)
         }
-        transport.addView(magnetBtn, LinearLayout.LayoutParams(dp(38f), dp(38f)))
-
-        loopBtn = KilatIconButton(this, KilatIcon.LOOP, KColors.Dim, filled = false, sizeDp = 38f)
+        right.addView(magnetBtn, LinearLayout.LayoutParams(dp(36f), dp(36f)))
+        loopBtn = KilatIconButton(this, KilatIcon.LOOP, KColors.Dim, filled = false, sizeDp = 36f)
         loopBtn.setOnClickListener {
             loop = !loop
             loopBtn.setTint(if (loop) KColors.Accent else KColors.Dim)
             toast(if (loop) "Loop nyala" else "Loop mati", KilatIcon.LOOP)
         }
-        transport.addView(loopBtn, LinearLayout.LayoutParams(dp(38f), dp(38f)))
+        right.addView(loopBtn, LinearLayout.LayoutParams(dp(36f), dp(36f)))
+        transport.addView(right, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
 
         main.addView(transport, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
@@ -348,6 +353,8 @@ class EditorActivity : Activity() {
             override fun onTimesChanged(commit: Boolean) {
                 preview.invalidate()
                 if (commit) {
+                    ensureDuration()
+                    timeline.invalidate()
                     autosave()
                     if (inspectorPanel.visibility == View.VISIBLE) showInspectorFor(project.findLayer(selectedId))
                 }
@@ -683,7 +690,16 @@ class EditorActivity : Activity() {
         if (openPanel) showPanel()
     }
 
+    /** Durasi project otomatis melebar mengikuti klip terakhir (tidak pernah mengecilkan). */
+    private fun ensureDuration() {
+        val end = project.layers.maxOfOrNull { it.start + it.dur } ?: 0f
+        if (end > project.duration + 0.001f) {
+            project.duration = kotlin.math.ceil(end * 10f) / 10f
+        }
+    }
+
     private fun afterChange(selectId: String? = null, openPanel: Boolean = true) {
+        ensureDuration()
         if (selectId != null) selectedId = selectId
         preview.project = project
         preview.select(selectedId)
@@ -705,8 +721,8 @@ class EditorActivity : Activity() {
             textSize = min(p.width, p.height) * 0.105f
             x = p.width / 2f
             y = p.height / 2f
-            start = playhead.coerceIn(0f, max(0f, p.duration - 0.5f))
-            dur = min(4f, p.duration - start)
+            start = playhead.coerceAtLeast(0f)
+            dur = 4f
         }
         p.layers.add(l)
         afterChange(l.id)
@@ -760,8 +776,8 @@ class EditorActivity : Activity() {
             y = cy
             w = max(10f, maxX - minX)
             h = max(10f, maxY - minY)
-            start = playhead.coerceIn(0f, max(0f, p.duration - 0.5f))
-            dur = min(5f, p.duration - start)
+            start = playhead.coerceAtLeast(0f)
+            dur = 5f
         }
         p.layers.add(l)
         afterChange(l.id)
@@ -816,8 +832,8 @@ class EditorActivity : Activity() {
             fill = 0xFF8B7CFF.toInt()
             x = p.width / 2f
             y = p.height / 2f
-            start = playhead.coerceIn(0f, max(0f, p.duration - 0.5f))
-            dur = min(5f, p.duration - start)
+            start = playhead.coerceAtLeast(0f)
+            dur = 5f
             rotX = 18f
         }
         // putaran perkenalan 360 derajat
@@ -865,8 +881,8 @@ class EditorActivity : Activity() {
                     fill = KColors.Accent
                     x = p.width / 2f
                     y = p.height / 2f
-                    start = playhead.coerceIn(0f, max(0f, p.duration - 0.5f))
-                    dur = min(5f, p.duration - start)
+                    start = playhead.coerceAtLeast(0f)
+                    dur = 5f
                 }
                 p.layers.add(l)
                 afterChange(l.id)
@@ -921,8 +937,8 @@ class EditorActivity : Activity() {
                 fill = KColors.Accent
                 x = p.width / 2f
                 y = p.height / 2f
-                start = playhead.coerceIn(0f, max(0f, p.duration - 0.5f))
-                dur = min(4f, p.duration - start)
+                start = playhead.coerceAtLeast(0f)
+                dur = 4f
             }
             p.layers.add(l)
             afterChange(l.id)
@@ -1062,6 +1078,8 @@ class EditorActivity : Activity() {
                 ),
                 positiveText = "Pilih musik", positiveIcon = KilatIcon.MUSIC,
                 onPositive = { pickAudio() },
+                neutralText = "Video → Audio",
+                onNeutral = { pickVideoForAudio() },
                 negativeText = "Batal"
             )
             return
@@ -1142,7 +1160,39 @@ class EditorActivity : Activity() {
         )
     }
 
+    /** Buka picker custom (grid/list dari MediaStore). Kalau izin ditolak, pakai pemilih sistem. */
+    private fun launchPicker(mode: String, req: Int, fallback: () -> Unit) {
+        val i = Intent(this, MediaPickerActivity::class.java).putExtra(MediaPickerActivity.EXTRA_MODE, mode)
+        try {
+            @Suppress("DEPRECATION")
+            startActivityForResult(i, req)
+        } catch (e: Throwable) {
+            fallback()
+        }
+    }
+
+    private fun pickVideoForAudio() {
+        launchPicker(MediaPickerActivity.MODE_VIDEO, REQ_PICK_VIDEO_AUDIO) { pickVideoSystem() }
+    }
+
+    private fun pickVideoSystem() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "video/*"
+        }
+        try {
+            @Suppress("DEPRECATION")
+            startActivityForResult(intent, REQ_PICK_VIDEO_AUDIO_SYS)
+        } catch (e: Throwable) {
+            toast("Tidak bisa membuka video", KilatIcon.INFO)
+        }
+    }
+
     private fun pickAudio() {
+        launchPicker(MediaPickerActivity.MODE_AUDIO, REQ_PICK_AUDIO) { pickAudioSystem() }
+    }
+
+    private fun pickAudioSystem() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "audio/*"
@@ -1155,11 +1205,11 @@ class EditorActivity : Activity() {
         }
     }
 
-    private fun importAudioFrom(uri: Uri) {
+    private fun importAudioFrom(uri: Uri, nameOverride: String? = null) {
         toast("Mengimpor musik...", KilatIcon.MUSIC)
         Thread {
             val ctx = applicationContext
-            val name = queryDisplayName(uri) ?: "musik"
+            val name = nameOverride ?: queryDisplayName(uri) ?: "musik"
             val path = ProjectStore.importAudio(ctx, uri, name)
             if (path == null) {
                 runOnUiThread { if (!isFinishing) toast("Gagal mengimpor musik", KilatIcon.INFO) }
@@ -1207,6 +1257,10 @@ class EditorActivity : Activity() {
 
     private fun pickImage(replace: Layer?) {
         pendingImageLayer = replace
+        launchPicker(MediaPickerActivity.MODE_IMAGE, REQ_PICK_IMAGE) { pickImageSystem() }
+    }
+
+    private fun pickImageSystem() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "image/*"
@@ -1223,7 +1277,30 @@ class EditorActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode != RESULT_OK) return
+        if (resultCode != RESULT_OK && resultCode != MediaPickerActivity.RESULT_FALLBACK) return
+        if (requestCode == REQ_PICK_IMAGE || requestCode == REQ_PICK_AUDIO || requestCode == REQ_PICK_VIDEO_AUDIO) {
+            if (resultCode == MediaPickerActivity.RESULT_FALLBACK) {
+                when (requestCode) {
+                    REQ_PICK_IMAGE -> pickImageSystem()
+                    REQ_PICK_AUDIO -> pickAudioSystem()
+                    else -> pickVideoSystem()
+                }
+                return
+            }
+            if (resultCode != RESULT_OK) return
+            val puri: Uri = data?.data ?: return
+            when (requestCode) {
+                REQ_PICK_IMAGE -> handleImagePicked(puri)
+                REQ_PICK_AUDIO -> importAudioFrom(puri)
+                else -> extractAudioFromVideo(puri)
+            }
+            return
+        }
+        if (requestCode == REQ_PICK_VIDEO_AUDIO_SYS) {
+            val vuri: Uri = data?.data ?: return
+            extractAudioFromVideo(vuri)
+            return
+        }
         if (requestCode == REQ_AUDIO) {
             val auri: Uri = data?.data ?: return
             importAudioFrom(auri)
@@ -1241,6 +1318,28 @@ class EditorActivity : Activity() {
         }
         if (requestCode != REQ_IMAGE) return
         val uri: Uri = data?.data ?: return
+        handleImagePicked(uri)
+    }
+
+    /** Ubah video -> audio: track AAC disalin ke M4A lalu dijadikan musik latar project. */
+    private fun extractAudioFromVideo(uri: Uri) {
+        toast("Mengambil audio dari video...", KilatIcon.MUSIC)
+        Thread {
+            val base = (queryDisplayName(uri) ?: "video").substringBeforeLast('.')
+            val out = java.io.File(cacheDir, "vidaudio_${System.currentTimeMillis()}.m4a")
+            val res = VideoAudio.extractToM4a(applicationContext, uri, out)
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                if (res.path == null) {
+                    KilatSheet.showMessage(this, "Ubah video ke audio gagal", res.error ?: "Tidak diketahui", icon = KilatIcon.INFO)
+                } else {
+                    importAudioFrom(Uri.fromFile(java.io.File(res.path)), "$base (audio)")
+                }
+            }
+        }.start()
+    }
+
+    private fun handleImagePicked(uri: Uri) {
         toast("Mengimpor gambar...", KilatIcon.IMAGE)
         Thread {
             val ctx = applicationContext
@@ -1273,8 +1372,8 @@ class EditorActivity : Activity() {
                         imgH = bounds.outHeight * sc
                         x = p.width / 2f
                         y = p.height / 2f
-                        start = playhead.coerceIn(0f, max(0f, p.duration - 0.5f))
-                        dur = min(5f, p.duration - start)
+                        start = playhead.coerceAtLeast(0f)
+                        dur = 5f
                     }
                     p.layers.add(l)
                     afterChange(l.id)
@@ -1290,16 +1389,28 @@ class EditorActivity : Activity() {
     // export
     // =====================================================================
     private fun showExportDialog() {
-        val items = listOf(
-            KilatSheet.Item("720p", "Cepat dirender, ukuran file kecil", KilatIcon.FILM, KColors.Sky),
-            KilatSheet.Item("1080p", "Full HD, render lebih lama", KilatIcon.FILM, KColors.Violet)
+        // resolusi x frame rate. 120fps & 4K butuh encoder yang kuat; kalau HP menolak,
+        // runExport otomatis turun ke pengaturan yang didukung dan memberi tahu user.
+        val opts = listOf(
+            Triple(1280, 30, "720p · 30 fps" to "Ringan, cepat dirender, file kecil"),
+            Triple(1920, 30, "1080p · 30 fps" to "Full HD standar sosmed"),
+            Triple(1920, 60, "1080p · 60 fps" to "Gerakan halus, cocok buat JJ & beat cepat"),
+            Triple(1920, 120, "1080p · 120 fps" to "Slow-motion mulus, butuh HP kuat"),
+            Triple(3840, 30, "4K · 30 fps" to "Ultra HD, render lama"),
+            Triple(3840, 60, "4K · 60 fps" to "Ultra HD halus, butuh encoder 4K"),
+            Triple(3840, 120, "4K · 120 fps" to "Paling berat, hanya HP flagship")
         )
+        val tints = intArrayOf(KColors.Sky, KColors.Violet, KColors.Accent, KColors.Amber, KColors.Rose, KColors.Rose, KColors.Rose)
+        val items = opts.mapIndexed { i, o ->
+            KilatSheet.Item(o.third.first, o.third.second, KilatIcon.FILM, tints[i])
+        }
         KilatSheet.showList(this, "Export MP4", items) { which ->
-            runExport(if (which == 0) 1280 else 1920)
+            val o = opts[which]
+            runExport(o.first, o.second)
         }
     }
 
-    private fun runExport(longSide: Int) {
+    private fun runExport(longSide: Int, fps: Int = 30) {
         if (playing) stopPlay()
         musicPlayer.sync(project.music, playhead, false)
         val p = project
@@ -1310,10 +1421,10 @@ class EditorActivity : Activity() {
             fun progressFn(f: Float) {
                 runOnUiThread { if (!isFinishing) handle.setProgress(f, "Merender frame video...") }
             }
-            var result = Exporter.exportVideo(ctx, p, longSide, 30) { f -> progressFn(f) }
+            var result = Exporter.exportVideo(ctx, p, longSide, fps) { f -> progressFn(f) }
             // fallback otomatis: beberapa HP tidak mendukung encode 1080p tertentu
-            if (result.error != null && longSide > 1280) {
-                runOnUiThread { if (!isFinishing) handle.setProgress(0f, "Resolusi tidak didukung, coba 720p...") }
+            if (result.error != null && (longSide > 1280 || fps > 30)) {
+                runOnUiThread { if (!isFinishing) handle.setProgress(0f, "Setelan tidak didukung HP ini, turun ke 720p 30fps...") }
                 result = Exporter.exportVideo(ctx, p, 1280, 30) { f -> progressFn(f) }
             }
             val res = result
@@ -1629,5 +1740,9 @@ class EditorActivity : Activity() {
         private const val REQ_AUDIO = 1002
         private const val REQ_OBJ = 1003
         private const val REQ_SVG = 1004
+        private const val REQ_PICK_IMAGE = 1101
+        private const val REQ_PICK_AUDIO = 1102
+        private const val REQ_PICK_VIDEO_AUDIO = 1103
+        private const val REQ_PICK_VIDEO_AUDIO_SYS = 1104
     }
 }

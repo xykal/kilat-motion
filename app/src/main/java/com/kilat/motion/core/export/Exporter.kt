@@ -102,9 +102,10 @@ object Exporter {
             outW = max(2, outW / 2 * 2)
             outH = max(2, outH / 2 * 2)
 
-            val totalFrames = max(1, (project.duration * fps).roundToInt())
-            val frameRate = fps.coerceIn(15, 60)
-            val bitrate = (outW * outH * 4).coerceIn(2_000_000, 14_000_000)
+            val frameRate = fps.coerceIn(15, 120)
+            val totalFrames = max(1, (project.duration * frameRate).roundToInt())
+            // bitrate mengikuti luas frame x fps (0.10 bit/pixel/frame), dibatasi aman untuk AVC
+            val bitrate = (outW.toLong() * outH * frameRate * 0.10).toLong().coerceIn(4_000_000L, 80_000_000L).toInt()
 
             tmp = File(context.cacheDir, "kilat_export_${System.currentTimeMillis()}.mp4")
             if (tmp.exists()) tmp.delete()
