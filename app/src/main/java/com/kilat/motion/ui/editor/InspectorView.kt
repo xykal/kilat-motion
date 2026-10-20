@@ -21,6 +21,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.kilat.motion.core.render.Renderer
 import com.kilat.motion.ui.components.IconView
+import com.kilat.motion.ui.components.KilatTabBar
 import com.kilat.motion.ui.components.KeyframeButton
 import com.kilat.motion.ui.components.KilatColorPicker
 import com.kilat.motion.ui.components.KilatSwitch
@@ -323,27 +324,28 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val catNames = listOf("Konten", "Transform", "Animasi", "Efek", "Warna", "Gaya", "3D")
         if (activeCat !in catNames) activeCat = "Konten"
         val catBoxes = LinkedHashMap<String, LinearLayout>()
-        val catChips = ArrayList<Pair<String, KilatChip>>()
-        val chipRowCats = LinearLayout(context)
-        chipRowCats.orientation = HORIZONTAL
+        val catIcons = mapOf(
+            "Konten" to KilatIcon.SHAPE,
+            "Transform" to KilatIcon.TRANSFORM,
+            "Animasi" to KilatIcon.ANIMATE,
+            "Efek" to KilatIcon.SPARK,
+            "Warna" to KilatIcon.COLOR,
+            "Gaya" to KilatIcon.STYLE,
+            "3D" to KilatIcon.CUBE
+        )
+        val tabs = KilatTabBar(
+            context,
+            catNames.map { (catIcons[it] ?: KilatIcon.SHAPE) to it },
+            catNames.indexOf(activeCat)
+        ) { idx ->
+            activeCat = catNames[idx]
+            for ((n2, box2) in catBoxes) box2.visibility = if (n2 == activeCat) View.VISIBLE else View.GONE
+        }
         val chipScroll = android.widget.HorizontalScrollView(context)
         chipScroll.isHorizontalScrollBarEnabled = false
-        for (cn in catNames) {
-            val chip = KilatChip(context, cn)
-            chip.chipSelected = cn == activeCat
-            val lpChip = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-            lpChip.rightMargin = dp(6f).toInt()
-            chipRowCats.addView(chip, lpChip)
-            catChips.add(cn to chip)
-            chip.setOnClickListener {
-                activeCat = cn
-                for ((n2, c2) in catChips) c2.chipSelected = n2 == activeCat
-                for ((n2, box2) in catBoxes) box2.visibility = if (n2 == activeCat) View.VISIBLE else View.GONE
-            }
-        }
-        chipScroll.addView(chipRowCats)
+        chipScroll.addView(tabs)
         val lpChipScroll = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-        lpChipScroll.topMargin = dp(12f).toInt()
+        lpChipScroll.topMargin = dp(10f).toInt()
         addView(chipScroll, lpChipScroll)
         for (cn in catNames) {
             val box = LinearLayout(context)
