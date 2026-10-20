@@ -349,6 +349,38 @@ object Renderer {
                 }
                 path.close()
             }
+            "diamond" -> {
+                path.moveTo(0f, -h / 2f); path.lineTo(w / 2f, 0f); path.lineTo(0f, h / 2f); path.lineTo(-w / 2f, 0f); path.close()
+            }
+            "hexagon", "pentagon" -> {
+                val sides = if (layer.shape == "hexagon") 6 else 5
+                for (i in 0 until sides) {
+                    val ang = -Math.PI / 2 + i * 2 * Math.PI / sides
+                    val px = (Math.cos(ang) * w / 2f).toFloat()
+                    val py = (Math.sin(ang) * h / 2f).toFloat()
+                    if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+                }
+                path.close()
+            }
+            "heart" -> {
+                val hw = w / 2f; val hh = h / 2f
+                path.moveTo(0f, hh * 0.9f)
+                path.cubicTo(-hw * 1.3f, hh * 0.1f, -hw * 0.9f, -hh * 1.0f, 0f, -hh * 0.35f)
+                path.cubicTo(hw * 0.9f, -hh * 1.0f, hw * 1.3f, hh * 0.1f, 0f, hh * 0.9f)
+                path.close()
+            }
+            "arrow" -> {
+                val hw = w / 2f; val hh = h / 2f; val sh = hh * 0.5f
+                path.moveTo(-hw, -sh); path.lineTo(0f, -sh); path.lineTo(0f, -hh); path.lineTo(hw, 0f)
+                path.lineTo(0f, hh); path.lineTo(0f, sh); path.lineTo(-hw, sh); path.close()
+            }
+            "cross" -> {
+                val bx = w * 0.17f; val by = h * 0.17f
+                val hw = w / 2f; val hh = h / 2f
+                path.moveTo(-bx, -hh); path.lineTo(bx, -hh); path.lineTo(bx, -by); path.lineTo(hw, -by)
+                path.lineTo(hw, by); path.lineTo(bx, by); path.lineTo(bx, hh); path.lineTo(-bx, hh)
+                path.lineTo(-bx, by); path.lineTo(-hw, by); path.lineTo(-hw, -by); path.lineTo(-bx, -by); path.close()
+            }
             "polygon" -> {
                 val sides = layer.shapeSides.coerceIn(3, 24)
                 for (i in 0 until sides) {

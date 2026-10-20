@@ -954,7 +954,11 @@ class InspectorView(context: Context) : LinearLayout(context) {
             "Pantul JJ" to floatArrayOf(0.2f, 1.6f, 0.4f, 1f),
             "Halus" to floatArrayOf(0.42f, 0f, 0.58f, 1f),
             "Nendang" to floatArrayOf(0.7f, 0f, 0.2f, 1.4f),
-            "Linear" to floatArrayOf(0f, 0f, 1f, 1f)
+            "Linear" to floatArrayOf(0f, 0f, 1f, 1f),
+            "Ease In" to floatArrayOf(0.42f, 0f, 1f, 1f),
+            "Ease Out" to floatArrayOf(0f, 0f, 0.58f, 1f),
+            "Elastis" to floatArrayOf(0.3f, 1.5f, 0.5f, 1f),
+            "Tajam" to floatArrayOf(0.9f, 0f, 0.1f, 1f)
         )
         for ((cname, cvals) in curvePresets) {
             val chip = KilatChip(context, cname)

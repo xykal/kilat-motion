@@ -224,8 +224,8 @@ object Exporter {
             }
             muxer = null
 
-            val uri = publishVideo(context, tmp)
-            return VideoResult(uri, tmp, null)
+            // render selesai ke cache; penyimpanan ke galeri dilakukan setelah user review di preview
+            return VideoResult(null, tmp, null)
         } catch (e: Throwable) {
             try {
                 codec?.release()
@@ -286,7 +286,7 @@ object Exporter {
     private fun stamp(): String =
         SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
 
-    private fun publishVideo(context: Context, file: File): Uri? {
+    fun publishVideo(context: Context, file: File): Uri? {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, "KILAT_${stamp()}.mp4")

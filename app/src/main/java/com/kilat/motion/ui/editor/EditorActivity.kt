@@ -10,6 +10,7 @@ import com.kilat.motion.data.ProjectStore
 import com.kilat.motion.data.Templates
 import com.kilat.motion.core.audio.VideoAudio
 import com.kilat.motion.ui.picker.MediaPickerActivity
+import com.kilat.motion.ui.export.ExportPreviewActivity
 
 import android.app.Activity
 import android.content.Intent
@@ -1277,6 +1278,10 @@ class EditorActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_EXPORT_PREVIEW) {
+            if (resultCode == RESULT_OK) toast("Video tersimpan ke Movies/KilatMotion", KilatIcon.FILM)
+            return
+        }
         if (resultCode != RESULT_OK && resultCode != MediaPickerActivity.RESULT_FALLBACK) return
         if (requestCode == REQ_PICK_IMAGE || requestCode == REQ_PICK_AUDIO || requestCode == REQ_PICK_VIDEO_AUDIO) {
             if (resultCode == MediaPickerActivity.RESULT_FALLBACK) {
@@ -1431,25 +1436,26 @@ class EditorActivity : Activity() {
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
                 handle.dismiss()
-                if (res.error != null || res.uri == null) {
+                val f = res.file
+                if (res.error != null || f == null) {
                     KilatSheet.showMessage(
                         this, "Export gagal",
-                        "${res.error ?: "URI tidak valid"}\n\nCoba resolusi 720p, atau pastikan penyimpanan cukup.",
+                        "${res.error ?: "File tidak valid"}\n\nCoba resolusi lebih rendah atau pastikan penyimpanan cukup.",
                         icon = KilatIcon.INFO
                     )
                 } else {
-                    val resLabel = if (longSide <= 1280) "720p" else "1080p"
-                    KilatSheet.show(
-                        this, "Export selesai",
-                        kText(
-                            "Video tersimpan di Movies/KilatMotion.\n\n$resLabel | 30fps | ${Format.dec(p.duration)} detik. Bagikan sekarang?",
-                            12.5f, KColors.Muted
-                        ),
-                        positiveText = "Bagikan", positiveIcon = KilatIcon.SHARE,
-                        onPositive = { shareUri(res.uri, "video/mp4") },
-                        negativeText = "Oke"
+                    val resLabel = when {
+                        longSide >= 3840 -> "4K"
+                        longSide >= 1920 -> "1080p"
+                        else -> "720p"
+                    }
+                    @Suppress("DEPRECATION")
+                    startActivityForResult(
+                        Intent(this, ExportPreviewActivity::class.java)
+                            .putExtra(ExportPreviewActivity.EXTRA_PATH, f.absolutePath)
+                            .putExtra(ExportPreviewActivity.EXTRA_LABEL, "$resLabel · ${fps}fps · ${Format.dec(p.duration)} dtk"),
+                        REQ_EXPORT_PREVIEW
                     )
-                    toast("Video tersimpan ke galeri", KilatIcon.FILM)
                 }
             }
         }.start()
@@ -1744,5 +1750,6 @@ class EditorActivity : Activity() {
         private const val REQ_PICK_AUDIO = 1102
         private const val REQ_PICK_VIDEO_AUDIO = 1103
         private const val REQ_PICK_VIDEO_AUDIO_SYS = 1104
+        private const val REQ_EXPORT_PREVIEW = 1105
     }
 }

@@ -7,6 +7,21 @@ Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK 
 
 ---
 
+## Baru di v1.7.0 — Preview Export, Bentuk & Kurva Lebih Lengkap
+
+- **Preview hasil export**: setelah render, video langsung bisa diputar di layar preview,
+  di-scrub, dan di-pause. Pilihan: **Simpan** ke Movies/KilatMotion, **Bagikan**, atau **Buang**.
+  Render yang belum disimpan tidak menumpuk di cache.
+- **Bentuk baru**: Diamond, Heksagon, Pentagon, Hati, Panah, Silang (total 11 bentuk termasuk
+  Kotak, Lingkaran, Segitiga, Bintang, dan Segi Banyak).
+- **Preset kurva baru**: Ease In, Ease Out, Elastis, Tajam (total 8 preset di Editor Kurva).
+
+**Belum masuk versi ini:** video layer, transisi antar klip, keyframe speed, edit outline/node
+vektor, template baru, redesign icon/UI penuh, login Google + share preset, AI assistant
+(Groq/OpenRouter), dan plugin.
+
+---
+
 ## Baru di v1.6.0 — Fase A: Gesture Aman, Picker Custom, Video→Audio, Export 4K/120fps
 
 - **Sheet tidak kebuka lagi saat geser**: double-tap dihapus dari kanvas (itu penyebab

@@ -30,9 +30,10 @@ val BLEND_LABELS = mapOf(
     "colorDodge" to "Color Dodge", "softLight" to "Soft Light"
 )
 
-val SHAPE_TYPES = listOf("rect", "circle", "triangle", "star", "polygon")
+val SHAPE_TYPES = listOf("rect", "circle", "triangle", "star", "polygon", "diamond", "hexagon", "pentagon", "heart", "arrow", "cross")
 val SHAPE_LABELS = mapOf(
-    "rect" to "Kotak", "circle" to "Lingkaran", "triangle" to "Segitiga", "star" to "Bintang", "polygon" to "Segi Banyak"
+    "rect" to "Kotak", "circle" to "Lingkaran", "triangle" to "Segitiga", "star" to "Bintang", "polygon" to "Segi Banyak",
+    "diamond" to "Diamond", "hexagon" to "Heksagon", "pentagon" to "Pentagon", "heart" to "Hati", "arrow" to "Panah", "cross" to "Silang"
 )
 
 val FONT_KEYS = listOf(
