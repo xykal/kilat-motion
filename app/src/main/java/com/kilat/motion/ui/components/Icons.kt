@@ -89,23 +89,23 @@ object IconPainter {
                 canvas.drawRoundRect(rf, 1f, 1f, fill)
             }
             KilatIcon.FOLDER -> {
-                rf.set(3f, 5.5f, 11.5f, 9.5f)
-                canvas.drawRoundRect(rf, 1.8f, 1.8f, fill2)
-                rf.set(3f, 8f, 21f, 20f)
+                rf.set(3f, 5f, 11f, 9.5f)
+                canvas.drawRoundRect(rf, 2f, 2f, fill)
+                rf.set(3f, 8f, 21f, 19.5f)
                 canvas.drawRoundRect(rf, 2.5f, 2.5f, fill2)
                 canvas.drawRoundRect(rf, 2.5f, 2.5f, stroke)
-                canvas.drawLine(5.2f, 12.2f, 18.8f, 12.2f, stroke)
             }
             KilatIcon.LAYERS -> {
-                fun diamond(cy: Float, p: Paint) {
-                    path.reset()
-                    path.moveTo(12f, cy - 3.6f); path.lineTo(20.5f, cy); path.lineTo(12f, cy + 3.6f); path.lineTo(3.5f, cy)
-                    path.close()
-                    canvas.drawPath(path, p)
-                }
-                diamond(17.2f, stroke)
-                diamond(12.1f, stroke)
-                diamond(7f, fill)
+                path.reset()
+                path.moveTo(12f, 4.2f); path.lineTo(20f, 7.9f); path.lineTo(12f, 11.6f); path.lineTo(4f, 7.9f)
+                path.close()
+                canvas.drawPath(path, fill)
+                path.reset()
+                path.moveTo(4.6f, 12.4f); path.lineTo(12f, 15.8f); path.lineTo(19.4f, 12.4f)
+                canvas.drawPath(path, stroke)
+                path.reset()
+                path.moveTo(4.6f, 16.8f); path.lineTo(12f, 20.2f); path.lineTo(19.4f, 16.8f)
+                canvas.drawPath(path, stroke2)
             }
             KilatIcon.USER -> {
                 canvas.drawCircle(12f, 8f, 3.5f, stroke)
@@ -132,9 +132,10 @@ object IconPainter {
                 canvas.drawRoundRect(rf, 0.9f, 0.9f, fill2)
             }
             KilatIcon.SHAPE -> {
-                rf.set(3.5f, 3.5f, 13.5f, 13.5f)
-                canvas.drawRoundRect(rf, 2f, 2f, stroke)
-                canvas.drawCircle(15f, 15f, 5.5f, fill)
+                rf.set(3.5f, 3.5f, 13f, 13f)
+                canvas.drawRoundRect(rf, 1.8f, 1.8f, stroke)
+                canvas.drawCircle(15.2f, 15.2f, 5f, fill2)
+                canvas.drawCircle(15.2f, 15.2f, 5f, stroke)
             }
             KilatIcon.IMAGE -> {
                 rf.set(3f, 4.5f, 21f, 19.5f)
@@ -205,14 +206,14 @@ object IconPainter {
                 rf.set(12.6f, 13.5f, 18.3f, 17.5f); canvas.drawOval(rf, fill)
             }
             KilatIcon.SETTINGS -> {
-                // siluet gir 8 gigi: titik luar/dalam bergantian membentuk gigi berpinggang rata
+                // gir 6 gigi gemuk (siluet filled) - terbaca gir, bukan matahari
                 path.reset()
-                val teeth = 8
+                val teeth = 6
                 for (i in 0 until teeth) {
                     val a0 = Math.toRadians((i * 360.0 / teeth) - 90.0)
                     val step = Math.toRadians(360.0 / teeth)
-                    val pts = floatArrayOf(0f, 0.18f, 0.30f, 0.52f, 0.64f, 0.86f)
-                    val rad = floatArrayOf(6.9f, 6.9f, 9.1f, 9.1f, 6.9f, 6.9f)
+                    val pts = floatArrayOf(0f, 0.16f, 0.30f, 0.54f, 0.68f, 0.86f)
+                    val rad = floatArrayOf(7f, 7f, 9.4f, 9.4f, 7f, 7f)
                     for (k in pts.indices) {
                         val ang = (a0 + step * pts[k]).toFloat()
                         val px = 12f + rad[k] * cos(ang)
@@ -222,8 +223,8 @@ object IconPainter {
                 }
                 path.close()
                 canvas.drawPath(path, fill)
-                canvas.drawCircle(12f, 12f, 3.1f, fill2)
-                canvas.drawCircle(12f, 12f, 1.5f, fill)
+                canvas.drawCircle(12f, 12f, 3.2f, fill2)
+                canvas.drawCircle(12f, 12f, 1.4f, fill)
             }
             KilatIcon.SAVE -> {
                 rf.set(4f, 4f, 20f, 20f)
@@ -333,17 +334,14 @@ object IconPainter {
                 canvas.drawPath(path, fill)
             }
             KilatIcon.FILM -> {
-                rf.set(3.5f, 4.5f, 20.5f, 19.5f)
+                rf.set(4f, 4.5f, 20f, 19.5f)
                 canvas.drawRoundRect(rf, 2.2f, 2.2f, stroke)
-                stroke2.strokeWidth = SW_FINE * s
-                canvas.drawLine(8f, 5f, 8f, 19f, stroke2)
-                canvas.drawLine(16f, 5f, 16f, 19f, stroke2)
-                for (py in floatArrayOf(7.6f, 11.1f, 14.6f)) {
-                    rf.set(5.1f, py, 6.4f, py + 1.9f); canvas.drawRoundRect(rf, 0.6f, 0.6f, fill)
-                    rf.set(17.6f, py, 18.9f, py + 1.9f); canvas.drawRoundRect(rf, 0.6f, 0.6f, fill)
+                for (py in floatArrayOf(7.4f, 11.05f, 14.7f)) {
+                    rf.set(5.8f, py, 7.2f, py + 1.8f); canvas.drawRoundRect(rf, 0.6f, 0.6f, fill)
+                    rf.set(16.8f, py, 18.2f, py + 1.8f); canvas.drawRoundRect(rf, 0.6f, 0.6f, fill)
                 }
                 path.reset()
-                path.moveTo(10.7f, 9.9f); path.lineTo(14.3f, 12f); path.lineTo(10.7f, 14.1f)
+                path.moveTo(10.6f, 9.8f); path.lineTo(14.6f, 12f); path.lineTo(10.6f, 14.2f)
                 path.close()
                 canvas.drawPath(path, fill)
             }

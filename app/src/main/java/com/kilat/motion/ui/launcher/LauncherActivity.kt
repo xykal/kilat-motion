@@ -43,7 +43,6 @@ class LauncherActivity : Activity() {
 
         val tile = FrameLayout(this)
         tile.background = kilatSolid(dpf(26f))
-        tile.elevation = dpf(16f)
         val bolt = IconView(this, KilatIcon.BOLT, 0xFF05131F.toInt())
         val p = dp(22f)
         bolt.setPadding(p, p, p, p)

@@ -145,6 +145,34 @@ class AnimTest {
     }
 
     @Test
+    fun `geser klip menggeser semua keyframe ikut`() {
+        val l = Layer().apply { kind = KIND_TEXT; start = 1f; dur = 4f }
+        Anim.setKey(l, "x", 1f, 100f, "linear")
+        Anim.setKey(l, "x", 3f, 200f, "linear")
+        Anim.setKey(l, "alpha", 2f, 0.5f, "linear")
+        // klip dipindah +2 detik (seperti MODE_MOVE timeline)
+        l.start = 3f
+        Anim.shiftKeyframes(l, 2f, 10f)
+        assertEquals(listOf(3f, 4f, 5f), Anim.allKeyTimes(l))
+        assertEquals(100f, Anim.value(l, "x", 3f), 0.001f)
+        assertEquals(200f, Anim.value(l, "x", 5f), 0.001f)
+    }
+
+    @Test
+    fun `seret diamond memindah grup keyframe dan hapus di titik`() {
+        val l = Layer().apply { kind = KIND_TEXT; start = 0f; dur = 6f }
+        Anim.setKey(l, "x", 1f, 100f, "linear")
+        Anim.setKey(l, "y", 1f, 50f, "linear")
+        Anim.setKey(l, "x", 4f, 300f, "linear")
+        val moved = Anim.moveKeyframeGroup(l, 1f, 2.5f)
+        assertEquals(2.5f, moved, 0.001f)
+        assertEquals(listOf(2.5f, 4f), Anim.allKeyTimes(l))
+        val removed = Anim.removeKeysAtTime(l, 2.5f)
+        assertEquals(2, removed)
+        assertEquals(listOf(4f), Anim.allKeyTimes(l))
+    }
+
+    @Test
     fun `format waktu dan warna`() {
         assertEquals("00:01.50", Format.time(1.5f))
         assertEquals("#FF2EE6C0", Format.color(0xFF2EE6C0.toInt()))

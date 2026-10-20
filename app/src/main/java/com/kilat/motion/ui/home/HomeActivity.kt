@@ -252,7 +252,6 @@ class HomeActivity : Activity() {
         val hero = FrameLayout(this)
         hero.background = kilatSolid(dpf(20f))
         hero.isClickable = true
-        hero.elevation = dpf(8f)
         val decor = IconView(this, KilatIcon.BOLT, 0xFF1FA98F.toInt())
         val lpDecor = FrameLayout.LayoutParams(dp(150f), dp(150f), Gravity.END or Gravity.CENTER_VERTICAL)
         lpDecor.rightMargin = -dp(30f)
@@ -261,7 +260,7 @@ class HomeActivity : Activity() {
         heroCol.orientation = LinearLayout.VERTICAL
         heroCol.setPadding(dp(18f), dp(18f), dp(18f), dp(18f))
         heroCol.addView(kText("Buat Project Baru", 20f, 0xFF05131F.toInt(), bold = true))
-        heroCol.addView(kText("Mulai dari kanvas kosong, pilih rasio favoritmu.", 12f, 0xCC05131F.toInt()))
+        heroCol.addView(kText("Mulai dari kanvas kosong, pilih rasio favoritmu.", 12f, 0xFF0D3D3F.toInt()))
         val chipRow = LinearLayout(this)
         chipRow.orientation = LinearLayout.HORIZONTAL
         val chipScroll = HorizontalScrollView(this)
@@ -591,7 +590,7 @@ class HomeActivity : Activity() {
         val nameCol = LinearLayout(this)
         nameCol.orientation = LinearLayout.VERTICAL
         nameCol.addView(kText("Kreator Kilat", 17f, KColors.Text, bold = true))
-        nameCol.addView(kText("KILAT Motion 1.4.0", 11f, KColors.Dim))
+        nameCol.addView(kText("KILAT Motion 1.4.1", 11f, KColors.Dim))
         val lpN = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpN.marginStart = dp(13f)
         head.addView(nameCol, lpN)
@@ -646,7 +645,7 @@ class HomeActivity : Activity() {
             i.putExtra(OnboardingActivity.EXTRA_REPLAY, true)
             startActivity(i)
         })
-        addSpaced(col, menuRow(KilatIcon.INFO, KColors.Muted, "Tentang KILAT Motion", "Versi 1.4.0 - native, tanpa iklan") { showAbout() })
+        addSpaced(col, menuRow(KilatIcon.INFO, KColors.Muted, "Tentang KILAT Motion", "Versi 1.4.1 - native, tanpa iklan") { showAbout() })
         addSpaced(col, menuRow(KilatIcon.TRASH, KColors.Rose, "Hapus Semua Project", "Kosongkan pustaka project di HP ini", danger = true) {
             KilatSheet.showConfirm(
                 this, "Hapus semua project?",
@@ -730,7 +729,7 @@ class HomeActivity : Activity() {
     private fun showAbout() {
         KilatSheet.showMessage(
             this, "KILAT Motion",
-            "Motion graphics editor native Android.\n\nVersi 1.4.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa watermark, tanpa library eksternal.\nSeluruh tampilan dan ikon dibuat custom pakai Canvas.",
+            "Motion graphics editor native Android.\n\nVersi 1.4.1\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa watermark, tanpa library eksternal.\nSeluruh tampilan dan ikon dibuat custom pakai Canvas.",
             icon = KilatIcon.BOLT
         )
     }

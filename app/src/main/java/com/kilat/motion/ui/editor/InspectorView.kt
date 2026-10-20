@@ -33,6 +33,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
         fun onDuplicate(layer: Layer)
         fun onApplyPreset(layer: Layer, preset: String)
         fun onClearKeys(layer: Layer)
+        fun onJumpKey(layer: Layer, dir: Int)
         fun onSplit(layer: Layer)
         /** dir: +1 = maju (digambar lebih atas), -1 = mundur. */
         fun onReorder(layer: Layer, dir: Int)
@@ -865,6 +866,30 @@ class InspectorView(context: Context) : LinearLayout(context) {
         scPR.isHorizontalScrollBarEnabled = false
         scPR.addView(presetRow)
         c.addView(scPR, lpPR)
+        // navigasi antar keyframe + hapus keyframe tepat di playhead
+        val navRow = LinearLayout(context)
+        navRow.orientation = HORIZONTAL
+        val lpNav = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpNav.topMargin = dp(8f).toInt()
+        val prevKBtn = KilatButton(context, "Keyframe Sebelumnya", KilatIcon.BACK, KilatButtonStyle.GHOST, 11f)
+        prevKBtn.setOnClickListener { listener?.onJumpKey(l, -1) }
+        navRow.addView(prevKBtn, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        val nextKBtn = KilatButton(context, "Keyframe Berikutnya", KilatIcon.NEXT, KilatButtonStyle.GHOST, 11f)
+        nextKBtn.setOnClickListener { listener?.onJumpKey(l, +1) }
+        val lpNextK = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+        lpNextK.leftMargin = dp(7f).toInt()
+        navRow.addView(nextKBtn, lpNextK)
+        c.addView(navRow, lpNav)
+        val delKeyBtn = KilatButton(context, "Hapus Keyframe di Playhead", KilatIcon.TRASH, KilatButtonStyle.DANGER_SOFT, 11f)
+        delKeyBtn.setOnClickListener {
+            Anim.removeKeysAtTime(l, curPlayhead)
+            listener?.onEdited(true)
+            syncValues()
+        }
+        val lpDelK = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpDelK.topMargin = dp(7f).toInt()
+        c.addView(delKeyBtn, lpDelK)
+
         val applyRow = LinearLayout(context)
         applyRow.orientation = HORIZONTAL
         val lpAR = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)

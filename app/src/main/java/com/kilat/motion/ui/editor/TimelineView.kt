@@ -294,7 +294,7 @@ class TimelineView(context: Context) : View(context) {
                 val kx = timeToX(kt)
                 if (kx < leftW - dp(2f) || kx > width) continue
                 val ky = top + rh / 2f
-                val r = dp(3.4f)
+                val r = if (dragMode == MODE_KEY && dragLayer === layer && abs(kt - dragKeyNow) < 0.03f) dp(5.2f) else dp(3.4f)
                 playheadHead.reset()
                 playheadHead.moveTo(kx, ky - r)
                 playheadHead.lineTo(kx + r, ky)
@@ -385,6 +385,9 @@ class TimelineView(context: Context) : View(context) {
     private var downY = 0f
     private var origStart = 0f
     private var origDur = 0f
+    private var dragKeyFrom = 0f
+    private var dragKeyNow = 0f
+    private var keyMoved = false
 
     private fun tAt(x: Float): Float = (((x - leftW) / pxPerSec()) + scrollSec).coerceIn(0f, project?.duration ?: 10f)
 
@@ -476,13 +479,17 @@ class TimelineView(context: Context) : View(context) {
                 val x2 = timeToX(layer.start + layer.dur)
                 val t = tAt(event.x)
 
-                // diamond kena?
+                // diamond kena? -> ketuk = lompat ke keyframe, seret = pindahkan waktunya
                 for (kt in Anim.allKeyTimes(layer)) {
-                    if (abs(timeToX(kt) - event.x) < dp(11f)) {
+                    if (abs(timeToX(kt) - event.x) < dp(12f)) {
                         selectedId = layer.id
                         listener?.onSelect(layer.id)
                         listener?.onSeek(kt)
-                        dragMode = MODE_NONE
+                        dragLayer = layer
+                        dragKeyFrom = kt
+                        dragKeyNow = kt
+                        keyMoved = false
+                        dragMode = MODE_KEY
                         invalidate()
                         return true
                     }
@@ -507,7 +514,7 @@ class TimelineView(context: Context) : View(context) {
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
                 if (event.pointerCount >= 2) {
-                    if (dragMode == MODE_MOVE || dragMode == MODE_TRIM) listener?.onTimesChanged(true)
+                    if (dragMode == MODE_MOVE || dragMode == MODE_TRIM || dragMode == MODE_KEY) listener?.onTimesChanged(true)
                     if (dragMode == MODE_MUSIC_MOVE || dragMode == MODE_MUSIC_TRIM) listener?.onMusicEdited(true)
                     pinchActive = true
                     pinchStartDist = max(1f, pointerDist(event))
@@ -549,9 +556,27 @@ class TimelineView(context: Context) : View(context) {
                         val dt = (event.x - downX) / z
                         var ns = snap(origStart + dt, l)
                         ns = ns.coerceIn(0f, max(0f, p.duration - l.dur))
-                        l.start = round(ns * 1000f) / 1000f
+                        val newStart = round(ns * 1000f) / 1000f
+                        val delta = newStart - l.start
+                        if (abs(delta) > 0.0005f) {
+                            l.start = newStart
+                            // keyframe WAJIB ikut klipnya (koordinat keyframe absolut)
+                            Anim.shiftKeyframes(l, delta, p.duration)
+                        }
                         listener?.onTimesChanged(false)
                         invalidate()
+                    }
+                    MODE_KEY -> {
+                        val l = dragLayer ?: return true
+                        val nt = tAt(event.x).coerceIn(l.start, l.start + l.dur)
+                        val movedTo = Anim.moveKeyframeGroup(l, dragKeyNow, nt)
+                        if (abs(movedTo - dragKeyNow) > 0.001f) {
+                            dragKeyNow = movedTo
+                            keyMoved = true
+                            listener?.onSeek(dragKeyNow)
+                            listener?.onTimesChanged(false)
+                            invalidate()
+                        }
                     }
                     MODE_TRIM -> {
                         val l = dragLayer ?: return true
@@ -590,6 +615,7 @@ class TimelineView(context: Context) : View(context) {
                     listener?.onSeek(tAt(downX))
                 }
                 if (dragMode == MODE_MOVE || dragMode == MODE_TRIM) listener?.onTimesChanged(true)
+                if (dragMode == MODE_KEY && keyMoved) listener?.onTimesChanged(true)
                 if (dragMode == MODE_MUSIC_MOVE || dragMode == MODE_MUSIC_TRIM) {
                     if (musicTapCandidate && tapLike && event.actionMasked == MotionEvent.ACTION_UP) listener?.onMusicTap()
                     else listener?.onMusicEdited(true)
@@ -600,6 +626,7 @@ class TimelineView(context: Context) : View(context) {
                 pinchActive = false
                 musicTapCandidate = false
                 panMoved = false
+                keyMoved = false
             }
         }
         return true
@@ -615,5 +642,6 @@ class TimelineView(context: Context) : View(context) {
         const val MODE_MUSIC_MOVE = 4
         const val MODE_MUSIC_TRIM = 5
         const val MODE_PAN = 6
+        const val MODE_KEY = 7
     }
 }

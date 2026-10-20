@@ -136,6 +136,50 @@ object Anim {
 
     fun hasKeys(layer: Layer): Boolean = layer.channels.values.any { it.keys.isNotEmpty() }
 
+    /** Geser SEMUA keyframe layer sejauh [delta] detik (dipakai saat klip dipindah di timeline). */
+    fun shiftKeyframes(layer: Layer, delta: Float, duration: Float) {
+        if (abs(delta) < 0.0005f) return
+        for (ch in layer.channels.values) {
+            for (k in ch.keys) {
+                k.t = (round((k.t + delta) * 1000f) / 1000f).coerceIn(0f, duration)
+            }
+            ch.keys.sortBy { it.t }
+            var i = ch.keys.size - 2
+            while (i >= 0) {
+                if (abs(ch.keys[i].t - ch.keys[i + 1].t) < 0.02f) ch.keys.removeAt(i)
+                i--
+            }
+        }
+    }
+
+    /** Pindahkan grup keyframe (semua channel) dari [fromT] ke [toT]; kembali waktu final. */
+    fun moveKeyframeGroup(layer: Layer, fromT: Float, toT: Float): Float {
+        val target = (round(toT * 1000f) / 1000f).coerceIn(layer.start, layer.start + layer.dur)
+        if (abs(target - fromT) < 0.001f) return fromT
+        for (ch in layer.channels.values) {
+            ch.keys.removeAll { abs(it.t - target) < 0.02f && abs(it.t - fromT) >= 0.03f }
+            for (k in ch.keys) {
+                if (abs(k.t - fromT) < 0.03f) k.t = target
+            }
+            ch.keys.sortBy { it.t }
+        }
+        return target
+    }
+
+    /** Hapus semua keyframe (semua channel) tepat di waktu [t]; kembali jumlah terhapus. */
+    fun removeKeysAtTime(layer: Layer, t: Float): Int {
+        var n = 0
+        val it = layer.channels.entries.iterator()
+        while (it.hasNext()) {
+            val e = it.next()
+            val before = e.value.keys.size
+            e.value.keys.removeAll { k -> abs(k.t - t) < 0.03f }
+            n += before - e.value.keys.size
+            if (e.value.keys.isEmpty()) it.remove()
+        }
+        return n
+    }
+
     fun clearAll(layer: Layer) {
         layer.channels.clear()
     }

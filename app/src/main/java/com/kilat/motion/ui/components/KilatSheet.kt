@@ -65,14 +65,13 @@ object KilatSheet {
     ): Triple<FrameLayout, LinearLayout, LinearLayout> {
         val root = activity.window.decorView as ViewGroup
         val overlay = FrameLayout(activity)
-        overlay.setBackgroundColor(0xD9050609.toInt())
+        overlay.setBackgroundColor(0xF2050609.toInt())
         overlay.alpha = 0f
 
         val sheet = LinearLayout(activity)
         sheet.orientation = LinearLayout.VERTICAL
         sheet.background = roundedTop(KColors.BgTop, activity.dpf(22f))
         sheet.setPadding(activity.dp(18f), activity.dp(10f), activity.dp(18f), activity.dp(20f))
-        sheet.elevation = activity.dpf(12f)
 
         // pill handle
         val strip = View(activity)

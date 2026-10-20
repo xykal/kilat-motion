@@ -3,11 +3,27 @@
 Motion graphics editor **native Android** (Kotlin), alur kerja ala **Alight Motion** + UI gelap ala **CapCut**.
 Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK dibuild otomatis via **GitHub Actions**.
 
-![status](https://img.shields.io/badge/build-passing-2ee6c0) ![minSdk](https://img.shields.io/badge/minSdk-29-blue) ![size](https://img.shields.io/badge/APK-2.4--3.1%20MB-lightgrey) ![tests](https://img.shields.io/badge/tests-40%20passing-2ee6c0)
+![status](https://img.shields.io/badge/build-passing-2ee6c0) ![minSdk](https://img.shields.io/badge/minSdk-29-blue) ![size](https://img.shields.io/badge/APK-2.4--3.1%20MB-lightgrey) ![tests](https://img.shields.io/badge/tests-42%20passing-2ee6c0)
 
 ---
 
-## Baru di v1.4.0 — Editor Pro: Kurva, Filter Kategori, Vektor, SVG, Masking & 3D
+## Baru di v1.4.1 — Keyframe Ikut Klip, Nol Shadow Glass, Ikon v5
+
+- **Keyframe sekarang patuh**: menggeser klip di timeline **menggeser semua
+  keyframe-nya ikut** (dulu diam di waktu absolut). Diamond keyframe juga bisa
+  **diseret** untuk memindahkan waktu grup keyframe (playhead mengikuti,
+  diamond membesar saat diseret).
+- **Navigasi keyframe**: tombol Keyframe Sebelumnya/Berikutnya + Hapus Keyframe
+  di Playhead di kartu Kurva Gerakan.
+- **Nol bayangan kaca**: semua `elevation` shadow di chrome UI dicabut (panel
+  inspector, bottom sheet, toast, bottom nav, FAB, hero, splash) dan sisa
+  warna alpha UI dijadikan solid 100% opaque.
+- **Ikon v5**: Folder, Layers, Shape, Film digambar ulang dari render QA;
+  Settings jadi gir 6 gigi gemuk yang terbaca jelas.
+
+---
+
+## v1.4.0 — Editor Pro: Kurva, Filter Kategori, Vektor, SVG, Masking & 3D
 
 - **Perbaikan gestur penting**: memilih atau menggeser klip di timeline/kanvas
   **tidak lagi membuka bottom sheet sendiri**. Panel Properti sekarang dibuka
@@ -175,8 +191,8 @@ Tes JVM meniru struktur yang sama di `app/src/test/java/com/kilat/motion/`.
 
 | Build | Link |
 |---|---|
-| Release (signed, sideload-ready) | https://github.com/xykal/kilat-motion/releases/download/v1.4.0/app-release.apk |
-| Debug | https://github.com/xykal/kilat-motion/releases/download/v1.4.0/app-debug.apk |
+| Release (signed, sideload-ready) | https://github.com/xykal/kilat-motion/releases/download/v1.4.1/app-release.apk |
+| Debug | https://github.com/xykal/kilat-motion/releases/download/v1.4.1/app-debug.apk |
 
 APK baru otomatis dibuat setiap push & setiap tag `v*` lewat GitHub Actions.
 
@@ -188,7 +204,7 @@ Butuh **JDK 17** + **Android SDK (platform 34, build-tools 34.0.0)**.
 ```bash
 ./gradlew :app:assembleDebug      # APK debug
 ./gradlew :app:assembleRelease    # APK release (signed pakai debug key → bisa langsung sideload)
-./gradlew :app:testDebugUnitTest  # 40 unit test (animasi/bezier, OBJ, SVG, waveform, template, ikon)
+./gradlew :app:testDebugUnitTest  # 42 unit test (animasi/bezier, OBJ, SVG, waveform, template, ikon)
 ```
 
 APK ada di:

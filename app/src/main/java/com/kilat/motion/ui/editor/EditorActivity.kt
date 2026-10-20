@@ -448,7 +448,6 @@ class EditorActivity : Activity() {
         inspectorPanel = LinearLayout(this)
         inspectorPanel.orientation = LinearLayout.VERTICAL
         inspectorPanel.background = roundedTop(KColors.BgTop, kdpf(20f))
-        inspectorPanel.elevation = kdpf(14f)
         inspectorPanel.visibility = View.GONE
 
         val strip = View(this)
@@ -509,6 +508,21 @@ class EditorActivity : Activity() {
 
             override fun onReorder(layer: Layer, dir: Int) {
                 reorderLayer(layer, dir)
+            }
+
+            override fun onJumpKey(layer: Layer, dir: Int) {
+                val times = Anim.allKeyTimes(layer)
+                val target = if (dir < 0) {
+                    times.lastOrNull { it < playhead - 0.03f }
+                } else {
+                    times.firstOrNull { it > playhead + 0.03f }
+                }
+                if (target == null) {
+                    toast(if (dir < 0) "Tidak ada keyframe sebelumnya" else "Tidak ada keyframe berikutnya", KilatIcon.KEYFRAME)
+                    return
+                }
+                if (playing) stopPlay()
+                setPlayhead(target)
             }
 
             override fun onClearKeys(layer: Layer) {
@@ -1556,7 +1570,7 @@ class EditorActivity : Activity() {
     private fun showAbout() {
         KilatSheet.showMessage(
             this, "KILAT Motion",
-            "Motion graphics editor native Android.\n\nVersi 1.4.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa library eksternal.\nSemua ikon digambar manual pakai Canvas.",
+            "Motion graphics editor native Android.\n\nVersi 1.4.1\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa library eksternal.\nSemua ikon digambar manual pakai Canvas.",
             icon = KilatIcon.BOLT
         )
     }

@@ -38,7 +38,6 @@ class KilatBottomNav(context: Context) : FrameLayout(context) {
         bar.gravity = Gravity.CENTER_VERTICAL
         bar.background = roundedTop(KColors.BgTop, dpf(20f))
         bar.setPadding(dp(8f), dp(8f), dp(8f), dp(10f))
-        bar.elevation = dpf(10f)
         val lpBar = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM)
         lpBar.topMargin = dp(24f)
         addView(bar, lpBar)
@@ -85,7 +84,6 @@ class KilatBottomNav(context: Context) : FrameLayout(context) {
         // FAB Buat di tengah, mengambang di atas bar
         val fab = FrameLayout(context)
         fab.background = kilatSolidOval()
-        fab.elevation = dpf(14f)
         fab.isClickable = true
         val plus = IconView(context, KilatIcon.PLUS, 0xFF05131F.toInt())
         val fp = dp(16f)
