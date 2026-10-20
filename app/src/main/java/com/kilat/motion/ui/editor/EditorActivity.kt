@@ -257,6 +257,10 @@ class EditorActivity : Activity() {
             override fun onRequestProperties() {
                 showPanel()
             }
+
+            override fun onStroke(points: FloatArray) {
+                addVectorLayer(points)
+            }
         }
         previewWrap.addView(preview, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
@@ -332,7 +336,9 @@ class EditorActivity : Activity() {
             }
 
             override fun onSelect(id: String?) {
-                selectLayer(id, openPanel = true)
+                // memilih/menggeser klip di timeline TIDAK membuka panel (ala CapCut/AM);
+                // panel dibuka sadar lewat tombol Properti atau double-tap kanvas.
+                selectLayer(id, openPanel = false)
             }
 
             override fun onTimesChanged(commit: Boolean) {
@@ -412,23 +418,29 @@ class EditorActivity : Activity() {
         main.addView(timeline, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(176f)))
 
         // ---------- bottom toolbar ----------
+        val bottomScroll = android.widget.HorizontalScrollView(this)
+        bottomScroll.isHorizontalScrollBarEnabled = false
+        bottomScroll.setBackgroundColor(KColors.BgTop)
         val bottom = LinearLayout(this)
         bottom.orientation = LinearLayout.HORIZONTAL
         bottom.setPadding(dp(8f), dp(4f), dp(8f), dp(8f))
-        bottom.setBackgroundColor(KColors.BgTop)
         val tools = listOf(
             Triple(KilatIcon.TEXT, "Teks") { addTextLayer() },
             Triple(KilatIcon.SHAPE, "Bentuk") { showShapePicker() },
             Triple(KilatIcon.IMAGE, "Gambar") { pickImage(null) },
+            Triple(KilatIcon.PENCIL, "Coret") { toggleDrawMode() },
+            Triple(KilatIcon.VECTOR, "SVG") { pickSvg() },
+            Triple(KilatIcon.CUBE, "3D") { show3DPicker() },
             Triple(KilatIcon.SLIDERS, "Properti") { showPanel() },
             Triple(KilatIcon.EXPORT, "Export") { showExportDialog() }
         )
         for ((i, triple) in tools.withIndex()) {
             val (icon, label, action) = triple
             val item = toolItem(icon, label, accent = i == tools.size - 1) { action() }
-            bottom.addView(item, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            bottom.addView(item, LinearLayout.LayoutParams(dp(66f), ViewGroup.LayoutParams.WRAP_CONTENT))
         }
-        main.addView(bottom, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        bottomScroll.addView(bottom)
+        main.addView(bottomScroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
         root.addView(main, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
@@ -669,6 +681,194 @@ class EditorActivity : Activity() {
         afterChange(l.id)
         selectLayer(l.id, openPanel = true)
         toast("Teks ditambahkan", KilatIcon.TEXT)
+    }
+
+    // =====================================================================
+    // layer vektor / svg / 3d
+    // =====================================================================
+    private fun toggleDrawMode() {
+        preview.drawMode = !preview.drawMode
+        if (preview.drawMode) {
+            if (playing) stopPlay()
+            toast("Mode coret ON: gambar bebas di kanvas, ketuk Coret lagi untuk selesai", KilatIcon.PENCIL)
+        } else {
+            toast("Mode coret OFF", KilatIcon.PENCIL)
+        }
+    }
+
+    private fun addVectorLayer(points: FloatArray) {
+        if (points.size < 4) return
+        var minX = Float.MAX_VALUE; var minY = Float.MAX_VALUE
+        var maxX = -Float.MAX_VALUE; var maxY = -Float.MAX_VALUE
+        var i = 0
+        while (i + 1 < points.size) {
+            if (points[i] < minX) minX = points[i]
+            if (points[i] > maxX) maxX = points[i]
+            if (points[i + 1] < minY) minY = points[i + 1]
+            if (points[i + 1] > maxY) maxY = points[i + 1]
+            i += 2
+        }
+        val cx = (minX + maxX) / 2f
+        val cy = (minY + maxY) / 2f
+        val sb = StringBuilder()
+        var j = 0
+        while (j + 1 < points.size) {
+            if (sb.isNotEmpty()) sb.append(';')
+            sb.append(String.format(java.util.Locale.US, "%.1f,%.1f", points[j] - cx, points[j + 1] - cy))
+            j += 2
+        }
+        val p = project
+        val l = Layer().apply {
+            kind = KIND_VECTOR
+            name = "Coretan ${p.layers.count { it.kind == KIND_VECTOR } + 1}"
+            vecPoints = sb.toString()
+            vecStrokeW = 16f
+            color = KColors.Accent
+            fill = 0xFF2EE6C0.toInt()
+            x = cx
+            y = cy
+            w = max(10f, maxX - minX)
+            h = max(10f, maxY - minY)
+            start = playhead.coerceIn(0f, max(0f, p.duration - 0.5f))
+            dur = min(5f, p.duration - start)
+        }
+        p.layers.add(l)
+        afterChange(l.id)
+        toast("Coretan jadi layer vektor - atur di Properti", KilatIcon.PENCIL)
+    }
+
+    private fun pickSvg() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+        try {
+            @Suppress("DEPRECATION")
+            startActivityForResult(intent, REQ_SVG)
+        } catch (e: Throwable) {
+            toast("Tidak bisa membuka pemilih file", KilatIcon.INFO)
+        }
+    }
+
+    private fun pickObj() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+        try {
+            @Suppress("DEPRECATION")
+            startActivityForResult(intent, REQ_OBJ)
+        } catch (e: Throwable) {
+            toast("Tidak bisa membuka pemilih file", KilatIcon.INFO)
+        }
+    }
+
+    private fun show3DPicker() {
+        val names = listOf("Kubus", "Piramida", "Prisma segitiga", "Oktahedron (kristal)", "Import file .OBJ...")
+        val kinds = listOf("cube", "pyramid", "prism", "octa", "custom")
+        val items = names.map { n -> KilatSheet.Item(n, icon = KilatIcon.CUBE, iconTint = KColors.Sky) }
+        KilatSheet.showList(this, "Tambah objek 3D", items) { which ->
+            if (kinds[which] == "custom") pickObj() else add3DLayer(kinds[which], "", names[which])
+        }
+    }
+
+    private fun add3DLayer(kind: String, path: String, label: String) {
+        val p = project
+        val base = min(p.width, p.height) * 0.56f
+        val l = Layer().apply {
+            this.kind = KIND_3D
+            name = "3D $label"
+            objKind = kind
+            objPath = path
+            w = base
+            h = base
+            fill = 0xFF8B7CFF.toInt()
+            x = p.width / 2f
+            y = p.height / 2f
+            start = playhead.coerceIn(0f, max(0f, p.duration - 0.5f))
+            dur = min(5f, p.duration - start)
+            rotX = 18f
+        }
+        // putaran perkenalan 360 derajat
+        Anim.setKey(l, "rotY", l.start, -40f, "easeInOut")
+        Anim.setKey(l, "rotY", l.start + l.dur, 320f, "easeInOut")
+        p.layers.add(l)
+        afterChange(l.id)
+        selectLayer(l.id, openPanel = true)
+        toast("Objek 3D ditambahkan - putar via Tilt X/Y di tab 3D", KilatIcon.CUBE)
+    }
+
+    private fun importSvgFrom(uri: Uri) {
+        toast("Membaca SVG...", KilatIcon.VECTOR)
+        Thread {
+            val text = try {
+                contentResolver.openInputStream(uri)?.use { ins ->
+                    val bytes = ins.readBytes()
+                    if (bytes.size > 512_000) null else String(bytes, Charsets.UTF_8)
+                }
+            } catch (e: Throwable) {
+                null
+            }
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                if (text == null) {
+                    toast("Gagal membaca file SVG", KilatIcon.INFO)
+                    return@runOnUiThread
+                }
+                val d = com.kilat.motion.core.vector.SvgPath.extractPathData(text)
+                if (d.isBlank()) {
+                    toast("Tidak ada path SVG yang dikenali di file ini", KilatIcon.INFO)
+                    return@runOnUiThread
+                }
+                val vb = com.kilat.motion.core.vector.SvgPath.extractViewBox(text)
+                val p = project
+                val target = min(p.width, p.height) * 0.6f
+                val ratio = vb[2] / max(1f, vb[3])
+                val l = Layer().apply {
+                    kind = KIND_SVG
+                    name = (queryDisplayName(uri) ?: "SVG").substringBeforeLast('.')
+                    svgData = d
+                    svgVbX = vb[0]; svgVbY = vb[1]; svgVbW = vb[2]; svgVbH = vb[3]
+                    w = if (ratio >= 1f) target else target * ratio
+                    h = if (ratio >= 1f) target / ratio else target
+                    fill = KColors.Accent
+                    x = p.width / 2f
+                    y = p.height / 2f
+                    start = playhead.coerceIn(0f, max(0f, p.duration - 0.5f))
+                    dur = min(5f, p.duration - start)
+                }
+                p.layers.add(l)
+                afterChange(l.id)
+                selectLayer(l.id, openPanel = true)
+                toast("SVG diimpor sebagai layer vektor", KilatIcon.VECTOR)
+            }
+        }.start()
+    }
+
+    private fun importObjFrom(uri: Uri) {
+        toast("Membaca model 3D...", KilatIcon.CUBE)
+        Thread {
+            val dest = try {
+                val dir = java.io.File(applicationContext.filesDir, "models")
+                if (!dir.exists()) dir.mkdirs()
+                val f = java.io.File(dir, "model_${System.currentTimeMillis()}.obj")
+                contentResolver.openInputStream(uri)?.use { ins ->
+                    f.outputStream().use { out -> ins.copyTo(out) }
+                } ?: throw IllegalStateException("no stream")
+                f.absolutePath
+            } catch (e: Throwable) {
+                null
+            }
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                if (dest == null) {
+                    toast("Gagal membaca file .OBJ", KilatIcon.INFO)
+                    return@runOnUiThread
+                }
+                val label = (queryDisplayName(uri) ?: "Model").substringBeforeLast('.')
+                add3DLayer("custom", dest, label)
+            }
+        }.start()
     }
 
     private fun showShapePicker() {
@@ -996,6 +1196,16 @@ class EditorActivity : Activity() {
         if (requestCode == REQ_AUDIO) {
             val auri: Uri = data?.data ?: return
             importAudioFrom(auri)
+            return
+        }
+        if (requestCode == REQ_OBJ) {
+            val ouri: Uri = data?.data ?: return
+            importObjFrom(ouri)
+            return
+        }
+        if (requestCode == REQ_SVG) {
+            val suri: Uri = data?.data ?: return
+            importSvgFrom(suri)
             return
         }
         if (requestCode != REQ_IMAGE) return
@@ -1346,7 +1556,7 @@ class EditorActivity : Activity() {
     private fun showAbout() {
         KilatSheet.showMessage(
             this, "KILAT Motion",
-            "Motion graphics editor native Android.\n\nVersi 1.3.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa library eksternal.\nSemua ikon digambar manual pakai Canvas.",
+            "Motion graphics editor native Android.\n\nVersi 1.4.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa library eksternal.\nSemua ikon digambar manual pakai Canvas.",
             icon = KilatIcon.BOLT
         )
     }
@@ -1375,5 +1585,7 @@ class EditorActivity : Activity() {
 
         private const val REQ_IMAGE = 1001
         private const val REQ_AUDIO = 1002
+        private const val REQ_OBJ = 1003
+        private const val REQ_SVG = 1004
     }
 }

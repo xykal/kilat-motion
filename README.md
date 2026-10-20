@@ -1,13 +1,49 @@
-# ⚡ KILAT Motion — Android Native
+# KILAT Motion — Android Native
 
 Motion graphics editor **native Android** (Kotlin), alur kerja ala **Alight Motion** + UI gelap ala **CapCut**.
 Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK dibuild otomatis via **GitHub Actions**.
 
-![status](https://img.shields.io/badge/build-passing-2ee6c0) ![minSdk](https://img.shields.io/badge/minSdk-29-blue) ![size](https://img.shields.io/badge/APK-2.3--2.9%20MB-lightgrey) ![tests](https://img.shields.io/badge/tests-30%20passing-2ee6c0)
+![status](https://img.shields.io/badge/build-passing-2ee6c0) ![minSdk](https://img.shields.io/badge/minSdk-29-blue) ![size](https://img.shields.io/badge/APK-2.4--3.1%20MB-lightgrey) ![tests](https://img.shields.io/badge/tests-40%20passing-2ee6c0)
 
 ---
 
-## Baru di v1.3.0 — Solid Flat Total, Timeline Bisa Digeser & Zoom, Template ala TikTok
+## Baru di v1.4.0 — Editor Pro: Kurva, Filter Kategori, Vektor, SVG, Masking & 3D
+
+- **Perbaikan gestur penting**: memilih atau menggeser klip di timeline/kanvas
+  **tidak lagi membuka bottom sheet sendiri**. Panel Properti sekarang dibuka
+  secara sadar lewat tombol **Properti** atau **double-tap layer**, mengikuti
+  alur CapCut/Alight Motion.
+- **Bug render teks dibetulkan**: warna isi dan outline teks sekarang benar-benar
+  diterapkan Renderer; glow juga bekerja untuk layer gambar.
+- **Inspector dipecah per kategori**, tidak dicampur lagi:
+  **Konten · Transform · Animasi · Efek Cahaya · Warna & Filter · Gaya · 3D**.
+- **Transform super lengkap**: Posisi X/Y, Skala, **Skala X & Y terpisah**,
+  Miring/Skew X/Y, Rotasi, Opasitas, Balik Kiri-Kanan/Atas-Bawah, **Tilt 3D X/Y**,
+  semua bisa di-keyframe per properti.
+- **Editor kurva gerakan**: grafik cubic-bezier dua handle yang bisa diseret,
+  preset Pantul JJ/Halus/Nendang/Linear, terapkan ke keyframe di playhead atau
+  semua keyframe layer.
+- **Warna & filter**: preset Normal, Vivid, Hangat, Dingin, Mono, Sepia, Pudar;
+  slider Brightness, Contrast, Saturasi, Hue. Efek Cahaya dipisah: Blur, Glow,
+  warna glow, Blend.
+- **Gaya lengkap**: Shadow (blur, geser X/Y, warna), Garis Tepi/Border,
+  Border Radius bentuk, serta **Masking** Kotak Lembut/Lingkaran/Bintang +
+  mode Balik Mask.
+- **Layer baru**:
+  - **Coret Vektor**: gambar bebas langsung di kanvas jadi layer vektor smooth.
+  - **SVG**: impor path SVG (M/L/H/V/C/S/Q/T/Z; busur disederhanakan).
+  - **Objek 3D**: Kubus, Piramida, Prisma, Oktahedron, dan **impor file .OBJ**
+    (dirender software flat-shaded di Canvas; putar via Tilt X/Y + Rotasi).
+- **Semua template lama dihapus**, diganti 6 template JJ baru:
+  **JJ Velocity, JJ Lirik DJ, JJ Jedag Jedug 130, JJ Soft Spoken, JJ Tipis,
+  JJ Kece Serem**.
+- **Ikon v4 (53 ikon)**: digambar ulang untuk ikon yang lemah (gir Settings,
+  Save, Trash, Film, Clock, Copy, Shape, Scissors) + ikon Pencil, Vector, Cube,
+  Curve. Set ikon dirender ke contact sheet untuk QA visual sebelum rilis.
+
+---
+
+## v1.3.0 — Solid Flat Total, Timeline Bisa Digeser & Zoom, Template ala TikTok
 
 - **UI solid flat 100%**: semua gradient dan warna transparan di UI dicabut —
   tombol aksen, ubin logo, FAB, badge, toast, bar timeline, sampai duotone
@@ -108,19 +144,19 @@ Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK 
 app/src/main/java/com/kilat/motion/
 |-- core/
 |   |-- model/Model.kt            -> Project, Layer, Keyframe, Music, konstanta
-|   |-- animation/Anim.kt         -> easing, evaluasi keyframe, 8 preset
-|   |-- render/Renderer.kt        -> satu renderer untuk preview + export + thumbnail
+|   |-- animation/Anim.kt         -> easing + cubic bezier, evaluasi keyframe, 9 preset
+|   |-- render/Renderer.kt        -> satu renderer untuk preview + export + thumbnail (2D/vektor/SVG/3D)
 |   |-- audio/                    -> Waveform, AudioUtil (decode), MusicPlayer (preview)
 |   `-- export/Exporter.kt        -> MediaCodec H.264 + mux audio + PNG
 |-- data/
 |   |-- ProjectStore.kt           -> serialisasi JSON project, impor gambar/audio
 |   |-- ProjectLibrary.kt         -> pustaka multi-project (files/projects/*.json)
-|   |-- Templates.kt              -> demo + 5 template + daftar rasio kanvas
+|   |-- Templates.kt              -> demo internal + 6 template JJ + daftar rasio kanvas
 |   `-- Prefs.kt                  -> status onboarding
 `-- ui/
     |-- theme/KilatTheme.kt       -> warna, radius, tipografi, efek tekan
     |-- components/
-    |   |-- Icons.kt              -> 40 ikon Canvas manual (IconPainter + IconView)
+    |   |-- Icons.kt              -> 53 ikon Canvas manual (IconPainter + IconView)
     |   |-- KilatViews.kt         -> Button, IconButton, Slider, Dropdown, Chip, Progress, KeyframeButton
     |   |-- KilatSheet.kt         -> bottom sheet (list/pesan/konfirmasi/progress)
     |   |-- KilatToast.kt         -> toast in-app custom
@@ -135,16 +171,16 @@ app/src/main/java/com/kilat/motion/
 Prinsip: `core` tidak tahu UI, `data` tidak tahu tampilan, `ui` memakai keduanya.
 Tes JVM meniru struktur yang sama di `app/src/test/java/com/kilat/motion/`.
 
-## 📥 Download APK
+## Download APK
 
 | Build | Link |
 |---|---|
-| Release (signed, sideload-ready) | https://github.com/xykal/kilat-motion/releases/download/v1.3.0/app-release.apk |
-| Debug | https://github.com/xykal/kilat-motion/releases/download/v1.3.0/app-debug.apk |
+| Release (signed, sideload-ready) | https://github.com/xykal/kilat-motion/releases/download/v1.4.0/app-release.apk |
+| Debug | https://github.com/xykal/kilat-motion/releases/download/v1.4.0/app-debug.apk |
 
 APK baru otomatis dibuat setiap push & setiap tag `v*` lewat GitHub Actions.
 
-## 🚀 Build & install
+## Build & install
 
 ### Lokal
 Butuh **JDK 17** + **Android SDK (platform 34, build-tools 34.0.0)**.
@@ -152,7 +188,7 @@ Butuh **JDK 17** + **Android SDK (platform 34, build-tools 34.0.0)**.
 ```bash
 ./gradlew :app:assembleDebug      # APK debug
 ./gradlew :app:assembleRelease    # APK release (signed pakai debug key → bisa langsung sideload)
-./gradlew :app:testDebugUnitTest  # 28 unit test (animasi, split layer, waveform, template, ikon)
+./gradlew :app:testDebugUnitTest  # 40 unit test (animasi/bezier, OBJ, SVG, waveform, template, ikon)
 ```
 
 APK ada di:
@@ -174,7 +210,7 @@ Setelah push, buka tab **Actions** — build otomatis jalan, APK muncul di **Art
 
 ---
 
-## 🧱 Arsitektur
+## Arsitektur
 
 | File | Peran |
 |---|---|
@@ -196,7 +232,7 @@ Setelah push, buka tab **Actions** — build otomatis jalan, APK muncul di **Art
 
 ---
 
-## ⚠️ Batasan v1 (jujur)
+## ️ Batasan v1 (jujur)
 
 - **Video layer belum ada** (fase berikutnya pakai Media3/ExoPlayer)
 - **Export audio** menyalin track asli (volume export = volume file; slider volume hanya untuk preview)
@@ -207,16 +243,16 @@ Setelah push, buka tab **Actions** — build otomatis jalan, APK muncul di **Art
 - Export butuh encoder H.264 yang tersedia di device; kalau 1080p gagal → otomatis retry 720p
 - Build & unit test lolos; **wajib uji di device fisik** untuk validasi runtime (terutama lockCanvas di codec surface pada tiap OEM)
 
-## 🗺 Roadmap
+## Roadmap
 
-1. ~~Audio dasar~~ ✅ (musik latar + waveform + mux export) → lanjut: multi-track + volume keyframe
+1. ~~Audio dasar~~ (musik latar + waveform + mux export) → lanjut: multi-track + volume keyframe
 2. **Video layer** (Media3 decoder → GL texture) + speed ramp
 3. Masking/crop, chroma key, motion blur, particle
 4. Text styles (gradient stroke, shadow, animasi per kata)
 5. Export faster-than-realtime (EGL) + export GIF
 6. Template siap pakai (intro, lower-third, countdown)
 
-## 🛠 Troubleshooting
+## Troubleshooting
 
 | Masalah | Solusi |
 |---|---|
@@ -227,4 +263,4 @@ Setelah push, buka tab **Actions** — build otomatis jalan, APK muncul di **Art
 
 ---
 
-Dibuat dengan ⚡ — Kotlin · Canvas · MediaCodec · tanpa iklan.
+Dibuat dengan — Kotlin · Canvas · MediaCodec · tanpa iklan.

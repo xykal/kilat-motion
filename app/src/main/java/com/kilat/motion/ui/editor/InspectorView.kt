@@ -45,6 +45,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
     private var curPlayhead: Float = 0f
     private var binding = false
     private var defaultEase = "easeOut"
+    private var activeCat = "Konten"
 
     private class RowRef(
         val key: String,
@@ -251,6 +252,9 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val kindLabel = when (l.kind) {
             KIND_TEXT -> "TEKS"
             KIND_SHAPE -> "BENTUK"
+            KIND_VECTOR -> "VEKTOR"
+            KIND_SVG -> "SVG"
+            KIND_3D -> "OBJEK 3D"
             else -> "GAMBAR"
         }
         typeTv.text = "$kindLabel  |  ${Anim.allKeyTimes(l).size} keyframe"
@@ -281,6 +285,47 @@ class InspectorView(context: Context) : LinearLayout(context) {
         lpAct.topMargin = dp(9f).toInt()
         addView(actRow, lpAct)
 
+        // ---- tab kategori (konten/transform/animasi/efek dipisah, tidak digabung) ----
+        val catNames = listOf("Konten", "Transform", "Animasi", "Efek", "Warna", "Gaya", "3D")
+        if (activeCat !in catNames) activeCat = "Konten"
+        val catBoxes = LinkedHashMap<String, LinearLayout>()
+        val catChips = ArrayList<Pair<String, KilatChip>>()
+        val chipRowCats = LinearLayout(context)
+        chipRowCats.orientation = HORIZONTAL
+        val chipScroll = android.widget.HorizontalScrollView(context)
+        chipScroll.isHorizontalScrollBarEnabled = false
+        for (cn in catNames) {
+            val chip = KilatChip(context, cn)
+            chip.chipSelected = cn == activeCat
+            val lpChip = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+            lpChip.rightMargin = dp(6f).toInt()
+            chipRowCats.addView(chip, lpChip)
+            catChips.add(cn to chip)
+            chip.setOnClickListener {
+                activeCat = cn
+                for ((n2, c2) in catChips) c2.chipSelected = n2 == activeCat
+                for ((n2, box2) in catBoxes) box2.visibility = if (n2 == activeCat) View.VISIBLE else View.GONE
+            }
+        }
+        chipScroll.addView(chipRowCats)
+        val lpChipScroll = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpChipScroll.topMargin = dp(12f).toInt()
+        addView(chipScroll, lpChipScroll)
+        for (cn in catNames) {
+            val box = LinearLayout(context)
+            box.orientation = VERTICAL
+            box.visibility = if (cn == activeCat) View.VISIBLE else View.GONE
+            catBoxes[cn] = box
+            addView(box, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        }
+        val kontenCat = catBoxes["Konten"]!!
+        val transCat = catBoxes["Transform"]!!
+        val animCat = catBoxes["Animasi"]!!
+        val efekCat = catBoxes["Efek"]!!
+        val warnaCat = catBoxes["Warna"]!!
+        val gayaCat = catBoxes["Gaya"]!!
+        val d3Cat = catBoxes["3D"]!!
+
         // ---- timing ----
         val timing = card()
         timing.addView(header("Waktu Layer"))
@@ -303,13 +348,16 @@ class InspectorView(context: Context) : LinearLayout(context) {
             }
         }, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         timing.addView(timeRow)
-        addView(timing)
+        animCat.addView(timing)
 
         // ---- tipe konten ----
         when (l.kind) {
-            KIND_TEXT -> buildTextSection(l)
-            KIND_SHAPE -> buildShapeSection(l)
-            KIND_IMAGE -> buildImageSection(l)
+            KIND_TEXT -> buildTextSection(l, kontenCat)
+            KIND_SHAPE -> buildShapeSection(l, kontenCat)
+            KIND_IMAGE -> buildImageSection(l, kontenCat)
+            KIND_VECTOR -> buildVectorSection(l, kontenCat)
+            KIND_SVG -> buildSvgSection(l, kontenCat)
+            KIND_3D -> build3DSection(l, kontenCat)
         }
 
         // ---- preset ----
@@ -341,7 +389,8 @@ class InspectorView(context: Context) : LinearLayout(context) {
         }
         easeRow.addView(easeDrop, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         presetCard.addView(easeRow, lpEase)
-        addView(presetCard)
+        animCat.addView(presetCard)
+        buildCurveCard(l, animCat)
 
         // ---- transform ----
         val transform = card()
@@ -350,9 +399,32 @@ class InspectorView(context: Context) : LinearLayout(context) {
         addProp(transform, l, "x", "Posisi X", 0f, p.width.toFloat(), 1f, false)
         addProp(transform, l, "y", "Posisi Y", 0f, p.height.toFloat(), 1f, false)
         addProp(transform, l, "scale", "Skala", 0.02f, 3f, 0.01f, false)
+        addProp(transform, l, "scaleX", "Skala X", -3f, 3f, 0.01f, false)
+        addProp(transform, l, "scaleY", "Skala Y", -3f, 3f, 0.01f, false)
+        addProp(transform, l, "skewX", "Miring X", -1f, 1f, 0.01f, false)
+        addProp(transform, l, "skewY", "Miring Y", -1f, 1f, 0.01f, false)
         addProp(transform, l, "rot", "Rotasi", -180f, 180f, 1f, true)
         addProp(transform, l, "alpha", "Opasitas", 0f, 1f, 0.01f, false)
         if (l.kind == KIND_TEXT) addProp(transform, l, "typing", "Teks muncul", 0f, 1f, 0.01f, false)
+        val flipRow = LinearLayout(context)
+        flipRow.orientation = HORIZONTAL
+        val lpFlip = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpFlip.topMargin = dp(10f).toInt()
+        val flipH = KilatButton(context, "Balik Kiri-Kanan", KilatIcon.COPY, KilatButtonStyle.GHOST, 11f)
+        flipH.setOnClickListener {
+            applyValue(l, "scaleX", -Anim.value(l, "scaleX", curPlayhead))
+            listener?.onEdited(true); syncValues()
+        }
+        flipRow.addView(flipH, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        val flipV = KilatButton(context, "Balik Atas-Bawah", KilatIcon.COPY, KilatButtonStyle.GHOST, 11f)
+        flipV.setOnClickListener {
+            applyValue(l, "scaleY", -Anim.value(l, "scaleY", curPlayhead))
+            listener?.onEdited(true); syncValues()
+        }
+        val lpFlipV = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+        lpFlipV.leftMargin = dp(7f).toInt()
+        flipRow.addView(flipV, lpFlipV)
+        transform.addView(flipRow, lpFlip)
         val centerBtn = KilatButton(context, "Tengahkan di Kanvas", KilatIcon.CROSSHAIR, KilatButtonStyle.SOFT, 11.5f)
         centerBtn.setOnClickListener {
             applyValue(l, "x", p.width / 2f)
@@ -363,16 +435,12 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpCenter = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         lpCenter.topMargin = dp(10f).toInt()
         transform.addView(centerBtn, lpCenter)
-        addView(transform)
+        transCat.addView(transform)
 
         // ---- efek ----
         val fx = card()
-        fx.addView(header("Filter & Efek"))
+        fx.addView(header("Efek Cahaya"))
         addProp(fx, l, "fx.blur", "Blur", 0f, 40f, 0.5f, false)
-        addProp(fx, l, "fx.brightness", "Brightness", 20f, 200f, 1f, true)
-        addProp(fx, l, "fx.contrast", "Contrast", 20f, 200f, 1f, true)
-        addProp(fx, l, "fx.saturate", "Saturasi", 0f, 200f, 1f, true)
-        addProp(fx, l, "fx.hue", "Hue", -180f, 180f, 1f, true)
         addProp(fx, l, "fx.glow", "Glow", 0f, 60f, 1f, true)
         val glowLbl = labelTv("Warna glow", widthDp = 84f)
         val lpGlow = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
@@ -394,7 +462,10 @@ class InspectorView(context: Context) : LinearLayout(context) {
         }
         blendRow.addView(blendDrop, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         fx.addView(blendRow, lpBlend)
-        addView(fx)
+        efekCat.addView(fx)
+        buildColorCard(l, warnaCat)
+        buildStyleCard(l, gayaCat)
+        build3DCard(l, d3Cat)
 
         if (l.kind == KIND_IMAGE) {
             val imgCard = card()
@@ -403,7 +474,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
             val lpBtn = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
             lpBtn.topMargin = dp(4f).toInt()
             imgCard.addView(btn, lpBtn)
-            addView(imgCard)
+            kontenCat.addView(imgCard)
         }
 
         binding = false
@@ -415,7 +486,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
         return if (r == r.toInt().toFloat()) r.toInt().toString() else r.toString()
     }
 
-    private fun buildTextSection(l: Layer) {
+    private fun buildTextSection(l: Layer, parent: LinearLayout) {
         val c = card()
         c.addView(header("Konten Teks"))
         val content = EditText(context)
@@ -528,10 +599,10 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpSSw = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         lpSSw.topMargin = dp(6f).toInt()
         c.addView(strokeSw, lpSSw)
-        addView(c)
+        parent.addView(c)
     }
 
-    private fun buildShapeSection(l: Layer) {
+    private fun buildShapeSection(l: Layer, parent: LinearLayout) {
         val c = card()
         c.addView(header("Bentuk"))
         val typeRow = LinearLayout(context)
@@ -578,10 +649,10 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpSw = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         lpSw.topMargin = dp(6f).toInt()
         c.addView(sw, lpSw)
-        addView(c)
+        parent.addView(c)
     }
 
-    private fun buildImageSection(l: Layer) {
+    private fun buildImageSection(l: Layer, parent: LinearLayout) {
         val c = card()
         c.addView(header("Gambar"))
         fun dimRow(label: String, value: Float, maxVal: Int, onChange: (Float) -> Unit) {
@@ -607,7 +678,272 @@ class InspectorView(context: Context) : LinearLayout(context) {
         }
         dimRow("Lebar", l.imgW, 2000) { l.imgW = maxOf(10f, it) }
         dimRow("Tinggi", l.imgH, 2000) { l.imgH = maxOf(10f, it) }
-        addView(c)
+        parent.addView(c)
+    }
+
+
+    // ---------------- slider statis (bukan keyframe) ----------------
+    private fun staticSlider(parent: LinearLayout, label: String, value: Float, maxInt: Int, div: Float, minV: Float = 0f, onChange: (Float) -> Unit) {
+        val row = LinearLayout(context)
+        row.orientation = HORIZONTAL
+        row.gravity = Gravity.CENTER_VERTICAL
+        val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lp.topMargin = dp(6f).toInt()
+        row.addView(labelTv(label, widthDp = 84f))
+        val seek = KilatSlider(context)
+        seek.max = maxInt
+        seek.progress = ((value - minV) * div).toInt().coerceIn(0, maxInt)
+        val valTv = labelTv(Format.dec(value, if (div > 1f) 1 else 0), 11f, cText)
+        seek.onProgress = { progress ->
+            val v = minV + progress / div
+            onChange(v)
+            valTv.text = Format.dec(v, if (div > 1f) 1 else 0)
+            listener?.onEdited(false)
+        }
+        seek.onReleased = { listener?.onEdited(true) }
+        row.addView(seek, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(valTv, LayoutParams(dp(40f).toInt(), LayoutParams.WRAP_CONTENT))
+        parent.addView(row, lp)
+    }
+
+    private fun swatchBlock(parent: LinearLayout, label: String, selected: Int, onPick: (Int) -> Unit) {
+        val lbl = labelTv(label, widthDp = 84f)
+        val lpL = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+        lpL.topMargin = dp(10f).toInt()
+        parent.addView(lbl, lpL)
+        val sw = swatchRow(selected, onPick)
+        val lpS = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+        lpS.topMargin = dp(6f).toInt()
+        parent.addView(sw, lpS)
+    }
+
+    // ---------------- Warna & Filter ----------------
+    private fun buildColorCard(l: Layer, parent: LinearLayout) {
+        val c = card()
+        c.addView(header("Warna & Filter"))
+        val filters = listOf(
+            Triple("Normal", floatArrayOf(100f, 100f, 100f, 0f), "reset"),
+            Triple("Vivid", floatArrayOf(106f, 112f, 145f, 0f), ""),
+            Triple("Hangat", floatArrayOf(104f, 104f, 118f, 12f), ""),
+            Triple("Dingin", floatArrayOf(101f, 104f, 112f, -14f), ""),
+            Triple("Mono", floatArrayOf(100f, 108f, 0f, 0f), ""),
+            Triple("Sepia", floatArrayOf(102f, 96f, 62f, 18f), ""),
+            Triple("Pudar", floatArrayOf(112f, 84f, 78f, 0f), "")
+        )
+        val rowF = LinearLayout(context)
+        rowF.orientation = HORIZONTAL
+        val scF = android.widget.HorizontalScrollView(context)
+        scF.isHorizontalScrollBarEnabled = false
+        for ((fname, vals) in filters.map { it.first to it.second }) {
+            val chip = KilatChip(context, fname)
+            val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+            lp.rightMargin = dp(6f).toInt()
+            rowF.addView(chip, lp)
+            chip.setOnClickListener {
+                applyValue(l, "fx.brightness", vals[0])
+                applyValue(l, "fx.contrast", vals[1])
+                applyValue(l, "fx.saturate", vals[2])
+                applyValue(l, "fx.hue", vals[3])
+                listener?.onEdited(true)
+                syncValues()
+            }
+        }
+        scF.addView(rowF)
+        c.addView(scF)
+        addProp(c, l, "fx.brightness", "Brightness", 20f, 200f, 1f, true)
+        addProp(c, l, "fx.contrast", "Contrast", 20f, 200f, 1f, true)
+        addProp(c, l, "fx.saturate", "Saturasi", 0f, 200f, 1f, true)
+        addProp(c, l, "fx.hue", "Hue putar", -180f, 180f, 1f, true)
+        parent.addView(c)
+    }
+
+    // ---------------- Gaya: shadow, garis tepi, masking ----------------
+    private fun buildStyleCard(l: Layer, parent: LinearLayout) {
+        val c = card()
+        c.addView(header("Bayangan (Shadow)"))
+        staticSlider(c, "Blur bayangan", l.shadowBlur, 80, 1f) { l.shadowBlur = it }
+        staticSlider(c, "Geser X", l.shadowDx, 120, 1f, -60f) { l.shadowDx = it }
+        staticSlider(c, "Geser Y", l.shadowDy, 120, 1f, -60f) { l.shadowDy = it }
+        swatchBlock(c, "Warna bayangan", l.shadowColor) { col -> l.shadowColor = col }
+        parent.addView(c)
+
+        if (l.kind == KIND_SHAPE || l.kind == KIND_SVG) {
+            val c2 = card()
+            c2.addView(header("Garis Tepi (Border)"))
+            staticSlider(c2, "Lebar garis", l.shapeStrokeW, 60, 1f) { l.shapeStrokeW = it }
+            swatchBlock(c2, "Warna garis", l.shapeStrokeColor) { col -> l.shapeStrokeColor = col }
+            parent.addView(c2)
+        }
+
+        val c3 = card()
+        c3.addView(header("Masking"))
+        val maskKinds = listOf("none", "rrect", "circle", "star")
+        val maskLabels = listOf("Tidak ada", "Kotak lembut", "Lingkaran", "Bintang")
+        val maskRow = LinearLayout(context)
+        maskRow.orientation = HORIZONTAL
+        maskRow.gravity = Gravity.CENTER_VERTICAL
+        maskRow.addView(labelTv("Bentuk mask", widthDp = 84f))
+        val maskDrop = dropdown(maskLabels, maskKinds.indexOf(l.maskShape).coerceAtLeast(0), "Masking") { idx ->
+            l.maskShape = maskKinds[idx]
+            listener?.onEdited(true)
+        }
+        maskRow.addView(maskDrop, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        c3.addView(maskRow)
+        val invBtn = miniBtn(if (l.maskInvert) "Mask dibalik: YA (ketuk ubah)" else "Mask dibalik: Tidak (ketuk ubah)") {
+            l.maskInvert = !l.maskInvert
+            listener?.onEdited(true)
+            rebind()
+        }
+        val lpInv = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+        lpInv.topMargin = dp(8f).toInt()
+        c3.addView(invBtn, lpInv)
+        val hintMask = labelTv("Mask memotong layer mengikuti bentuk. Untuk sudut membulat di gambar, pakai Kotak lembut.", 10f, cDim)
+        val lpHint = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+        lpHint.topMargin = dp(8f).toInt()
+        c3.addView(hintMask, lpHint)
+        parent.addView(c3)
+    }
+
+    // ---------------- 3D tilt ----------------
+    private fun build3DCard(l: Layer, parent: LinearLayout) {
+        val c = card()
+        c.addView(header("Kemiringan 3D"))
+        addProp(c, l, "rotX", "Tilt X", -80f, 80f, 1f, true)
+        addProp(c, l, "rotY", "Tilt Y", -80f, 80f, 1f, true)
+        val hint = labelTv(
+            if (l.kind == KIND_3D) "Objek 3D diputar penuh oleh Tilt X/Y + Rotasi (tab Transform). Keyframe-kan Tilt Y dari -180 ke 180 untuk putaran penuh."
+            else "Semua layer bisa dimiringkan 3D. Keyframe-kan Tilt Y untuk efek kartu berbalik.",
+            10f, cDim
+        )
+        val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+        lp.topMargin = dp(8f).toInt()
+        c.addView(hint, lp)
+        parent.addView(c)
+    }
+
+    // ---------------- kurva easing ----------------
+    private fun buildCurveCard(l: Layer, parent: LinearLayout) {
+        val c = card()
+        c.addView(header("Kurva Gerakan (Grafik)"))
+        val curve = CurveView(context)
+        curve.setCurve(l.bezX1, l.bezY1, l.bezX2, l.bezY2)
+        val valTv = labelTv("", 10.5f, cMuted)
+        fun refreshLabel() {
+            valTv.text = "P1 ${Format.dec(l.bezX1, 2)}, ${Format.dec(l.bezY1, 2)}  |  P2 ${Format.dec(l.bezX2, 2)}, ${Format.dec(l.bezY2, 2)}"
+        }
+        refreshLabel()
+        curve.onChange = { commit ->
+            l.bezX1 = curve.x1; l.bezY1 = curve.y1; l.bezX2 = curve.x2; l.bezY2 = curve.y2
+            refreshLabel()
+            listener?.onEdited(commit)
+        }
+        c.addView(curve, LayoutParams(LayoutParams.MATCH_PARENT, dp(168f).toInt()))
+        c.addView(valTv)
+        val presetRow = LinearLayout(context)
+        presetRow.orientation = HORIZONTAL
+        val lpPR = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpPR.topMargin = dp(8f).toInt()
+        val curvePresets = listOf(
+            "Pantul JJ" to floatArrayOf(0.2f, 1.6f, 0.4f, 1f),
+            "Halus" to floatArrayOf(0.42f, 0f, 0.58f, 1f),
+            "Nendang" to floatArrayOf(0.7f, 0f, 0.2f, 1.4f),
+            "Linear" to floatArrayOf(0f, 0f, 1f, 1f)
+        )
+        for ((cname, cvals) in curvePresets) {
+            val chip = KilatChip(context, cname)
+            val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+            lp.rightMargin = dp(6f).toInt()
+            presetRow.addView(chip, lp)
+            chip.setOnClickListener {
+                l.bezX1 = cvals[0]; l.bezY1 = cvals[1]; l.bezX2 = cvals[2]; l.bezY2 = cvals[3]
+                curve.setCurve(l.bezX1, l.bezY1, l.bezX2, l.bezY2)
+                refreshLabel()
+                listener?.onEdited(true)
+            }
+        }
+        val scPR = android.widget.HorizontalScrollView(context)
+        scPR.isHorizontalScrollBarEnabled = false
+        scPR.addView(presetRow)
+        c.addView(scPR, lpPR)
+        val applyRow = LinearLayout(context)
+        applyRow.orientation = HORIZONTAL
+        val lpAR = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpAR.topMargin = dp(8f).toInt()
+        val hereBtn = KilatButton(context, "Keyframe di Sini", KilatIcon.KEYFRAME, KilatButtonStyle.GHOST, 11f)
+        hereBtn.setOnClickListener {
+            var n = 0
+            for ((_, ch) in l.channels) for (k in ch.keys) {
+                if (kotlin.math.abs(k.t - curPlayhead) < 0.03f) { k.ease = "custom"; n++ }
+            }
+            if (n == 0) {
+                // belum ada keyframe di playhead: jadikan easing default untuk keyframe baru
+                defaultEase = "custom"
+            }
+            listener?.onEdited(true)
+        }
+        applyRow.addView(hereBtn, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        val allBtn = KilatButton(context, "Semua Keyframe", KilatIcon.CURVE, KilatButtonStyle.SOFT, 11f)
+        allBtn.setOnClickListener {
+            for ((_, ch) in l.channels) for (k in ch.keys) k.ease = "custom"
+            listener?.onEdited(true)
+        }
+        val lpAll = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+        lpAll.leftMargin = dp(7f).toInt()
+        applyRow.addView(allBtn, lpAll)
+        c.addView(applyRow, lpAR)
+        val hint = labelTv("Tarik titik kuning untuk membentuk kurva. Keyframe berease Kurva Bezier mengikuti bentuk ini secara langsung.", 10f, cDim)
+        val lpH = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+        lpH.topMargin = dp(8f).toInt()
+        c.addView(hint, lpH)
+        parent.addView(c)
+    }
+
+    // ---------------- section vector / svg / 3d ----------------
+    private fun buildVectorSection(l: Layer, parent: LinearLayout) {
+        val c = card()
+        c.addView(header("Coretan Vektor"))
+        staticSlider(c, "Tebal garis", l.vecStrokeW, 80, 1f) { l.vecStrokeW = maxOf(1f, it) }
+        swatchBlock(c, "Warna garis", l.color) { col -> l.color = col }
+        swatchBlock(c, "Warna isi (tertutup)", l.fill) { col -> l.fill = col }
+        val closedBtn = miniBtn(if (l.vecClosed) "Bentuk tertutup: YA" else "Bentuk tertutup: Tidak") {
+            l.vecClosed = !l.vecClosed
+            l.vecSrc = ""
+            listener?.onEdited(true)
+            rebind()
+        }
+        val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+        lp.topMargin = dp(10f).toInt()
+        c.addView(closedBtn, lp)
+        parent.addView(c)
+    }
+
+    private fun buildSvgSection(l: Layer, parent: LinearLayout) {
+        val c = card()
+        c.addView(header("Vektor SVG"))
+        staticSlider(c, "Lebar", l.w, 2000, 1f) { l.w = maxOf(10f, it) }
+        staticSlider(c, "Tinggi", l.h, 2000, 1f) { l.h = maxOf(10f, it) }
+        swatchBlock(c, "Warna isi", l.fill) { col -> l.fill = col }
+        parent.addView(c)
+    }
+
+    private fun build3DSection(l: Layer, parent: LinearLayout) {
+        val c = card()
+        c.addView(header("Objek 3D"))
+        val primNames = listOf("Kubus", "Piramida", "Prisma segitiga", "Oktahedron", "File .OBJ")
+        val primKinds = listOf("cube", "pyramid", "prism", "octa", "custom")
+        val row = LinearLayout(context)
+        row.orientation = HORIZONTAL
+        row.gravity = Gravity.CENTER_VERTICAL
+        row.addView(labelTv("Bentuk", widthDp = 60f))
+        val dd = dropdown(primNames, primKinds.indexOf(l.objKind).coerceAtLeast(0), "Bentuk 3D") { idx ->
+            l.objKind = primKinds[idx]
+            listener?.onEdited(true)
+        }
+        row.addView(dd, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        c.addView(row)
+        staticSlider(c, "Ukuran", l.w, 2000, 1f) { v -> l.w = maxOf(20f, v); l.h = maxOf(20f, v) }
+        swatchBlock(c, "Warna objek", l.fill) { col -> l.fill = col }
+        parent.addView(c)
     }
 
     // ---------------- animated prop row ----------------

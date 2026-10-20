@@ -29,6 +29,7 @@ class PreviewView(context: Context) : View(context) {
         fun onSelect(id: String?)
         fun onEdited(commit: Boolean)
         fun onRequestProperties()
+        fun onStroke(points: FloatArray)
     }
 
     var project: Project? = null
@@ -41,6 +42,17 @@ class PreviewView(context: Context) : View(context) {
     var listener: Listener? = null
     /** Magnet: snap posisi ke tengah kanvas + snap rotasi 15 derajat. */
     var snapEnabled: Boolean = true
+
+    /** Mode gambar bebas: sentuhan jadi coretan vektor, bukan geser layer. */
+    var drawMode: Boolean = false
+    private val strokePts = ArrayList<Float>()
+    private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+        color = 0xFFFF5C7A.toInt()
+    }
+    private val strokePath = android.graphics.Path()
 
     private val density = resources.displayMetrics.density
     private fun dp(v: Float) = v * density
@@ -120,6 +132,19 @@ class PreviewView(context: Context) : View(context) {
         Renderer.renderFrame(canvas, p, playhead, true)
         canvas.restore()
         canvas.drawRect(tmpRect, borderPaint)
+
+        // coretan yang sedang digambar (mode gambar bebas)
+        if (strokePts.size >= 4) {
+            strokePath.reset()
+            strokePath.moveTo(toViewX(strokePts[0]), toViewY(strokePts[1]))
+            var si = 2
+            while (si + 1 < strokePts.size) {
+                strokePath.lineTo(toViewX(strokePts[si]), toViewY(strokePts[si + 1]))
+                si += 2
+            }
+            strokePaint.strokeWidth = dp(2.4f)
+            canvas.drawPath(strokePath, strokePaint)
+        }
 
         // overlay seleksi
         val sel = p.findLayer(selectedId) ?: return
@@ -230,6 +255,37 @@ class PreviewView(context: Context) : View(context) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (drawMode) {
+            updateMapping()
+            val (qx, qy) = toProject(event.x, event.y)
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                    strokePts.clear()
+                    strokePts.add(qx); strokePts.add(qy)
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val n = strokePts.size
+                    if (n >= 2) {
+                        val lx = strokePts[n - 2]
+                        val ly = strokePts[n - 1]
+                        if (hypot(qx - lx, qy - ly) > 3f) {
+                            strokePts.add(qx); strokePts.add(qy)
+                            invalidate()
+                        }
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                    if (strokePts.size >= 4) {
+                        listener?.onStroke(FloatArray(strokePts.size) { idx -> strokePts[idx] })
+                    }
+                    strokePts.clear()
+                    invalidate()
+                }
+            }
+            return true
+        }
         gesture.onTouchEvent(event)
         val p = project ?: return false
         when (event.actionMasked) {

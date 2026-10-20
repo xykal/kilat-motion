@@ -10,13 +10,13 @@ class IconsTest {
     fun `set ikon lengkap dan unik`() {
         val names = KilatIcon.values().map { it.name }
         assertEquals(names.size, names.distinct().size)
-        assertTrue("minimal 49 ikon custom", names.size >= 49)
+        assertTrue("minimal 53 ikon custom", names.size >= 53)
     }
 
     @Test
     fun `ikon inti navigasi tersedia`() {
         val names = KilatIcon.values().map { it.name }.toSet()
-        for (required in listOf("BOLT", "HOME", "FOLDER", "LAYERS", "USER", "PLUS", "PLAY", "EXPORT", "UNDO", "REDO", "SCISSORS", "MAGNET", "CROSSHAIR", "MINUS")) {
+        for (required in listOf("BOLT", "HOME", "FOLDER", "LAYERS", "USER", "PLUS", "PLAY", "EXPORT", "UNDO", "REDO", "SCISSORS", "MAGNET", "CROSSHAIR", "MINUS", "PENCIL", "VECTOR", "CUBE", "CURVE")) {
             assertTrue("ikon $required harus ada", required in names)
         }
     }

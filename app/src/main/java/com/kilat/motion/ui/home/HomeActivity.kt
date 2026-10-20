@@ -591,7 +591,7 @@ class HomeActivity : Activity() {
         val nameCol = LinearLayout(this)
         nameCol.orientation = LinearLayout.VERTICAL
         nameCol.addView(kText("Kreator Kilat", 17f, KColors.Text, bold = true))
-        nameCol.addView(kText("KILAT Motion 1.3.0", 11f, KColors.Dim))
+        nameCol.addView(kText("KILAT Motion 1.4.0", 11f, KColors.Dim))
         val lpN = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpN.marginStart = dp(13f)
         head.addView(nameCol, lpN)
@@ -646,7 +646,7 @@ class HomeActivity : Activity() {
             i.putExtra(OnboardingActivity.EXTRA_REPLAY, true)
             startActivity(i)
         })
-        addSpaced(col, menuRow(KilatIcon.INFO, KColors.Muted, "Tentang KILAT Motion", "Versi 1.3.0 - native, tanpa iklan") { showAbout() })
+        addSpaced(col, menuRow(KilatIcon.INFO, KColors.Muted, "Tentang KILAT Motion", "Versi 1.4.0 - native, tanpa iklan") { showAbout() })
         addSpaced(col, menuRow(KilatIcon.TRASH, KColors.Rose, "Hapus Semua Project", "Kosongkan pustaka project di HP ini", danger = true) {
             KilatSheet.showConfirm(
                 this, "Hapus semua project?",
@@ -730,7 +730,7 @@ class HomeActivity : Activity() {
     private fun showAbout() {
         KilatSheet.showMessage(
             this, "KILAT Motion",
-            "Motion graphics editor native Android.\n\nVersi 1.3.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa watermark, tanpa library eksternal.\nSeluruh tampilan dan ikon dibuat custom pakai Canvas.",
+            "Motion graphics editor native Android.\n\nVersi 1.4.0\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa watermark, tanpa library eksternal.\nSeluruh tampilan dan ikon dibuat custom pakai Canvas.",
             icon = KilatIcon.BOLT
         )
     }

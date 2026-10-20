@@ -9,10 +9,14 @@ import java.util.UUID
 const val KIND_TEXT = "text"
 const val KIND_SHAPE = "shape"
 const val KIND_IMAGE = "image"
+const val KIND_VECTOR = "vector"
+const val KIND_SVG = "svg"
+const val KIND_3D = "obj3d"
 
 /** Semua properti yang bisa dianimasikan. */
 val PROP_KEYS = listOf(
-    "x", "y", "scale", "rot", "alpha", "typing",
+    "x", "y", "scale", "scaleX", "scaleY", "skewX", "skewY",
+    "rot", "rotX", "rotY", "alpha", "typing",
     "fx.blur", "fx.brightness", "fx.contrast", "fx.saturate", "fx.hue", "fx.glow"
 )
 
@@ -55,9 +59,45 @@ class Layer {
     var x: Float = 540f
     var y: Float = 960f
     var scale: Float = 1f
+    var scaleX: Float = 1f
+    var scaleY: Float = 1f
+    var skewX: Float = 0f
+    var skewY: Float = 0f
     var rot: Float = 0f
+    var rotX: Float = 0f   // kemiringan 3D (derajat)
+    var rotY: Float = 0f
     var alpha: Float = 1f
     var typing: Float = 1f
+
+    // gaya: bayangan + masking
+    var shadowBlur: Float = 0f
+    var shadowDx: Float = 0f
+    var shadowDy: Float = 12f
+    var shadowColor: Int = 0xFF000000.toInt()
+    var maskShape: String = "none"   // none | circle | rrect | star
+    var maskInvert: Boolean = false
+
+    // kurva easing custom (cubic bezier) untuk keyframe berease "custom"
+    var bezX1: Float = 0.3f
+    var bezY1: Float = 1.4f
+    var bezX2: Float = 0.6f
+    var bezY2: Float = 1f
+
+    // vector drawing (coretan bebas): titik relatif pusat "x,y;x,y;..."
+    var vecPoints: String = ""
+    var vecStrokeW: Float = 14f
+    var vecClosed: Boolean = false
+
+    // svg: data path + viewBox
+    var svgData: String = ""
+    var svgVbX: Float = 0f
+    var svgVbY: Float = 0f
+    var svgVbW: Float = 100f
+    var svgVbH: Float = 100f
+
+    // objek 3D: primitif atau file .obj hasil import
+    var objKind: String = "cube"    // cube | pyramid | prism | octa | custom
+    var objPath: String = ""
 
     // text
     var text: String = "TEKS KEREN"
@@ -105,6 +145,14 @@ class Layer {
     var lastH: Float = 120f
     @Transient
     var ev: HashMap<String, Float> = HashMap()
+    @Transient
+    var vecPath: android.graphics.Path? = null
+    @Transient
+    var vecSrc: String = ""
+    @Transient
+    var svgPath: android.graphics.Path? = null
+    @Transient
+    var svgSrc: String = ""
 
     fun contentW(): Float = if (lastW > 1f) lastW else 300f
     fun contentH(): Float = if (lastH > 1f) lastH else 120f
@@ -137,7 +185,13 @@ class Layer {
         "x" -> x
         "y" -> y
         "scale" -> scale
+        "scaleX" -> scaleX
+        "scaleY" -> scaleY
+        "skewX" -> skewX
+        "skewY" -> skewY
         "rot" -> rot
+        "rotX" -> rotX
+        "rotY" -> rotY
         "alpha" -> alpha
         "typing" -> typing
         "fx.blur" -> fxBlur
@@ -154,7 +208,13 @@ class Layer {
             "x" -> x = v
             "y" -> y = v
             "scale" -> scale = v
+            "scaleX" -> scaleX = v
+            "scaleY" -> scaleY = v
+            "skewX" -> skewX = v
+            "skewY" -> skewY = v
             "rot" -> rot = v
+            "rotX" -> rotX = v
+            "rotY" -> rotY = v
             "alpha" -> alpha = v
             "typing" -> typing = v
             "fx.blur" -> fxBlur = v
@@ -167,7 +227,7 @@ class Layer {
     }
 
     fun defaultOf(key: String): Float = when (key) {
-        "scale" -> 1f
+        "scale", "scaleX", "scaleY" -> 1f
         "alpha" -> 1f
         "typing" -> 1f
         "fx.brightness" -> 100f
@@ -187,7 +247,27 @@ class Layer {
         c.x = x + 40f
         c.y = y + 30f
         c.scale = scale
+        c.scaleX = scaleX
+        c.scaleY = scaleY
+        c.skewX = skewX
+        c.skewY = skewY
         c.rot = rot
+        c.rotX = rotX
+        c.rotY = rotY
+        c.shadowBlur = shadowBlur
+        c.shadowDx = shadowDx
+        c.shadowDy = shadowDy
+        c.shadowColor = shadowColor
+        c.maskShape = maskShape
+        c.maskInvert = maskInvert
+        c.bezX1 = bezX1; c.bezY1 = bezY1; c.bezX2 = bezX2; c.bezY2 = bezY2
+        c.vecPoints = vecPoints
+        c.vecStrokeW = vecStrokeW
+        c.vecClosed = vecClosed
+        c.svgData = svgData
+        c.svgVbX = svgVbX; c.svgVbY = svgVbY; c.svgVbW = svgVbW; c.svgVbH = svgVbH
+        c.objKind = objKind
+        c.objPath = objPath
         c.alpha = alpha
         c.typing = typing
         c.text = text

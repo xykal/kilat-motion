@@ -2,9 +2,12 @@ package com.kilat.motion.core.render
 
 import com.kilat.motion.core.model.*
 import com.kilat.motion.core.animation.Anim
+import com.kilat.motion.core.vector.SvgPath
 
 import android.graphics.Bitmap
 import android.graphics.BlurMaskFilter
+import android.graphics.Camera
+import android.graphics.Matrix
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ColorMatrix
@@ -16,9 +19,13 @@ import android.graphics.PorterDuffColorFilter
 import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
 import android.graphics.Typeface
+import java.io.File
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * Renderer project ke Canvas apa pun: preview (View) maupun export (MediaCodec surface).
@@ -29,6 +36,11 @@ object Renderer {
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val camera = Camera()
+    private val camMatrix = Matrix()
+    private val maskPath = Path()
+    private val meshCache = HashMap<String, Obj3D.Mesh?>()
     private val path = Path()
     private val rectF = RectF()
     private val blurCache = LinkedHashMap<String, Bitmap>()
@@ -125,17 +137,50 @@ object Renderer {
         strokePaint.isAntiAlias = true
         glowPaint.reset()
         glowPaint.isAntiAlias = true
+        shadowPaint.reset()
+        shadowPaint.isAntiAlias = true
 
         val cf = colorFilterFor(fx)
 
         canvas.save()
         canvas.translate(fx["x"] ?: layer.x, fx["y"] ?: layer.y)
+        // Kemiringan 3D (perspektif Camera) untuk layer 2D. Objek 3D diputar
+        // langsung oleh proyektor mesh, jadi tidak boleh ditimpa Camera dua kali.
+        val rX = (fx["rotX"] ?: 0f).coerceIn(-80f, 80f)
+        val rY = (fx["rotY"] ?: 0f).coerceIn(-80f, 80f)
+        if (layer.kind != KIND_3D && (abs(rX) > 0.1f || abs(rY) > 0.1f)) {
+            camera.save()
+            camera.setLocation(0f, 0f, -14f)
+            camera.rotateX(rX)
+            camera.rotateY(rY)
+            camera.getMatrix(camMatrix)
+            camera.restore()
+            canvas.concat(camMatrix)
+        }
         canvas.rotate(fx["rot"] ?: 0f)
         val s = (fx["scale"] ?: 1f).coerceIn(0.01f, 20f)
-        canvas.scale(s, s)
+        val sX = (fx["scaleX"] ?: 1f).coerceIn(-20f, 20f)
+        val sY = (fx["scaleY"] ?: 1f).coerceIn(-20f, 20f)
+        canvas.scale(s * sX, s * sY)
+        val skX = (fx["skewX"] ?: 0f).coerceIn(-2f, 2f)
+        val skY = (fx["skewY"] ?: 0f).coerceIn(-2f, 2f)
+        if (abs(skX) > 0.001f || abs(skY) > 0.001f) canvas.skew(skX, skY)
 
-        // glow pass (teks & bentuk): gambar versi blur berwarna glow di belakang
-        if (glow > 0.5f && layer.kind != KIND_IMAGE) {
+        // bayangan (siluet blur bergeser di belakang konten)
+        if (layer.shadowBlur > 0.2f) {
+            shadowPaint.reset()
+            shadowPaint.isAntiAlias = true
+            shadowPaint.colorFilter = PorterDuffColorFilter(layer.shadowColor, PorterDuff.Mode.SRC_IN)
+            shadowPaint.alpha = (alpha * 150f).toInt().coerceIn(0, 255)
+            shadowPaint.maskFilter = BlurMaskFilter(max(0.6f, layer.shadowBlur), BlurMaskFilter.Blur.NORMAL)
+            canvas.save()
+            canvas.translate(layer.shadowDx, layer.shadowDy)
+            drawContent(canvas, layer, fx, shadowPaint, shadowPaint, isGlow = true)
+            canvas.restore()
+        }
+
+        // glow pass: siluet blur berwarna di belakang konten (semua jenis layer)
+        if (glow > 0.5f) {
             glowPaint.colorFilter = PorterDuffColorFilter(layer.glowColor, PorterDuff.Mode.SRC_IN)
             glowPaint.alpha = (alpha * 235f).toInt().coerceIn(0, 255)
             val r = max(0.6f, glow * 0.9f)
@@ -155,6 +200,12 @@ object Renderer {
             strokePaint.maskFilter = BlurMaskFilter(r, BlurMaskFilter.Blur.NORMAL)
         }
 
+        // masking bentuk di ruang lokal layer
+        if (layer.maskShape != "none") {
+            buildMaskPath(layer)
+            if (layer.maskInvert) canvas.clipOutPath(maskPath) else canvas.clipPath(maskPath)
+        }
+
         drawContent(canvas, layer, fx, fillPaint, strokePaint, isGlow = false)
         canvas.restore()
     }
@@ -164,6 +215,9 @@ object Renderer {
             KIND_TEXT -> drawTextLayer(canvas, layer, fx, fp, sp, isGlow)
             KIND_SHAPE -> drawShapeLayer(canvas, layer, fp, sp, isGlow)
             KIND_IMAGE -> drawImageLayer(canvas, layer, fx, fp)
+            KIND_VECTOR -> drawVectorLayer(canvas, layer, fp, sp, isGlow)
+            KIND_SVG -> drawSvgLayer(canvas, layer, fp, sp, isGlow)
+            KIND_3D -> drawObj3DLayer(canvas, layer, fx, fp, sp, isGlow)
         }
     }
 
@@ -177,6 +231,12 @@ object Renderer {
         fp.style = Paint.Style.FILL
         sp.style = Paint.Style.STROKE
         sp.strokeWidth = max(0f, layer.strokeW)
+        if (isGlow) {
+            fp.color = Color.WHITE // ditint oleh colorFilter SRC_IN pada pass siluet
+        } else {
+            fp.color = layer.color
+            sp.color = layer.strokeColor
+        }
 
         val lines = layer.text.split("\n")
         if (lines.isEmpty()) return
@@ -369,5 +429,253 @@ object Renderer {
 
     fun invalidateBlurCache() {
         blurCache.clear()
+    }
+
+    // ---------------- MASK ----------------
+    private fun buildMaskPath(layer: Layer) {
+        val dims = contentDims(layer)
+        val cw = dims.first
+        val chh = dims.second
+        maskPath.reset()
+        when (layer.maskShape) {
+            "circle" -> {
+                rectF.set(-cw / 2f, -chh / 2f, cw / 2f, chh / 2f)
+                maskPath.addOval(rectF, Path.Direction.CW)
+            }
+            "star" -> {
+                val outer = min(cw, chh) / 2f
+                val inner = outer / 2.3f
+                for (i in 0 until 10) {
+                    val r = if (i % 2 == 0) outer else inner
+                    val ang = -Math.PI / 2 + i * Math.PI / 5
+                    val px = (Math.cos(ang) * r).toFloat()
+                    val py = (Math.sin(ang) * r).toFloat()
+                    if (i == 0) maskPath.moveTo(px, py) else maskPath.lineTo(px, py)
+                }
+                maskPath.close()
+            }
+            else -> { // rrect
+                rectF.set(-cw / 2f, -chh / 2f, cw / 2f, chh / 2f)
+                val r = min(cw, chh) * 0.16f
+                maskPath.addRoundRect(rectF, r, r, Path.Direction.CW)
+            }
+        }
+    }
+
+    private fun contentDims(layer: Layer): Pair<Float, Float> = when (layer.kind) {
+        KIND_TEXT -> {
+            fillPaint.textSize = max(4f, layer.textSize)
+            fillPaint.typeface = typefaceFor(layer.fontKey)
+            var mw = 10f
+            val lines = layer.text.split("\n")
+            for (ln in lines) mw = max(mw, fillPaint.measureText(ln))
+            Pair(mw, max(layer.textSize * 1.24f, lines.size * layer.textSize * 1.24f))
+        }
+        KIND_IMAGE -> Pair(max(1f, layer.imgW), max(1f, layer.imgH))
+        else -> Pair(max(1f, layer.w), max(1f, layer.h))
+    }
+
+    // ---------------- VECTOR (coretan bebas) ----------------
+    fun vectorPathOf(layer: Layer): Path {
+        val cached = layer.vecPath
+        if (cached != null && layer.vecSrc == layer.vecPoints) return cached
+        val pts = parseVecPoints(layer.vecPoints)
+        val built = buildSmoothPath(pts, layer.vecClosed)
+        layer.vecPath = built
+        layer.vecSrc = layer.vecPoints
+        return built
+    }
+
+    fun parseVecPoints(s: String): FloatArray {
+        if (s.isBlank()) return FloatArray(0)
+        val parts = s.split(';')
+        val out = FloatArray(parts.size * 2)
+        var n = 0
+        for (part in parts) {
+            val xy = part.split(',')
+            if (xy.size != 2) continue
+            val px = xy[0].trim().toFloatOrNull() ?: continue
+            val py = xy[1].trim().toFloatOrNull() ?: continue
+            out[n++] = px
+            out[n++] = py
+        }
+        return if (n == out.size) out else out.copyOf(n)
+    }
+
+    fun buildSmoothPath(pts: FloatArray, closed: Boolean): Path {
+        val built = Path()
+        val count = pts.size / 2
+        if (count == 0) return built
+        if (count == 1) {
+            built.addCircle(pts[0], pts[1], 1.5f, Path.Direction.CW)
+            return built
+        }
+        built.moveTo(pts[0], pts[1])
+        for (i in 1 until count - 1) {
+            val mx = (pts[i * 2] + pts[(i + 1) * 2]) / 2f
+            val my = (pts[i * 2 + 1] + pts[(i + 1) * 2 + 1]) / 2f
+            built.quadTo(pts[i * 2], pts[i * 2 + 1], mx, my)
+        }
+        built.lineTo(pts[(count - 1) * 2], pts[(count - 1) * 2 + 1])
+        if (closed) built.close()
+        return built
+    }
+
+    private fun drawVectorLayer(canvas: Canvas, layer: Layer, fp: Paint, sp: Paint, isGlow: Boolean) {
+        layer.lastW = max(2f, layer.w)
+        layer.lastH = max(2f, layer.h)
+        val pth = vectorPathOf(layer)
+        if (layer.vecClosed) {
+            fp.style = Paint.Style.FILL
+            fp.color = if (isGlow) Color.WHITE else layer.fill
+            canvas.drawPath(pth, fp)
+        }
+        sp.style = Paint.Style.STROKE
+        sp.strokeCap = Paint.Cap.ROUND
+        sp.strokeJoin = Paint.Join.ROUND
+        sp.strokeWidth = max(0.5f, layer.vecStrokeW)
+        sp.color = if (isGlow) Color.WHITE else layer.color
+        canvas.drawPath(pth, sp)
+    }
+
+    // ---------------- SVG ----------------
+    private fun svgPathOf(layer: Layer): Path {
+        val cached = layer.svgPath
+        if (cached != null && layer.svgSrc == layer.svgData) return cached
+        val built = Path()
+        for (op in SvgPath.parse(layer.svgData)) {
+            when (op) {
+                is SvgPath.Op.Move -> built.moveTo(op.x, op.y)
+                is SvgPath.Op.Line -> built.lineTo(op.x, op.y)
+                is SvgPath.Op.Cubic -> built.cubicTo(op.x1, op.y1, op.x2, op.y2, op.x, op.y)
+                is SvgPath.Op.Quad -> built.quadTo(op.x1, op.y1, op.x, op.y)
+                is SvgPath.Op.Close -> built.close()
+            }
+        }
+        layer.svgPath = built
+        layer.svgSrc = layer.svgData
+        return built
+    }
+
+    private fun drawSvgLayer(canvas: Canvas, layer: Layer, fp: Paint, sp: Paint, isGlow: Boolean) {
+        val tw = max(2f, layer.w)
+        val th = max(2f, layer.h)
+        layer.lastW = tw
+        layer.lastH = th
+        val src = svgPathOf(layer)
+        val sc = min(tw / max(1f, layer.svgVbW), th / max(1f, layer.svgVbH))
+        canvas.save()
+        canvas.translate(-(layer.svgVbX + layer.svgVbW / 2f) * sc, -(layer.svgVbY + layer.svgVbH / 2f) * sc)
+        canvas.scale(sc, sc)
+        fp.style = Paint.Style.FILL
+        fp.color = if (isGlow) Color.WHITE else layer.fill
+        canvas.drawPath(src, fp)
+        if (layer.shapeStrokeW > 0.5f && !isGlow) {
+            sp.style = Paint.Style.STROKE
+            sp.strokeCap = Paint.Cap.ROUND
+            sp.strokeJoin = Paint.Join.ROUND
+            sp.strokeWidth = layer.shapeStrokeW / max(0.01f, sc)
+            sp.color = layer.shapeStrokeColor
+            canvas.drawPath(src, sp)
+        }
+        canvas.restore()
+    }
+
+    // ---------------- OBJEK 3D ----------------
+    private fun meshFor(layer: Layer): Obj3D.Mesh? {
+        if (layer.objKind != "custom") return Obj3D.primitive(layer.objKind)
+        val pathKey = layer.objPath
+        if (pathKey.isEmpty()) return Obj3D.primitive("cube")
+        meshCache[pathKey]?.let { return it }
+        if (meshCache.containsKey(pathKey)) return Obj3D.primitive("cube")
+        val parsed = try {
+            val f = File(pathKey)
+            if (f.exists()) Obj3D.parseObj(f.readText()) else null
+        } catch (e: Throwable) {
+            null
+        }
+        meshCache[pathKey] = parsed
+        return parsed ?: Obj3D.primitive("cube")
+    }
+
+    private fun shadeColor(base: Int, f: Float): Int {
+        val ff = f.coerceIn(0f, 1.15f)
+        fun ch(c: Int) = (c * ff).toInt().coerceIn(0, 255)
+        return (0xFF shl 24) or (ch((base shr 16) and 0xFF) shl 16) or
+            (ch((base shr 8) and 0xFF) shl 8) or ch(base and 0xFF)
+    }
+
+    private fun drawObj3DLayer(canvas: Canvas, layer: Layer, fx: HashMap<String, Float>, fp: Paint, sp: Paint, isGlow: Boolean) {
+        val size = max(4f, min(layer.w, layer.h))
+        layer.lastW = max(2f, layer.w)
+        layer.lastH = max(2f, layer.h)
+        val mesh = meshFor(layer) ?: return
+        val ax = Math.toRadians(((fx["rotX"] ?: 0f).toDouble()))
+        val ay = Math.toRadians(((fx["rotY"] ?: 0f).toDouble()))
+        val cxr = cos(ax).toFloat(); val sxr = sin(ax).toFloat()
+        val cyr = cos(ay).toFloat(); val syr = sin(ay).toFloat()
+        val n = mesh.verts.size
+        val xs = FloatArray(n); val ys = FloatArray(n); val zs = FloatArray(n)
+        val persp = 3.2f
+        for (i in 0 until n) {
+            val v = mesh.verts[i]
+            // rotasi Y lalu X
+            var vx = v[0] * cyr + v[2] * syr
+            var vz = -v[0] * syr + v[2] * cyr
+            var vy = v[1]
+            var wch = 0f
+            wch = vy
+            vy = wch * cxr - vz * sxr
+            vz = wch * sxr + vz * cxr
+            val denom = persp + vz
+            val pr = if (denom > 0.2f) persp / denom else persp / 0.2f
+            xs[i] = vx * (size / 2f) * pr
+            ys[i] = vy * (size / 2f) * pr
+            zs[i] = vz
+            @Suppress("UNUSED_EXPRESSION") vx
+        }
+        // urutkan face dari terjauh (z besar) ke terdekat
+        val order = mesh.faces.indices.sortedByDescending { fi ->
+            var sum = 0f
+            for (vi in mesh.faces[fi]) sum += zs[vi]
+            sum
+        }
+        // arah cahaya tetap
+        val lx = -0.45f; val ly = -0.65f; val lz = -0.6f
+        fp.style = Paint.Style.FILL
+        for (fi in order) {
+            val face = mesh.faces[fi]
+            if (face.size < 3) continue
+            val a = face[0]; val b = face[1]; val c = face[2]
+            // normal dari ruang layar 3D (x,y,z hasil rotasi belum diproyeksikan penuh - pakai zs + posisi asli terotasi)
+            val va = mesh.verts[a]; val vb = mesh.verts[b]; val vc = mesh.verts[c]
+            fun rotP(v: FloatArray): FloatArray {
+                val rx1 = v[0] * cyr + v[2] * syr
+                var rz1 = -v[0] * syr + v[2] * cyr
+                val ry1 = v[1] * cxr - rz1 * sxr
+                rz1 = v[1] * sxr + rz1 * cxr
+                return floatArrayOf(rx1, ry1, rz1)
+            }
+            val ra = rotP(va); val rb = rotP(vb); val rc = rotP(vc)
+            val ux = rb[0] - ra[0]; val uy = rb[1] - ra[1]; val uz = rb[2] - ra[2]
+            val vx2 = rc[0] - ra[0]; val vy2 = rc[1] - ra[1]; val vz2 = rc[2] - ra[2]
+            var nx = uy * vz2 - uz * vy2
+            var ny = uz * vx2 - ux * vz2
+            var nz = ux * vy2 - uy * vx2
+            val len = sqrt(nx * nx + ny * ny + nz * nz)
+            var shade = 0.75f
+            if (len > 0.0001f) {
+                nx /= len; ny /= len; nz /= len
+                if (nz > 0f) { nx = -nx; ny = -ny; nz = -nz } // hadapkan normal ke kamera
+                val dot = nx * lx + ny * ly + nz * lz
+                shade = 0.38f + 0.62f * max(0f, dot)
+            }
+            path.reset()
+            path.moveTo(xs[a], ys[a])
+            for (k in 1 until face.size) path.lineTo(xs[face[k]], ys[face[k]])
+            path.close()
+            fp.color = if (isGlow) Color.WHITE else shadeColor(layer.fill, shade)
+            canvas.drawPath(path, fp)
+        }
     }
 }

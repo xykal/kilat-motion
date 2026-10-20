@@ -9,10 +9,10 @@ import kotlin.math.round
 
 object Anim {
 
-    val EASES = listOf("easeOut", "easeIn", "easeInOut", "linear", "back", "bounce")
+    val EASES = listOf("easeOut", "easeIn", "easeInOut", "linear", "back", "bounce", "custom")
     val EASE_LABELS = mapOf(
         "easeOut" to "Ease Out", "easeIn" to "Ease In", "easeInOut" to "Ease In-Out",
-        "linear" to "Linear", "back" to "Back", "bounce" to "Bounce"
+        "linear" to "Linear", "back" to "Back", "bounce" to "Bounce", "custom" to "Kurva Bezier"
     )
 
     fun ease(name: String, p0: Float): Float {
@@ -39,7 +39,30 @@ object Anim {
         }
     }
 
-    fun evalKeys(keys: List<Keyframe>, t: Float): Float? {
+    /** Cubic-bezier easing (seperti editor kurva di AM): titik kontrol (x1,y1) (x2,y2). */
+    fun cubicBezier(p0: Float, x1: Float, y1: Float, x2: Float, y2: Float): Float {
+        val p = p0.coerceIn(0f, 1f)
+        if (p <= 0f) return 0f
+        if (p >= 1f) return 1f
+        fun bx(u: Float): Float {
+            val v = 1f - u
+            return 3f * v * v * u * x1 + 3f * v * u * u * x2 + u * u * u
+        }
+        fun by(u: Float): Float {
+            val v = 1f - u
+            return 3f * v * v * u * y1 + 3f * v * u * u * y2 + u * u * u
+        }
+        var lo = 0f
+        var hi = 1f
+        var u = p
+        repeat(10) {
+            u = (lo + hi) / 2f
+            if (bx(u) < p) lo = u else hi = u
+        }
+        return by(u)
+    }
+
+    fun evalKeys(keys: List<Keyframe>, t: Float, bez: FloatArray? = null): Float? {
         if (keys.isEmpty()) return null
         if (t <= keys[0].t) return keys[0].v
         val last = keys[keys.size - 1]
@@ -55,14 +78,18 @@ object Anim {
         }
         if (b.t <= a.t) return b.v
         var p = (t - a.t) / (b.t - a.t)
-        p = ease(a.ease, p)
+        p = if (a.ease == "custom" && bez != null && bez.size == 4) {
+            cubicBezier(p, bez[0], bez[1], bez[2], bez[3])
+        } else {
+            ease(a.ease, p)
+        }
         return a.v + (b.v - a.v) * p
     }
 
     fun value(layer: Layer, key: String, t: Float): Float {
         val ch = layer.channels[key]
         if (ch == null || ch.keys.isEmpty()) return layer.getStatic(key)
-        return evalKeys(ch.keys, t) ?: layer.getStatic(key)
+        return evalKeys(ch.keys, t, floatArrayOf(layer.bezX1, layer.bezY1, layer.bezX2, layer.bezY2)) ?: layer.getStatic(key)
     }
 
     fun evalLayer(layer: Layer, t: Float): HashMap<String, Float> {

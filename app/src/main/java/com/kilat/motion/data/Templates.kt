@@ -146,49 +146,29 @@ object Templates {
 
     val ALL: List<TemplateInfo> = listOf(
         TemplateInfo(
-            "demo_kilat", "Intro KILAT", "Logo reveal neon + typing + bintang berputar",
-            0xFF2EE6C0.toInt(), 2.6f
-        ) { buildDemo() },
+            "jj_velocity", "JJ Velocity", "Speed ramp + balik 3D + motion blur ala preset velocity TikTok",
+            0xFF00E5FF.toInt(), 2.6f
+        ) { jjVelocity() },
         TemplateInfo(
-            "intro_bold", "Intro Bold", "Judul gede masuk menghentak, cocok buat opener",
-            0xFFFFD166.toInt(), 1.6f
-        ) { introBold() },
+            "jj_lirik", "JJ Lirik DJ", "Kata per kata menghentak ikuti beat + garis karaoke, tinggal ganti liriknya",
+            0xFFFFD166.toInt(), 2.5f
+        ) { jjLirik() },
         TemplateInfo(
-            "quote_minimal", "Quote Minimal", "Kutipan bersih 1:1 dengan efek mengetik",
-            0xFF59E3FF.toInt(), 3.2f
-        ) { quoteMinimal() },
+            "jj_beat130", "JJ Jedag Jedug 130", "Kotak foto menghentak tiap beat 130 BPM + flash - ganti dengan fotomu",
+            0xFFFF2D78.toInt(), 1.9f
+        ) { jjBeat130() },
         TemplateInfo(
-            "promo_pop", "Promo Pop", "Diskon meletup warna-warni buat jualan",
-            0xFFFF5C7A.toInt(), 1.8f
-        ) { promoPop() },
+            "jj_soft", "JJ Soft Spoken", "Pastel lembut + light leak + hentakan halus ala preset soft spoken",
+            0xFFFFB3C7.toInt(), 3.2f
+        ) { jjSoft() },
         TemplateInfo(
-            "lower_third", "Lower Third 16:9", "Nama + jabatan meluncur ala siaran TV + badge LIVE",
-            0xFF8B7CFF.toInt(), 2.2f
-        ) { lowerThird() },
+            "jj_tipis", "JJ Tipis", "Hentakan super tipis & bersih, favorit buat foto aesthetic",
+            0xFF2EE6C0.toInt(), 2.2f
+        ) { jjTipis() },
         TemplateInfo(
-            "countdown", "Hitung Mundur", "3-2-1 menghentak dengan cincin berdenyut, siap buat teaser",
-            0xFF59E3FF.toInt(), 3.6f
-        ) { countdown() },
-        TemplateInfo(
-            "kinetic_type", "Kinetic Type", "Kata-kata gede meluncur bergantian ala iklan modern",
-            0xFFFF8A3D.toInt(), 3.4f
-        ) { kineticType() },
-        TemplateInfo(
-            "product_showcase", "Showcase Produk", "Kartu produk + badge harga memantul + CTA, buat jualan",
-            0xFFFF5C7A.toInt(), 2.8f
-        ) { productShowcase() },
-        TemplateInfo(
-            "jedag_jedug", "Jedag Jedug (JJ)", "Hentakan zoom + flash per beat 120 BPM ala TikTok - tinggal pasang musikmu",
-            0xFFFF2D78.toInt(), 1.55f
-        ) { jedagJedug() },
-        TemplateInfo(
-            "morph_shapes", "Morph Shape", "Bentuk berubah mulus bulat-kotak-bintang pakai blur + rotasi",
-            0xFF8B7CFF.toInt(), 3.0f
-        ) { morphShapes() },
-        TemplateInfo(
-            "rgb_glitch", "RGB Glitch", "Teks pecah merah-cyan + scanline + REC, gaya edit TikTok",
-            0xFF00E5FF.toInt(), 1.3f
-        ) { rgbGlitch() }
+            "jj_serem", "JJ Kece Serem", "Gelap merah, getar glitch & kedip hitam ala sound serem viral",
+            0xFFD90429.toInt(), 1.7f
+        ) { jjSerem() }
     )
 
     fun byId(id: String): TemplateInfo? = ALL.firstOrNull { it.id == id }
@@ -201,842 +181,589 @@ object Templates {
     }
 
     // =====================================================================
-    // Builder template lain
+    // Builder template (semua gaya Jedag Jedug yang lagi viral)
     // =====================================================================
-    fun introBold(): Project {
+
+    /** JJ Velocity: speed ramp (pelan -> menghentak), flip 3D, motion blur sesaat, kubus 3D berputar. */
+    fun jjVelocity(): Project {
         val p = Project()
-        p.name = "Intro Bold"
-        p.duration = 5f
-        p.bg = 0xFF0A0A0A.toInt()
-        val cx = p.width / 2f
-        val cy = p.height / 2f
+        p.name = "JJ Velocity"
+        p.duration = 7f
+        p.bg = 0xFF05060A.toInt()
 
-        val bar = Layer().apply {
-            kind = KIND_SHAPE; name = "Bar aksen"; shape = "rect"
-            w = 620f; h = 26f; radius = 13f; fill = 0xFFFFD166.toInt()
-            x = cx; y = cy + 150f; start = 0f; dur = 5f
+        // garis kecepatan menyapu latar
+        val lineCols = intArrayOf(0xFF00E5FF.toInt(), 0xFF8B7CFF.toInt(), 0xFF2EE6C0.toInt())
+        for (li in 0 until 6) {
+            val lineY = 300f + li * 260f
+            val spd = Layer().apply {
+                kind = KIND_SHAPE; name = "Garis cepat ${li + 1}"; shape = "rect"
+                w = 520f + li * 70f; h = 9f; radius = 4f
+                fill = lineCols[li % lineCols.size]
+                x = 540f; y = lineY; alpha = 0.4f; blend = "screen"
+                start = 0f; dur = 7f; fxBlur = 3f
+            }
+            val dirSign = if (li % 2 == 0) 1f else -1f
+            Anim.setKey(spd, "x", 0f, 540f - 700f * dirSign, "linear")
+            Anim.setKey(spd, "x", 3.5f, 540f + 700f * dirSign, "linear")
+            Anim.setKey(spd, "x", 3.53f, 540f - 700f * dirSign, "linear")
+            Anim.setKey(spd, "x", 7f, 540f + 700f * dirSign, "linear")
+            p.layers.add(spd)
         }
-        Anim.setKey(bar, "scale", 0.5f, 0.02f, "easeOut")
-        Anim.setKey(bar, "scale", 1.15f, 1f, "back")
-        Anim.setKey(bar, "alpha", 0.5f, 0f, "easeOut")
-        Anim.setKey(bar, "alpha", 0.8f, 1f, "easeOut")
 
+        // teks utama: ramp pelan lalu menghentak (kurva bezier), flip 3D dua kali
         val title = Layer().apply {
-            kind = KIND_TEXT; name = "Judul"; text = "HALO\nDUNIA"
-            fontKey = "sans_black"; textSize = 230f; bold = true; align = "center"
+            kind = KIND_TEXT; name = "VELOCITY"; text = "VELOCITY"
+            fontKey = "sans_black"; textSize = 172f; bold = true; align = "center"
             color = 0xFFFFFFFF.toInt()
-            x = cx; y = cy; start = 0f; dur = 5f
+            x = 540f; y = 860f; start = 0f; dur = 7f
+            fxGlow = 26f; glowColor = 0xFF00E5FF.toInt()
+            shadowBlur = 16f; shadowDx = 0f; shadowDy = 12f
+            bezX1 = 0.2f; bezY1 = 1.6f; bezX2 = 0.4f; bezY2 = 1f
         }
-        Anim.setKey(title, "scale", 0f, 1.7f, "easeOut")
-        Anim.setKey(title, "scale", 0.85f, 1f, "back")
+        Anim.setKey(title, "scale", 0f, 0.55f, "easeInOut")
+        Anim.setKey(title, "scale", 0.85f, 0.72f, "easeIn")
+        Anim.setKey(title, "scale", 1.05f, 1.28f, "custom")
+        Anim.setKey(title, "scale", 1.5f, 1f, "easeOut")
+        Anim.setKey(title, "scale", 3.4f, 1.2f, "custom")
+        Anim.setKey(title, "scale", 3.75f, 1f, "easeOut")
+        Anim.setKey(title, "scale", 5.6f, 1.24f, "custom")
+        Anim.setKey(title, "scale", 6f, 1f, "easeOut")
+        Anim.setKey(title, "rotY", 2.1f, 0f, "easeInOut")
+        Anim.setKey(title, "rotY", 2.9f, 180f, "easeInOut")
+        Anim.setKey(title, "rotY", 4.7f, 180f, "easeInOut")
+        Anim.setKey(title, "rotY", 5.5f, 360f, "easeInOut")
+        Anim.setKey(title, "fx.blur", 2.1f, 0f, "easeInOut")
+        Anim.setKey(title, "fx.blur", 2.5f, 16f, "easeInOut")
+        Anim.setKey(title, "fx.blur", 2.9f, 0f, "easeInOut")
+        Anim.setKey(title, "fx.blur", 4.7f, 0f, "easeInOut")
+        Anim.setKey(title, "fx.blur", 5.1f, 16f, "easeInOut")
+        Anim.setKey(title, "fx.blur", 5.5f, 0f, "easeInOut")
         Anim.setKey(title, "alpha", 0f, 0f, "easeOut")
-        Anim.setKey(title, "alpha", 0.35f, 1f, "easeOut")
+        Anim.setKey(title, "alpha", 0.3f, 1f, "easeOut")
+        p.layers.add(title)
 
         val sub = Layer().apply {
-            kind = KIND_TEXT; name = "Subjudul"; text = "selamat datang di channel ini"
-            fontKey = "sans"; textSize = 52f; bold = false; align = "center"
-            color = 0xFFFFD166.toInt()
-            x = cx; y = cy + 260f; start = 1f; dur = 4f
+            kind = KIND_TEXT; name = "Sub velocity"; text = "speed ramp x jedag jedug"
+            fontKey = "mono"; textSize = 44f; bold = false; align = "center"
+            color = 0xFF00E5FF.toInt(); typing = 0f
+            x = 540f; y = 1060f; start = 1.2f; dur = 5.8f
         }
-        Anim.setKey(sub, "y", 1f, cy + 320f, "easeOut")
-        Anim.setKey(sub, "y", 1.7f, cy + 260f, "easeOut")
-        Anim.setKey(sub, "alpha", 1f, 0f, "easeOut")
-        Anim.setKey(sub, "alpha", 1.45f, 1f, "easeOut")
-
-        // bintang latar raksasa berputar pelan
-        val backdrop = Layer().apply {
-            kind = KIND_SHAPE; name = "Bintang latar"; shape = "star"
-            w = 1100f; h = 1100f; fill = 0xFF8B7CFF.toInt()
-            x = cx; y = cy; alpha = 0.13f; start = 0f; dur = 5f
-        }
-        Anim.setKey(backdrop, "rot", 0f, 0f, "linear")
-        Anim.setKey(backdrop, "rot", 5f, 360f, "linear")
-        Anim.setKey(backdrop, "scale", 0f, 0.6f, "easeOut")
-        Anim.setKey(backdrop, "scale", 1.4f, 1f, "easeOut")
-        // dua bintang aksen di pojok, muncul memantul bergantian
-        fun accentStar(name: String, sx: Float, sy: Float, at: Float, col: Int): Layer {
-            val s = Layer().apply {
-                kind = KIND_SHAPE; this.name = name; shape = "star"
-                w = 92f; h = 92f; fill = col
-                x = sx; y = sy; start = at; dur = 5f - at
-                fxGlow = 18f; glowColor = col
-            }
-            Anim.setKey(s, "scale", at, 0.1f, "bounce")
-            Anim.setKey(s, "scale", at + 0.8f, 1f, "bounce")
-            Anim.setKey(s, "rot", at, -30f, "easeOut")
-            Anim.setKey(s, "rot", at + 0.8f, 10f, "easeOut")
-            return s
-        }
-        // outro: semua memudar rapi di akhir
-        Anim.setKey(title, "alpha", 4.35f, 1f, "easeOut")
-        Anim.setKey(title, "alpha", 5f, 0f, "easeOut")
-        Anim.setKey(sub, "alpha", 4.35f, 1f, "easeOut")
-        Anim.setKey(sub, "alpha", 5f, 0f, "easeOut")
-        Anim.setKey(bar, "alpha", 4.35f, 1f, "easeOut")
-        Anim.setKey(bar, "alpha", 5f, 0f, "easeOut")
-
-        p.layers.add(backdrop)
-        p.layers.add(accentStar("Aksen kiri", 150f, 420f, 0.9f, 0xFFFFD166.toInt()))
-        p.layers.add(accentStar("Aksen kanan", 930f, 1500f, 1.25f, 0xFF59E3FF.toInt()))
-        p.layers.add(bar)
-        p.layers.add(title)
+        Anim.setKey(sub, "typing", 1.2f, 0f, "linear")
+        Anim.setKey(sub, "typing", 2.6f, 1f, "linear")
         p.layers.add(sub)
+
+        // kubus 3D berputar di bawah
+        val cube = Layer().apply {
+            kind = KIND_3D; name = "Kubus 3D"; objKind = "cube"
+            w = 300f; h = 300f; fill = 0xFF8B7CFF.toInt()
+            x = 540f; y = 1460f; start = 0.3f; dur = 6.7f
+            rotX = 24f; fxGlow = 18f; glowColor = 0xFF8B7CFF.toInt()
+        }
+        Anim.setKey(cube, "rotY", 0.3f, -40f, "linear")
+        Anim.setKey(cube, "rotY", 7f, 680f, "linear")
+        Anim.setKey(cube, "alpha", 0.3f, 0f, "easeOut")
+        Anim.setKey(cube, "alpha", 0.9f, 1f, "easeOut")
+        Anim.setKey(cube, "y", 0.3f, 1520f, "easeInOut")
+        Anim.setKey(cube, "y", 3.6f, 1420f, "easeInOut")
+        Anim.setKey(cube, "y", 7f, 1520f, "easeInOut")
+        p.layers.add(cube)
+
+        // flash di titik hentakan
+        val flash = Layer().apply {
+            kind = KIND_SHAPE; name = "Flash ramp"; shape = "rect"
+            w = 1080f; h = 1920f; fill = 0xFFFFFFFF.toInt()
+            x = 540f; y = 960f; alpha = 0f; start = 0f; dur = 7f
+        }
+        for (ft in floatArrayOf(1.05f, 3.4f, 5.6f)) {
+            Anim.setKey(flash, "alpha", ft, 0.45f, "linear")
+            Anim.setKey(flash, "alpha", ft + 0.09f, 0f, "linear")
+        }
+        p.layers.add(flash)
+
+        val note = Layer().apply {
+            kind = KIND_TEXT; name = "Catatan"; text = "ganti teksnya, pasang sound velocity favoritmu"
+            fontKey = "mono"; textSize = 32f; bold = false; align = "center"
+            color = 0xFF8FA1BD.toInt()
+            x = 540f; y = 1760f; start = 0f; dur = 7f
+        }
+        Anim.setKey(note, "alpha", 0.5f, 0f, "easeOut")
+        Anim.setKey(note, "alpha", 1.4f, 1f, "easeOut")
+        p.layers.add(note)
         return p
     }
 
-    fun quoteMinimal(): Project {
+    /** JJ Lirik: kata per kata menghentak + garis karaoke mengetik + progress bar. */
+    fun jjLirik(): Project {
         val p = Project()
-        p.name = "Quote Minimal"
-        p.width = 1080
-        p.height = 1080
-        p.duration = 6f
-        p.bg = 0xFFF4F1EA.toInt()
-        val cx = p.width / 2f
-        val cy = p.height / 2f
-
-        val line = Layer().apply {
-            kind = KIND_SHAPE; name = "Garis"; shape = "rect"
-            w = 110f; h = 10f; radius = 5f; fill = 0xFF111319.toInt()
-            x = cx; y = cy - 190f; start = 0f; dur = 6f
-        }
-        val quote = Layer().apply {
-            kind = KIND_TEXT; name = "Kutipan"; text = "kecil-kecil\nkonsisten,\nbesar hasilnya."
-            fontKey = "serif_bold"; textSize = 104f; bold = true; align = "center"
-            color = 0xFF111319.toInt(); typing = 0f
-            x = cx; y = cy + 30f; start = 0.2f; dur = 5.8f
-        }
-        Anim.setKey(quote, "typing", 0.2f, 0f, "linear")
-        Anim.setKey(quote, "typing", 4.2f, 1f, "linear")
-        val author = Layer().apply {
-            kind = KIND_TEXT; name = "Penulis"; text = "@namakamu"
-            fontKey = "mono"; textSize = 42f; bold = false; align = "center"
-            color = 0xFF687389.toInt()
-            x = cx; y = cy + 330f; start = 4.2f; dur = 1.8f
-        }
-        Anim.setKey(author, "alpha", 4.2f, 0f, "easeOut")
-        Anim.setKey(author, "alpha", 4.8f, 1f, "easeOut")
+        p.name = "JJ Lirik DJ"
+        p.duration = 9.6f
+        p.bg = 0xFF0A0A12.toInt()
+        val segLen = 1.2f
 
         val halo = Layer().apply {
-            kind = KIND_SHAPE; name = "Halo krem"; shape = "circle"
-            w = 820f; h = 820f; fill = 0xFFE9DFCE.toInt()
-            x = cx; y = cy; start = 0f; dur = 6f
+            kind = KIND_SHAPE; name = "Halo latar"; shape = "circle"
+            w = 1000f; h = 1000f; fill = 0xFF2A1A5E.toInt()
+            x = 540f; y = 800f; alpha = 0.55f; blend = "screen"; fxBlur = 24f
+            start = 0f; dur = 9.6f
         }
-        Anim.setKey(halo, "scale", 0f, 0.5f, "easeOut")
-        Anim.setKey(halo, "scale", 1.2f, 1f, "easeOut")
-        val mark = Layer().apply {
-            kind = KIND_TEXT; name = "Tanda kutip"; text = "\""
-            fontKey = "serif_bold"; textSize = 260f; bold = true; align = "center"
-            color = 0xFF111319.toInt(); alpha = 0.14f
-            x = cx; y = cy - 300f; start = 0f; dur = 6f
-        }
-        Anim.setKey(mark, "y", 0f, cy - 250f, "easeOut")
-        Anim.setKey(mark, "y", 1.4f, cy - 300f, "easeOut")
-        Anim.setKey(line, "scale", 0f, 0.05f, "easeOut")
-        Anim.setKey(line, "scale", 0.9f, 1f, "back")
-
         p.layers.add(halo)
-        p.layers.add(mark)
-        p.layers.add(line)
-        p.layers.add(quote)
-        p.layers.add(author)
-        return p
-    }
 
-    fun promoPop(): Project {
-        val p = Project()
-        p.name = "Promo Pop"
-        p.width = 1080
-        p.height = 1350
-        p.duration = 5f
-        p.bg = 0xFF2B0F1A.toInt()
-        val cx = p.width / 2f
-        val cy = p.height / 2f
-
-        val burst = Layer().apply {
-            kind = KIND_SHAPE; name = "Ledakan"; shape = "star"
-            w = 980f; h = 980f; fill = 0xFFFF5C7A.toInt()
-            x = cx; y = cy - 60f; start = 0f; dur = 5f
-        }
-        Anim.setKey(burst, "scale", 0f, 0.1f, "back")
-        Anim.setKey(burst, "scale", 0.9f, 1f, "back")
-        Anim.setKey(burst, "rot", 0f, 0f, "linear")
-        Anim.setKey(burst, "rot", 5f, 360f, "linear")
-
-        val off = Layer().apply {
-            kind = KIND_TEXT; name = "Diskon"; text = "DISKON\n50%"
-            fontKey = "sans_black"; textSize = 220f; bold = true; align = "center"
-            color = 0xFFFFFFFF.toInt()
-            x = cx; y = cy - 60f; start = 0.3f; dur = 4.7f
-        }
-        Anim.setKey(off, "scale", 0.3f, 0.2f, "bounce")
-        Anim.setKey(off, "scale", 1.4f, 1f, "bounce")
-
-        val cta = Layer().apply {
-            kind = KIND_TEXT; name = "CTA"; text = "HANYA HARI INI - GAS CHECKOUT"
-            fontKey = "sans_black"; textSize = 56f; bold = true; align = "center"
-            color = 0xFFFFD166.toInt()
-            x = cx; y = p.height - 150f; start = 1.2f; dur = 3.8f
-        }
-        Anim.setKey(cta, "alpha", 1.2f, 0f, "easeOut")
-        Anim.setKey(cta, "alpha", 1.6f, 1f, "easeOut")
-        Anim.setKey(cta, "alpha", 2.2f, 0.25f, "easeOut")
-        Anim.setKey(cta, "alpha", 2.8f, 1f, "easeOut")
-        Anim.setKey(cta, "alpha", 3.6f, 0.25f, "easeOut")
-        Anim.setKey(cta, "alpha", 4.2f, 1f, "easeOut")
-
-        p.layers.add(burst)
-        // hujan confetti: 8 bentuk warna-warni jatuh + berputar
-        val confColors = intArrayOf(
-            0xFFFFD166.toInt(), 0xFF59E3FF.toInt(), 0xFF2EE6C0.toInt(), 0xFF8B7CFF.toInt(),
-            0xFFFFFFFF.toInt(), 0xFFFF8A3D.toInt(), 0xFFFFD166.toInt(), 0xFF59E3FF.toInt()
+        val words = listOf("DJ", "BIKIN", "GOYANG", "SAMPAI", "PAGI", "JEDAG", "JEDUG", "GAS!")
+        val wordCols = intArrayOf(
+            0xFFFFFFFF.toInt(), 0xFF2EE6C0.toInt(), 0xFFFFD166.toInt(), 0xFF59E3FF.toInt(),
+            0xFFFF8FAB.toInt(), 0xFFFFFFFF.toInt(), 0xFF2EE6C0.toInt(), 0xFFFFD166.toInt()
         )
-        val confShapes = listOf("rect", "circle", "star", "rect", "circle", "rect", "star", "circle")
-        for (i in 0 until 8) {
-            val at = 0.35f + i * 0.22f
-            val sx = 110f + i * 125f
-            val size = 26f + (i % 3) * 10f
-            val c = Layer().apply {
-                kind = KIND_SHAPE; name = "Confetti ${i + 1}"; shape = confShapes[i]
-                w = size; h = size * 0.7f; radius = 6f; fill = confColors[i]
-                x = sx; y = -60f; start = at; dur = 5f - at
+        for (wi in words.indices) {
+            val segStart = wi * segLen
+            val wordCol = wordCols[wi]
+            val wl = Layer().apply {
+                kind = KIND_TEXT; name = "Kata ${words[wi]}"; text = words[wi]
+                fontKey = "sans_black"; textSize = 215f; bold = true; align = "center"
+                color = wordCol
+                x = 540f; y = 820f; start = segStart; dur = segLen
+                fxGlow = 20f; glowColor = wordCol
+                shadowBlur = 14f; shadowDy = 10f
+                bezX1 = 0.2f; bezY1 = 1.6f; bezX2 = 0.4f; bezY2 = 1f
             }
-            Anim.setKey(c, "y", at, -60f, "linear")
-            Anim.setKey(c, "y", 5f, p.height + 80f, "linear")
-            Anim.setKey(c, "x", at, sx, "easeInOut")
-            Anim.setKey(c, "x", at + 1.6f, sx + 46f, "easeInOut")
-            Anim.setKey(c, "x", 5f, sx - 30f, "easeInOut")
-            Anim.setKey(c, "rot", at, 0f, "linear")
-            Anim.setKey(c, "rot", 5f, 540f + i * 60f, "linear")
-            p.layers.add(c)
-        }
-        p.layers.add(off)
-        p.layers.add(cta)
-        return p
-    }
-
-    fun lowerThird(): Project {
-        val p = Project()
-        p.name = "Lower Third"
-        p.width = 1920
-        p.height = 1080
-        p.duration = 6f
-        p.bg = 0xFF101828.toInt()
-
-        val plate = Layer().apply {
-            kind = KIND_SHAPE; name = "Plat nama"; shape = "rect"
-            w = 1040f; h = 170f; radius = 18f; fill = 0xFF0A0C11.toInt()
-            x = 620f; y = 900f; start = 0.4f; dur = 5.6f
-            fxGlow = 18f; glowColor = 0xFF8B7CFF.toInt()
-        }
-        Anim.setKey(plate, "x", 0.4f, -460f, "easeOut")
-        Anim.setKey(plate, "x", 1.4f, 620f, "easeOut")
-
-        val strip = Layer().apply {
-            kind = KIND_SHAPE; name = "Strip aksen"; shape = "rect"
-            w = 22f; h = 170f; radius = 8f; fill = 0xFF8B7CFF.toInt()
-            x = 112f; y = 900f; start = 0.4f; dur = 5.6f
-        }
-        Anim.setKey(strip, "x", 0.4f, -968f, "easeOut")
-        Anim.setKey(strip, "x", 1.4f, 112f, "easeOut")
-
-        val nameT = Layer().apply {
-            kind = KIND_TEXT; name = "Nama"; text = "NAMA KAMU"
-            fontKey = "sans_black"; textSize = 92f; bold = true; align = "left"
-            color = 0xFFFFFFFF.toInt()
-            x = 660f; y = 872f; start = 0.9f; dur = 5.1f
-        }
-        Anim.setKey(nameT, "x", 0.9f, 540f, "easeOut")
-        Anim.setKey(nameT, "x", 1.8f, 660f, "easeOut")
-        Anim.setKey(nameT, "alpha", 0.9f, 0f, "easeOut")
-        Anim.setKey(nameT, "alpha", 1.4f, 1f, "easeOut")
-
-        val role = Layer().apply {
-            kind = KIND_TEXT; name = "Jabatan"; text = "Motion Designer"
-            fontKey = "sans"; textSize = 52f; bold = false; align = "left"
-            color = 0xFF9FB0C9.toInt()
-            x = 660f; y = 952f; start = 1.2f; dur = 4.8f
-        }
-        Anim.setKey(role, "x", 1.2f, 560f, "easeOut")
-        Anim.setKey(role, "x", 2.1f, 660f, "easeOut")
-        Anim.setKey(role, "alpha", 1.2f, 0f, "easeOut")
-        Anim.setKey(role, "alpha", 1.8f, 1f, "easeOut")
-
-        val liveBg = Layer().apply {
-            kind = KIND_SHAPE; name = "Badge LIVE"; shape = "rect"
-            w = 170f; h = 64f; radius = 14f; fill = 0xFFFF3B5C.toInt()
-            x = 1780f; y = 92f; start = 0.8f; dur = 5.2f
-        }
-        Anim.setKey(liveBg, "y", 0.8f, 30f, "back")
-        Anim.setKey(liveBg, "y", 1.5f, 92f, "back")
-        Anim.setKey(liveBg, "alpha", 1.8f, 1f, "easeOut")
-        Anim.setKey(liveBg, "alpha", 2.6f, 0.45f, "easeOut")
-        Anim.setKey(liveBg, "alpha", 3.4f, 1f, "easeOut")
-        Anim.setKey(liveBg, "alpha", 4.2f, 0.45f, "easeOut")
-        Anim.setKey(liveBg, "alpha", 5f, 1f, "easeOut")
-        val liveTx = Layer().apply {
-            kind = KIND_TEXT; name = "Teks LIVE"; text = "LIVE"
-            fontKey = "sans_black"; textSize = 44f; bold = true; align = "center"
-            color = 0xFFFFFFFF.toInt()
-            x = 1780f; y = 106f; start = 0.8f; dur = 5.2f
-        }
-        Anim.setKey(liveTx, "y", 0.8f, 44f, "back")
-        Anim.setKey(liveTx, "y", 1.5f, 106f, "back")
-        val clock = Layer().apply {
-            kind = KIND_TEXT; name = "Jam siaran"; text = "19:30 WIB"
-            fontKey = "mono"; textSize = 40f; bold = false; align = "center"
-            color = 0xFF9FB0C9.toInt()
-            x = 1780f; y = 980f; start = 1.6f; dur = 4.4f
-        }
-        Anim.setKey(clock, "alpha", 1.6f, 0f, "easeOut")
-        Anim.setKey(clock, "alpha", 2.2f, 1f, "easeOut")
-
-        p.layers.add(plate)
-        p.layers.add(strip)
-        p.layers.add(nameT)
-        p.layers.add(role)
-        p.layers.add(liveBg)
-        p.layers.add(liveTx)
-        p.layers.add(clock)
-        return p
-    }
-
-    // =====================================================================
-    // Template baru v1.2
-    // =====================================================================
-    fun countdown(): Project {
-        val p = Project()
-        p.name = "Hitung Mundur"
-        p.duration = 5.5f
-        p.bg = 0xFF070B14.toInt()
-        val cx = p.width / 2f
-        val cy = p.height / 2f - 80f
-
-        val ring = Layer().apply {
-            kind = KIND_SHAPE; name = "Cincin denyut"; shape = "circle"
-            w = 640f; h = 640f; fill = 0xFF12233D.toInt()
-            x = cx; y = cy; start = 0f; dur = 5.5f
-            fxGlow = 30f; glowColor = 0xFF59E3FF.toInt()
-        }
-        var tt = 0f
-        while (tt < 3f) {
-            Anim.setKey(ring, "scale", tt, 1.22f, "easeOut")
-            Anim.setKey(ring, "scale", tt + 0.55f, 1f, "easeOut")
-            tt += 1f
-        }
-        Anim.setKey(ring, "scale", 3f, 1.35f, "back")
-        Anim.setKey(ring, "scale", 3.8f, 1.05f, "easeOut")
-
-        val label = Layer().apply {
-            kind = KIND_TEXT; name = "Label atas"; text = "BERSIAP..."
-            fontKey = "mono"; textSize = 52f; bold = false; align = "center"
-            color = 0xFF9FB0C9.toInt(); typing = 0f
-            x = cx; y = 330f; start = 0f; dur = 3f
-        }
-        Anim.setKey(label, "typing", 0f, 0f, "linear")
-        Anim.setKey(label, "typing", 1.2f, 1f, "linear")
-        Anim.setKey(label, "alpha", 2.7f, 1f, "easeOut")
-        Anim.setKey(label, "alpha", 3f, 0f, "easeOut")
-
-        val numbers = listOf("3", "2", "1")
-        val numColors = intArrayOf(0xFFFFFFFF.toInt(), 0xFF59E3FF.toInt(), 0xFFFFD166.toInt())
-        p.layers.add(ring)
-        p.layers.add(label)
-        for ((i, n) in numbers.withIndex()) {
-            val at = i.toFloat()
-            val num = Layer().apply {
-                kind = KIND_TEXT; name = "Angka $n"; text = n
-                fontKey = "sans_black"; textSize = 360f; bold = true; align = "center"
-                color = numColors[i]
-                x = cx; y = cy + 120f; start = at; dur = 1f
-                fxGlow = 34f; glowColor = numColors[i]
-            }
-            Anim.setKey(num, "scale", at, 1.8f, "easeOut")
-            Anim.setKey(num, "scale", at + 0.4f, 1f, "back")
-            Anim.setKey(num, "alpha", at, 0f, "easeOut")
-            Anim.setKey(num, "alpha", at + 0.14f, 1f, "easeOut")
-            Anim.setKey(num, "alpha", at + 0.82f, 1f, "easeOut")
-            Anim.setKey(num, "alpha", at + 1f, 0f, "easeOut")
-            p.layers.add(num)
+            Anim.setKey(wl, "scale", segStart, 1.34f, "custom")
+            Anim.setKey(wl, "scale", segStart + 0.16f, 1f, "easeOut")
+            Anim.setKey(wl, "scale", segStart + 0.6f, 1.14f, "custom")
+            Anim.setKey(wl, "scale", segStart + 0.74f, 1f, "easeOut")
+            Anim.setKey(wl, "rot", segStart, if (wi % 2 == 0) -3.5f else 3.5f, "easeOut")
+            Anim.setKey(wl, "rot", segStart + 0.25f, 0f, "easeOut")
+            Anim.setKey(wl, "y", segStart, 880f, "custom")
+            Anim.setKey(wl, "y", segStart + 0.3f, 820f, "easeOut")
+            p.layers.add(wl)
         }
 
-        val go = Layer().apply {
-            kind = KIND_TEXT; name = "Mulai"; text = "MULAI!"
-            fontKey = "sans_black"; textSize = 230f; bold = true; align = "center"
-            color = 0xFF2EE6C0.toInt()
-            x = cx; y = cy + 80f; start = 3f; dur = 2.5f
-            fxGlow = 40f; glowColor = 0xFF2EE6C0.toInt()
+        // coretan zigzag di bawah kata (layer vektor)
+        val zig = StringBuilder()
+        var zx = -350f
+        var up = true
+        while (zx <= 350f) {
+            if (zig.isNotEmpty()) zig.append(';')
+            zig.append(zx.toInt()).append(',').append(if (up) -16 else 16)
+            up = !up
+            zx += 50f
         }
-        Anim.setKey(go, "scale", 3f, 0.2f, "bounce")
-        Anim.setKey(go, "scale", 4.1f, 1f, "bounce")
-
-        val meter = Layer().apply {
-            kind = KIND_SHAPE; name = "Bar waktu"; shape = "rect"
-            w = 680f; h = 16f; radius = 8f; fill = 0xFFFFD166.toInt()
-            x = cx; y = 1620f; start = 0f; dur = 3f
-        }
-        Anim.setKey(meter, "scale", 0f, 1f, "linear")
-        Anim.setKey(meter, "scale", 3f, 0.04f, "linear")
-
-        p.layers.add(go)
-        p.layers.add(meter)
-        return p
-    }
-
-    fun kineticType(): Project {
-        val p = Project()
-        p.name = "Kinetic Type"
-        p.duration = 6f
-        p.bg = 0xFF0E0E12.toInt()
-        val cx = p.width / 2f
-
-        // garis diagonal latar bergerak pelan
-        for (i in 0 until 3) {
-            val stripe = Layer().apply {
-                kind = KIND_SHAPE; name = "Garis latar ${i + 1}"; shape = "rect"
-                w = 1500f; h = 90f; fill = 0xFFFFFFFF.toInt()
-                x = cx; y = 420f + i * 520f; rot = 24f; alpha = 0.06f
-                start = 0f; dur = 6f
-            }
-            Anim.setKey(stripe, "x", 0f, cx - 90f, "linear")
-            Anim.setKey(stripe, "x", 6f, cx + 90f, "linear")
-            p.layers.add(stripe)
-        }
-
-        val words = listOf(
-            Triple("BIKIN", 0xFFFFFFFF.toInt(), 700f),
-            Triple("KONTEN", 0xFF2EE6C0.toInt(), 930f),
-            Triple("VIRAL", 0xFFFFD166.toInt(), 1160f)
-        )
-        for ((i, wd) in words.withIndex()) {
-            val at = 0.25f + i * 0.95f
-            val fromLeft = i % 2 == 0
-            val word = Layer().apply {
-                kind = KIND_TEXT; name = "Kata ${wd.first}"; text = wd.first
-                fontKey = "sans_black"; textSize = 200f; bold = true; align = "center"
-                color = wd.second
-                x = cx; y = wd.third; start = at; dur = 6f - at
-            }
-            Anim.setKey(word, "x", at, if (fromLeft) -520f else 1600f, "easeOut")
-            Anim.setKey(word, "x", at + 0.75f, cx, "back")
-            Anim.setKey(word, "rot", at, if (fromLeft) -5f else 5f, "easeOut")
-            Anim.setKey(word, "rot", at + 0.75f, 0f, "easeOut")
-            val bar = Layer().apply {
-                kind = KIND_SHAPE; name = "Bar ${wd.first}"; shape = "rect"
-                w = 560f; h = 18f; radius = 9f; fill = wd.second
-                x = cx; y = wd.third + 78f; start = at + 0.18f; dur = 6f - at - 0.18f
-            }
-            Anim.setKey(bar, "scale", at + 0.18f, 0.04f, "easeOut")
-            Anim.setKey(bar, "scale", at + 0.85f, 1f, "back")
-            p.layers.add(word)
-            p.layers.add(bar)
-        }
-
-        val tag = Layer().apply {
-            kind = KIND_TEXT; name = "Hashtag"; text = "#fyp  #motion  #edit"
-            fontKey = "mono"; textSize = 46f; bold = false; align = "center"
-            color = 0xFF9FB0C9.toInt(); typing = 0f
-            x = cx; y = 1420f; start = 3.3f; dur = 2.7f
-        }
-        Anim.setKey(tag, "typing", 3.3f, 0f, "linear")
-        Anim.setKey(tag, "typing", 5.2f, 1f, "linear")
-        p.layers.add(tag)
-        return p
-    }
-
-    fun productShowcase(): Project {
-        val p = Project()
-        p.name = "Showcase Produk"
-        p.width = 1080
-        p.height = 1350
-        p.duration = 6f
-        p.bg = 0xFFF6EFE6.toInt()
-        val cx = p.width / 2f
-
-        val sun = Layer().apply {
-            kind = KIND_SHAPE; name = "Bintang mentari"; shape = "star"
-            w = 980f; h = 980f; fill = 0xFFFFD9C7.toInt()
-            x = cx; y = 600f; alpha = 0.75f; start = 0f; dur = 6f
-        }
-        Anim.setKey(sun, "rot", 0f, 0f, "linear")
-        Anim.setKey(sun, "rot", 6f, 180f, "linear")
-        Anim.setKey(sun, "scale", 0f, 0.5f, "easeOut")
-        Anim.setKey(sun, "scale", 1.1f, 1f, "easeOut")
-
-        val card = Layer().apply {
-            kind = KIND_SHAPE; name = "Kartu produk"; shape = "rect"
-            w = 580f; h = 650f; radius = 44f; fill = 0xFFFFFFFF.toInt()
-            x = cx; y = 610f; start = 0.2f; dur = 5.8f
-            fxGlow = 22f; glowColor = 0xFFFFB59E.toInt()
-        }
-        Anim.setKey(card, "scale", 0.2f, 0.3f, "bounce")
-        Anim.setKey(card, "scale", 1.5f, 1f, "bounce")
-        Anim.setKey(card, "y", 0.2f, 720f, "easeOut")
-        Anim.setKey(card, "y", 1.2f, 600f, "easeOut")
-        Anim.setKey(card, "y", 3.4f, 622f, "easeInOut")
-        Anim.setKey(card, "y", 6f, 600f, "easeInOut")
-
-        val prod = Layer().apply {
-            kind = KIND_TEXT; name = "Nama produk"; text = "PRODUK\nBARU"
-            fontKey = "sans_black"; textSize = 150f; bold = true; align = "center"
-            color = 0xFF2B2118.toInt()
-            x = cx; y = 610f; start = 0.7f; dur = 5.3f
-        }
-        Anim.setKey(prod, "y", 0.7f, 700f, "back")
-        Anim.setKey(prod, "y", 1.6f, 592f, "back")
-        Anim.setKey(prod, "y", 3.4f, 614f, "easeInOut")
-        Anim.setKey(prod, "y", 6f, 592f, "easeInOut")
-        Anim.setKey(prod, "alpha", 0.7f, 0f, "easeOut")
-        Anim.setKey(prod, "alpha", 1.1f, 1f, "easeOut")
-
-        val badge = Layer().apply {
-            kind = KIND_SHAPE; name = "Badge harga"; shape = "circle"
-            w = 205f; h = 205f; fill = 0xFFFF5C7A.toInt()
-            x = 845f; y = 330f; rot = -12f; start = 1.1f; dur = 4.9f
-            fxGlow = 20f; glowColor = 0xFFFF5C7A.toInt()
-        }
-        Anim.setKey(badge, "scale", 1.1f, 0.1f, "bounce")
-        Anim.setKey(badge, "scale", 2.2f, 1f, "bounce")
-        val price = Layer().apply {
-            kind = KIND_TEXT; name = "Harga"; text = "199K"
-            fontKey = "sans_black"; textSize = 84f; bold = true; align = "center"
-            color = 0xFFFFFFFF.toInt(); rot = -12f
-            x = 845f; y = 358f; start = 1.1f; dur = 4.9f
-        }
-        Anim.setKey(price, "scale", 1.1f, 0.1f, "bounce")
-        Anim.setKey(price, "scale", 2.2f, 1f, "bounce")
-
-        val ctaBg = Layer().apply {
-            kind = KIND_SHAPE; name = "Tombol CTA"; shape = "rect"
-            w = 600f; h = 104f; radius = 52f; fill = 0xFF0E7D6B.toInt()
-            x = cx; y = 1135f; start = 1.7f; dur = 4.3f
-        }
-        Anim.setKey(ctaBg, "y", 1.7f, 1260f, "back")
-        Anim.setKey(ctaBg, "y", 2.5f, 1135f, "back")
-        Anim.setKey(ctaBg, "alpha", 1.7f, 0f, "easeOut")
-        Anim.setKey(ctaBg, "alpha", 2f, 1f, "easeOut")
-        val ctaTx = Layer().apply {
-            kind = KIND_TEXT; name = "Teks CTA"; text = "BELI SEKARANG"
-            fontKey = "sans_black"; textSize = 56f; bold = true; align = "center"
-            color = 0xFFFFFFFF.toInt()
-            x = cx; y = 1154f; start = 1.7f; dur = 4.3f
-        }
-        Anim.setKey(ctaTx, "y", 1.7f, 1279f, "back")
-        Anim.setKey(ctaTx, "y", 2.5f, 1154f, "back")
-        Anim.setKey(ctaTx, "alpha", 1.7f, 0f, "easeOut")
-        Anim.setKey(ctaTx, "alpha", 2f, 1f, "easeOut")
-
-        val brand = Layer().apply {
-            kind = KIND_TEXT; name = "Brand"; text = "@tokokamu"
-            fontKey = "mono"; textSize = 42f; bold = false; align = "center"
-            color = 0xFF8A7A68.toInt()
-            x = cx; y = 130f; start = 2.2f; dur = 3.8f
-        }
-        Anim.setKey(brand, "alpha", 2.2f, 0f, "easeOut")
-        Anim.setKey(brand, "alpha", 2.8f, 1f, "easeOut")
-
-        p.layers.add(sun)
-        p.layers.add(card)
-        p.layers.add(prod)
-        // kilau bintang kecil bermunculan bergantian
-        val sparkPos = listOf(180f to 260f, 910f to 620f, 230f to 980f, 880f to 1020f)
-        for ((i, pos) in sparkPos.withIndex()) {
-            val at = 2.4f + i * 0.45f
-            val sp = Layer().apply {
-                kind = KIND_SHAPE; name = "Kilau ${i + 1}"; shape = "star"
-                w = 64f; h = 64f; fill = 0xFFFFB020.toInt()
-                x = pos.first; y = pos.second; start = at; dur = 6f - at
-                fxGlow = 16f; glowColor = 0xFFFFB020.toInt()
-            }
-            Anim.setKey(sp, "scale", at, 0.1f, "back")
-            Anim.setKey(sp, "scale", at + 0.55f, 1f, "back")
-            Anim.setKey(sp, "rot", at, 0f, "linear")
-            Anim.setKey(sp, "rot", 6f, 220f, "linear")
-            p.layers.add(sp)
-        }
-        p.layers.add(badge)
-        p.layers.add(price)
-        p.layers.add(ctaBg)
-        p.layers.add(ctaTx)
-        p.layers.add(brand)
-        return p
-    }
-
-    /** Jedag Jedug ala TikTok/AM: grid beat 120 BPM, zoom punch + flash putih + shake tiap ketuk. */
-    fun jedagJedug(): Project {
-        val p = Project()
-        p.name = "Jedag Jedug (JJ)"
-        p.duration = 8f
-        p.bg = 0xFF07070B.toInt()
-        val beat = 0.5f // 120 BPM
-
-        // lingkaran latar berdenyut mengikuti beat
-        val pulse = Layer().apply {
-            kind = KIND_SHAPE; name = "Denyut latar"; shape = "circle"
-            w = 900f; h = 900f; fill = 0xFF241347.toInt()
-            x = 540f; y = 920f; start = 0f; dur = 8f
-            fxGlow = 24f; glowColor = 0xFF7C5CFF.toInt()
+        val scribble = Layer().apply {
+            kind = KIND_VECTOR; name = "Coretan beat"
+            vecPoints = zig.toString(); vecStrokeW = 11f
+            color = 0xFFFF2D78.toInt()
+            x = 540f; y = 1000f; w = 700f; h = 40f
+            start = 0f; dur = 9.6f
         }
         var beatT = 0f
-        while (beatT < 8f) {
-            Anim.setKey(pulse, "scale", beatT, 1.22f, "easeOut")
-            Anim.setKey(pulse, "scale", minOf(8f, beatT + 0.24f), 1f, "easeOut")
-            beatT += beat
+        while (beatT < 9.6f) {
+            Anim.setKey(scribble, "scale", beatT, 1.16f, "easeOut")
+            Anim.setKey(scribble, "scale", minOf(9.6f, beatT + 0.18f), 1f, "easeOut")
+            beatT += segLen
+        }
+        p.layers.add(scribble)
+
+        // garis karaoke
+        val karaoke = Layer().apply {
+            kind = KIND_TEXT; name = "Karaoke"; text = "dj bikin goyang sampai pagi..."
+            fontKey = "mono"; textSize = 46f; bold = true; align = "center"
+            color = 0xFF2EE6C0.toInt(); typing = 0f
+            x = 540f; y = 1580f; start = 0f; dur = 9.6f
+        }
+        Anim.setKey(karaoke, "typing", 0f, 0f, "linear")
+        Anim.setKey(karaoke, "typing", 7.2f, 1f, "linear")
+        p.layers.add(karaoke)
+
+        // progress bar tumbuh dari tengah mengikuti lagu
+        val barBg = Layer().apply {
+            kind = KIND_SHAPE; name = "Bar latar"; shape = "rect"
+            w = 880f; h = 14f; radius = 7f; fill = 0xFF232838.toInt()
+            x = 540f; y = 1680f; start = 0f; dur = 9.6f
+        }
+        p.layers.add(barBg)
+        val barFill = Layer().apply {
+            kind = KIND_SHAPE; name = "Bar jalan"; shape = "rect"
+            w = 880f; h = 14f; radius = 7f; fill = 0xFF2EE6C0.toInt()
+            x = 540f; y = 1680f; start = 0f; dur = 9.6f
+        }
+        Anim.setKey(barFill, "scaleX", 0f, 0.01f, "linear")
+        Anim.setKey(barFill, "scaleX", 9.6f, 1f, "linear")
+        p.layers.add(barFill)
+
+        val top = Layer().apply {
+            kind = KIND_TEXT; name = "Label"; text = "LIRIK - GANTI KATA-KATANYA"
+            fontKey = "mono"; textSize = 32f; bold = true; align = "center"
+            color = 0xFF8FA1BD.toInt()
+            x = 540f; y = 200f; start = 0f; dur = 9.6f
+        }
+        Anim.setKey(top, "alpha", 0f, 0f, "easeOut")
+        Anim.setKey(top, "alpha", 0.8f, 1f, "easeOut")
+        p.layers.add(top)
+        return p
+    }
+
+    /** JJ Jedag Jedug 130 BPM: kotak foto (mask kotak lembut) menghentak tiap beat + flash. */
+    fun jjBeat130(): Project {
+        val p = Project()
+        p.name = "JJ Jedag Jedug 130"
+        p.duration = 8f
+        p.bg = 0xFF07070B.toInt()
+        val beat = 0.462f // 130 BPM
+
+        val pulse = Layer().apply {
+            kind = KIND_SHAPE; name = "Denyut latar"; shape = "circle"
+            w = 980f; h = 980f; fill = 0xFF3B0F2E.toInt()
+            x = 540f; y = 880f; alpha = 0.8f; blend = "screen"; fxBlur = 20f
+            start = 0f; dur = 8f
+        }
+        var pt = 0f
+        while (pt < 8f) {
+            Anim.setKey(pulse, "scale", pt, 1.16f, "easeOut")
+            Anim.setKey(pulse, "scale", minOf(8f, pt + 0.2f), 1f, "easeOut")
+            pt += beat * 2f
         }
         p.layers.add(pulse)
 
-        // teks utama bergantian tiap 2 beat, menghentak di tiap beat
-        val words = listOf("JEDAG", "JEDUG")
-        val wordColors = listOf(0xFFFFFFFF.toInt(), 0xFF2EE6C0.toInt())
-        for (seg in 0 until 8) {
-            val segStart = seg * 1f
-            val word = words[seg % 2]
-            val wordCol = wordColors[seg % 2]
-            val tl = Layer().apply {
-                kind = KIND_TEXT; name = "$word ${seg + 1}"; text = word
-                fontKey = "sans_black"; textSize = 250f; bold = true; align = "center"
-                color = wordCol
-                x = 540f; y = 920f; start = segStart; dur = 1f
-                fxGlow = 22f; glowColor = wordCol
+        fun punchBeat(l: Layer, amp: Float, stepBeats: Int) {
+            var bt = 0f
+            var flip = false
+            while (bt < 8f) {
+                Anim.setKey(l, "scale", bt, amp, "custom")
+                Anim.setKey(l, "scale", minOf(8f, bt + 0.15f), 1f, "easeOut")
+                Anim.setKey(l, "rot", bt, if (flip) 1.6f else -1.6f, "easeOut")
+                Anim.setKey(l, "rot", minOf(8f, bt + 0.2f), 0f, "easeOut")
+                flip = !flip
+                bt += beat * stepBeats
             }
-            Anim.setKey(tl, "scale", segStart, 1.32f, "easeOut")
-            Anim.setKey(tl, "scale", segStart + 0.12f, 1f, "easeOut")
-            Anim.setKey(tl, "scale", segStart + 0.5f, 1.16f, "easeOut")
-            Anim.setKey(tl, "scale", segStart + 0.62f, 1f, "easeOut")
-            Anim.setKey(tl, "x", segStart, 554f, "linear")
-            Anim.setKey(tl, "x", segStart + 0.05f, 530f, "linear")
-            Anim.setKey(tl, "x", segStart + 0.11f, 546f, "linear")
-            Anim.setKey(tl, "x", segStart + 0.19f, 540f, "easeOut")
-            p.layers.add(tl)
         }
 
-        // flash putih 3-5 frame di tiap beat (ciri khas JJ)
+        // kotak foto: ganti layer ini dengan foto asli (mask siap pakai)
+        val frame = Layer().apply {
+            kind = KIND_SHAPE; name = "FOTO KAMU (ganti layer ini)"; shape = "rect"
+            w = 760f; h = 760f; radius = 48f; fill = 0xFF232B42.toInt()
+            shapeStrokeW = 7f; shapeStrokeColor = 0xFF2EE6C0.toInt()
+            maskShape = "rrect"
+            x = 540f; y = 880f; start = 0f; dur = 8f
+            shadowBlur = 26f; shadowDy = 18f
+            bezX1 = 0.2f; bezY1 = 1.6f; bezX2 = 0.4f; bezY2 = 1f
+        }
+        punchBeat(frame, 1.13f, 1)
+        p.layers.add(frame)
+
+        val frameText = Layer().apply {
+            kind = KIND_TEXT; name = "Label foto"; text = "FOTO\nKAMU"
+            fontKey = "sans_black"; textSize = 110f; bold = true; align = "center"
+            color = 0xFF9FB0C9.toInt()
+            x = 540f; y = 880f; start = 0f; dur = 8f
+            bezX1 = 0.2f; bezY1 = 1.6f; bezX2 = 0.4f; bezY2 = 1f
+        }
+        punchBeat(frameText, 1.13f, 1)
+        p.layers.add(frameText)
+
+        val title = Layer().apply {
+            kind = KIND_TEXT; name = "Judul JJ"; text = "JEDAG JEDUG"
+            fontKey = "sans_black"; textSize = 118f; bold = true; align = "center"
+            color = 0xFFFFFFFF.toInt()
+            x = 540f; y = 300f; start = 0f; dur = 8f
+            fxGlow = 22f; glowColor = 0xFFFF2D78.toInt()
+            bezX1 = 0.2f; bezY1 = 1.6f; bezX2 = 0.4f; bezY2 = 1f
+        }
+        punchBeat(title, 1.17f, 2)
+        p.layers.add(title)
+
         val flash = Layer().apply {
             kind = KIND_SHAPE; name = "Flash beat"; shape = "rect"
             w = 1080f; h = 1920f; fill = 0xFFFFFFFF.toInt()
             x = 540f; y = 960f; alpha = 0f; start = 0f; dur = 8f
         }
-        var flashT = beat
-        while (flashT < 8f) {
-            Anim.setKey(flash, "alpha", flashT, 0.8f, "linear")
-            Anim.setKey(flash, "alpha", minOf(8f, flashT + 0.09f), 0f, "linear")
-            flashT += beat
+        var ft = beat * 2f
+        while (ft < 8f) {
+            Anim.setKey(flash, "alpha", ft, 0.55f, "linear")
+            Anim.setKey(flash, "alpha", minOf(8f, ft + 0.08f), 0f, "linear")
+            ft += beat * 2f
         }
         p.layers.add(flash)
 
-        val top = Layer().apply {
-            kind = KIND_TEXT; name = "Label atas"; text = "KILAT MOTION"
-            fontKey = "mono"; textSize = 34f; bold = true; align = "center"
-            color = 0xFF9FB0C9.toInt()
-            x = 540f; y = 190f; start = 0f; dur = 8f
-        }
-        Anim.setKey(top, "alpha", 0f, 0f, "easeOut")
-        Anim.setKey(top, "alpha", 0.8f, 1f, "easeOut")
-        p.layers.add(top)
-
         val note = Layer().apply {
-            kind = KIND_TEXT; name = "Catatan BPM"; text = "120 BPM - pasang musikmu, ganti teksnya sesukamu"
-            fontKey = "mono"; textSize = 32f; bold = false; align = "center"
+            kind = KIND_TEXT; name = "Catatan"; text = "130 BPM - pasang sound JJ, ganti kotaknya jadi foto kamu"
+            fontKey = "mono"; textSize = 31f; bold = false; align = "center"
             color = 0xFF8FA1BD.toInt()
-            x = 540f; y = 1730f; start = 0f; dur = 8f
+            x = 540f; y = 1740f; start = 0f; dur = 8f
         }
-        Anim.setKey(note, "alpha", 0.3f, 0f, "easeOut")
+        Anim.setKey(note, "alpha", 0.4f, 0f, "easeOut")
         Anim.setKey(note, "alpha", 1.2f, 1f, "easeOut")
         p.layers.add(note)
         return p
     }
 
-    /** Morph transition: bentuk berubah mulus lewat tumpang-tindih blur + skala + rotasi (~0.22 dtk). */
-    fun morphShapes(): Project {
+    /** JJ Soft Spoken: pastel terang, light leak melayang, hentakan selembut sutra. */
+    fun jjSoft(): Project {
         val p = Project()
-        p.name = "Morph Shape"
-        p.width = 1080; p.height = 1080
-        p.duration = 6f
-        p.bg = 0xFF0B0E14.toInt()
-        val cxp = 540f
-        val cyp = 480f
+        p.name = "JJ Soft Spoken"
+        p.duration = 8f
+        p.bg = 0xFFF6EDE8.toInt()
 
-        fun morphIn(l: Layer, t0: Float) {
-            Anim.setKey(l, "alpha", t0, 0f, "easeInOut")
-            Anim.setKey(l, "alpha", t0 + 0.22f, 1f, "easeInOut")
-            Anim.setKey(l, "scale", t0, 0.62f, "easeInOut")
-            Anim.setKey(l, "scale", t0 + 0.22f, 1f, "easeInOut")
-            Anim.setKey(l, "rot", t0, -80f, "easeInOut")
-            Anim.setKey(l, "rot", t0 + 0.22f, 0f, "easeInOut")
-            Anim.setKey(l, "fx.blur", t0, 26f, "easeInOut")
-            Anim.setKey(l, "fx.blur", t0 + 0.22f, 0f, "easeInOut")
+        // bingkai tipis
+        val frame = Layer().apply {
+            kind = KIND_SHAPE; name = "Bingkai"; shape = "rect"
+            w = 940f; h = 1720f; radius = 40f; fill = 0xFFF6EDE8.toInt()
+            shapeStrokeW = 3f; shapeStrokeColor = 0xFF4A2B3A.toInt()
+            x = 540f; y = 960f; start = 0f; dur = 8f
         }
-        fun morphOut(l: Layer, t0: Float) {
-            Anim.setKey(l, "alpha", t0, 1f, "easeInOut")
-            Anim.setKey(l, "alpha", t0 + 0.22f, 0f, "easeInOut")
-            Anim.setKey(l, "scale", t0, 1f, "easeInOut")
-            Anim.setKey(l, "scale", t0 + 0.22f, 0.62f, "easeInOut")
-            Anim.setKey(l, "rot", t0, 0f, "easeInOut")
-            Anim.setKey(l, "rot", t0 + 0.22f, 80f, "easeInOut")
-            Anim.setKey(l, "fx.blur", t0, 0f, "easeInOut")
-            Anim.setKey(l, "fx.blur", t0 + 0.22f, 26f, "easeInOut")
-        }
-        fun shapeLayer(nm: String, shp: String, fillC: Int, tStart: Float, tDur: Float, rad: Float): Layer {
-            return Layer().apply {
-                kind = KIND_SHAPE; name = nm; shape = shp; radius = rad
-                w = 400f; h = 400f; fill = fillC
-                x = cxp; y = cyp; start = tStart; dur = tDur
-                fxGlow = 20f; glowColor = fillC
+        Anim.setKey(frame, "alpha", 0f, 0f, "easeOut")
+        Anim.setKey(frame, "alpha", 1f, 1f, "easeOut")
+        p.layers.add(frame)
+
+        // light leak blobs pastel melayang
+        val leakCols = intArrayOf(0xFFFFB3C7.toInt(), 0xFFFFE5B4.toInt(), 0xFFB8E3FF.toInt())
+        val leakPos = arrayOf(floatArrayOf(260f, 420f), floatArrayOf(840f, 760f), floatArrayOf(300f, 1420f))
+        for (li in 0 until 3) {
+            val leak = Layer().apply {
+                kind = KIND_SHAPE; name = "Light leak ${li + 1}"; shape = "circle"
+                w = 720f + li * 90f; h = 720f + li * 90f
+                fill = leakCols[li]
+                x = leakPos[li][0]; y = leakPos[li][1]
+                alpha = 0.5f; blend = "screen"; fxBlur = 30f
+                start = 0f; dur = 8f
             }
+            Anim.setKey(leak, "x", 0f, leakPos[li][0], "easeInOut")
+            Anim.setKey(leak, "x", 4f, leakPos[li][0] + 90f, "easeInOut")
+            Anim.setKey(leak, "x", 8f, leakPos[li][0], "easeInOut")
+            Anim.setKey(leak, "y", 0f, leakPos[li][1], "easeInOut")
+            Anim.setKey(leak, "y", 4f, leakPos[li][1] - 70f, "easeInOut")
+            Anim.setKey(leak, "y", 8f, leakPos[li][1], "easeInOut")
+            p.layers.add(leak)
         }
 
-        val bulat = shapeLayer("Bulat", "circle", 0xFF2EE6C0.toInt(), 0f, 2.12f, 0f)
-        Anim.setKey(bulat, "scale", 0f, 0.2f, "back")
-        Anim.setKey(bulat, "scale", 0.55f, 1f, "easeOut")
-        Anim.setKey(bulat, "alpha", 0f, 0f, "easeOut")
-        Anim.setKey(bulat, "alpha", 0.3f, 1f, "easeOut")
-        morphOut(bulat, 1.9f)
-        p.layers.add(bulat)
+        val title = Layer().apply {
+            kind = KIND_TEXT; name = "Soft spoken"; text = "soft\nspoken"
+            fontKey = "serif_bold"; textSize = 165f; bold = true; align = "center"
+            color = 0xFF4A2B3A.toInt()
+            x = 540f; y = 850f; start = 0f; dur = 8f
+            shadowBlur = 12f; shadowDy = 8f; shadowColor = 0xFFB98A9A.toInt()
+        }
+        var softT = 0f
+        while (softT < 8f) {
+            Anim.setKey(title, "scale", softT, 1.06f, "easeInOut")
+            Anim.setKey(title, "scale", minOf(8f, softT + 0.45f), 1f, "easeInOut")
+            Anim.setKey(title, "y", softT, 836f, "easeInOut")
+            Anim.setKey(title, "y", minOf(8f, softT + 0.5f), 850f, "easeInOut")
+            softT += 1f
+        }
+        Anim.setKey(title, "alpha", 0f, 0f, "easeOut")
+        Anim.setKey(title, "alpha", 0.9f, 1f, "easeOut")
+        p.layers.add(title)
 
-        val kotak = shapeLayer("Kotak", "rect", 0xFF8B7CFF.toInt(), 1.9f, 2.22f, 90f)
-        kotak.fxBlur = 26f
-        morphIn(kotak, 1.9f)
-        morphOut(kotak, 3.9f)
-        p.layers.add(kotak)
-
-        val bintang = shapeLayer("Bintang morph", "star", 0xFFFFD166.toInt(), 3.9f, 2.1f, 0f)
-        bintang.fxBlur = 26f
-        bintang.w = 460f; bintang.h = 460f
-        morphIn(bintang, 3.9f)
-        Anim.setKey(bintang, "rot", 5.2f, 0f, "easeInOut")
-        Anim.setKey(bintang, "rot", 6f, 72f, "easeInOut")
-        p.layers.add(bintang)
-
-        // label nama bentuk mengikuti pergantian
-        val labelData = listOf(
-            Triple("BULAT", 0f, 0xFF2EE6C0.toInt()),
-            Triple("KOTAK", 2f, 0xFF8B7CFF.toInt()),
-            Triple("BINTANG", 4f, 0xFFFFD166.toInt())
-        )
-        for ((word, tStart, col) in labelData) {
-            val lab = Layer().apply {
-                kind = KIND_TEXT; name = "Label $word"; text = word
-                fontKey = "sans_black"; textSize = 76f; bold = true; align = "center"
-                color = col
-                x = cxp; y = 820f; start = tStart; dur = 2f
+        // bintang kecil berkelip
+        val starPos = arrayOf(floatArrayOf(220f, 600f), floatArrayOf(860f, 520f), floatArrayOf(800f, 1240f))
+        for (si in 0 until 3) {
+            val star = Layer().apply {
+                kind = KIND_SHAPE; name = "Kelip ${si + 1}"; shape = "star"
+                w = 54f; h = 54f; fill = 0xFFFFC2D1.toInt()
+                x = starPos[si][0]; y = starPos[si][1]; start = 0f; dur = 8f
             }
-            Anim.setKey(lab, "alpha", tStart, 0f, "easeOut")
-            Anim.setKey(lab, "alpha", tStart + 0.3f, 1f, "easeOut")
-            Anim.setKey(lab, "alpha", tStart + 1.75f, 1f, "easeOut")
-            Anim.setKey(lab, "alpha", tStart + 1.98f, 0f, "easeOut")
-            Anim.setKey(lab, "y", tStart, 866f, "easeOut")
-            Anim.setKey(lab, "y", tStart + 0.35f, 820f, "easeOut")
-            p.layers.add(lab)
+            var starT = si * 0.33f
+            while (starT < 8f) {
+                Anim.setKey(star, "scale", starT, 0.3f, "easeInOut")
+                Anim.setKey(star, "scale", minOf(8f, starT + 0.5f), 1.05f, "easeInOut")
+                Anim.setKey(star, "scale", minOf(8f, starT + 1f), 0.3f, "easeInOut")
+                starT += 2f
+            }
+            p.layers.add(star)
         }
 
-        val caption = Layer().apply {
-            kind = KIND_TEXT; name = "Keterangan"; text = "morph = blur + skala + rotasi dalam 0.2 detik"
-            fontKey = "mono"; textSize = 30f; bold = false; align = "center"
-            color = 0xFF8FA1BD.toInt()
-            x = cxp; y = 965f; start = 0f; dur = 6f
+        val quote = Layer().apply {
+            kind = KIND_TEXT; name = "Kutipan"; text = "pelan tapi nempel di kepala"
+            fontKey = "serif"; textSize = 48f; bold = false; align = "center"
+            color = 0xFF8A5A6E.toInt()
+            x = 540f; y = 1240f; start = 0.8f; dur = 7.2f
         }
-        Anim.setKey(caption, "alpha", 0.4f, 0f, "easeOut")
-        Anim.setKey(caption, "alpha", 1.2f, 1f, "easeOut")
-        p.layers.add(caption)
+        Anim.setKey(quote, "alpha", 0.8f, 0f, "easeOut")
+        Anim.setKey(quote, "alpha", 1.8f, 1f, "easeOut")
+        Anim.setKey(quote, "y", 0.8f, 1280f, "easeOut")
+        Anim.setKey(quote, "y", 1.8f, 1240f, "easeOut")
+        p.layers.add(quote)
+
+        val top = Layer().apply {
+            kind = KIND_TEXT; name = "Label atas"; text = "A E S T H E T I C"
+            fontKey = "mono"; textSize = 34f; bold = true; align = "center"
+            color = 0xFF8A5A6E.toInt()
+            x = 540f; y = 240f; start = 0f; dur = 8f
+        }
+        Anim.setKey(top, "alpha", 0.2f, 0f, "easeOut")
+        Anim.setKey(top, "alpha", 1.1f, 1f, "easeOut")
+        p.layers.add(top)
         return p
     }
 
-    /** RGB split glitch: salinan teks merah/cyan bergetar (screen) + scanline + indikator REC. */
-    fun rgbGlitch(): Project {
+    /** JJ Tipis: minimal bersih, hentakan nyaris tak terasa tapi hidup. */
+    fun jjTipis(): Project {
         val p = Project()
-        p.name = "RGB Glitch"
-        p.duration = 5f
-        p.bg = 0xFF050505.toInt()
+        p.name = "JJ Tipis"
+        p.duration = 6f
+        p.bg = 0xFF0B0D10.toInt()
+        val beat = 0.5f // 120 BPM
 
-        fun glitchCopy(nm: String, col: Int, sign: Float): Layer {
-            val l = Layer().apply {
-                kind = KIND_TEXT; name = nm; text = "GLITCH"
-                fontKey = "sans_black"; textSize = 205f; bold = true; align = "center"
-                color = col; blend = "screen"
-                x = 540f; y = 900f; start = 0f; dur = 5f
-            }
-            val pattern = floatArrayOf(18f, -8f, 26f, -14f, 6f, -22f, 12f, -6f, 20f, -18f)
-            var gt = 0f
-            var gi = 0
-            while (gt < 5f) {
-                Anim.setKey(l, "x", gt, 540f + pattern[gi % pattern.size] * sign, "linear")
-                gt += 0.12f
-                gi++
-            }
-            Anim.setKey(l, "alpha", 1f, 1f, "linear")
-            Anim.setKey(l, "alpha", 1.05f, 0.3f, "linear")
-            Anim.setKey(l, "alpha", 1.16f, 1f, "linear")
-            Anim.setKey(l, "alpha", 2.7f, 1f, "linear")
-            Anim.setKey(l, "alpha", 2.75f, 0.45f, "linear")
-            Anim.setKey(l, "alpha", 2.86f, 1f, "linear")
-            Anim.setKey(l, "alpha", 4.2f, 1f, "linear")
-            Anim.setKey(l, "alpha", 4.25f, 0.3f, "linear")
-            Anim.setKey(l, "alpha", 4.36f, 1f, "linear")
-            return l
+        val glow = Layer().apply {
+            kind = KIND_SHAPE; name = "Napas latar"; shape = "circle"
+            w = 900f; h = 900f; fill = 0xFF0E7D6B.toInt()
+            x = 540f; y = 900f; alpha = 0.16f; blend = "screen"; fxBlur = 34f
+            start = 0f; dur = 6f
         }
-        p.layers.add(glitchCopy("Saluran merah", 0xFFFF2D55.toInt(), 1f))
-        p.layers.add(glitchCopy("Saluran cyan", 0xFF00E5FF.toInt(), -1f))
+        Anim.setKey(glow, "scale", 0f, 1f, "easeInOut")
+        Anim.setKey(glow, "scale", 3f, 1.09f, "easeInOut")
+        Anim.setKey(glow, "scale", 6f, 1f, "easeInOut")
+        p.layers.add(glow)
+
+        val over = Layer().apply {
+            kind = KIND_TEXT; name = "Overline"; text = "J J   T I P I S"
+            fontKey = "mono"; textSize = 36f; bold = true; align = "center"
+            color = 0xFF2EE6C0.toInt()
+            x = 540f; y = 740f; start = 0f; dur = 6f
+        }
+        Anim.setKey(over, "alpha", 0f, 0f, "easeOut")
+        Anim.setKey(over, "alpha", 0.7f, 1f, "easeOut")
+        p.layers.add(over)
 
         val main = Layer().apply {
-            kind = KIND_TEXT; name = "Teks utama"; text = "GLITCH"
-            fontKey = "sans_black"; textSize = 205f; bold = true; align = "center"
+            kind = KIND_TEXT; name = "Teks tipis"; text = "tipis aja"
+            fontKey = "sans"; textSize = 104f; bold = true; align = "center"
             color = 0xFFFFFFFF.toInt()
-            x = 540f; y = 900f; start = 0f; dur = 5f
+            x = 540f; y = 900f; start = 0f; dur = 6f
         }
-        Anim.setKey(main, "scale", 0f, 1.22f, "easeOut")
-        Anim.setKey(main, "scale", 0.2f, 1f, "easeOut")
-        Anim.setKey(main, "x", 1f, 540f, "linear")
-        Anim.setKey(main, "x", 1.05f, 566f, "linear")
-        Anim.setKey(main, "x", 1.14f, 540f, "linear")
-        Anim.setKey(main, "x", 2.7f, 540f, "linear")
-        Anim.setKey(main, "x", 2.75f, 508f, "linear")
-        Anim.setKey(main, "x", 2.85f, 540f, "linear")
+        var bt = 0f
+        while (bt < 6f) {
+            Anim.setKey(main, "scale", bt, 1.07f, "easeOut")
+            Anim.setKey(main, "scale", minOf(6f, bt + 0.2f), 1f, "easeOut")
+            bt += beat
+        }
+        Anim.setKey(main, "alpha", 0f, 0f, "easeOut")
+        Anim.setKey(main, "alpha", 0.5f, 1f, "easeOut")
         p.layers.add(main)
 
-        // scanline menyapu layar
-        for (barIdx in 0 until 2) {
-            val bar = Layer().apply {
-                kind = KIND_SHAPE; name = "Scanline ${barIdx + 1}"; shape = "rect"
-                w = 1080f; h = 12f; fill = 0xFFFFFFFF.toInt()
-                x = 540f; y = 0f; alpha = 0.3f; blend = "screen"; start = 0f; dur = 5f
+        val line = Layer().apply {
+            kind = KIND_SHAPE; name = "Garis aksen"; shape = "rect"
+            w = 240f; h = 4f; radius = 2f; fill = 0xFF2EE6C0.toInt()
+            x = 540f; y = 990f; start = 0f; dur = 6f
+        }
+        Anim.setKey(line, "scaleX", 0.3f, 0.05f, "easeOut")
+        Anim.setKey(line, "scaleX", 1.1f, 1f, "easeOut")
+        p.layers.add(line)
+
+        val bottom = Layer().apply {
+            kind = KIND_TEXT; name = "Catatan bawah"; text = "sound kamu di sini - 120 BPM"
+            fontKey = "mono"; textSize = 30f; bold = false; align = "center"
+            color = 0xFF687389.toInt()
+            x = 540f; y = 1760f; start = 0f; dur = 6f
+        }
+        Anim.setKey(bottom, "alpha", 0.6f, 0f, "easeOut")
+        Anim.setKey(bottom, "alpha", 1.4f, 1f, "easeOut")
+        p.layers.add(bottom)
+        return p
+    }
+
+    /** JJ Kece Serem: merah gelap, jitter glitch keras, kedip hitam, vignette. */
+    fun jjSerem(): Project {
+        val p = Project()
+        p.name = "JJ Kece Serem"
+        p.duration = 6f
+        p.bg = 0xFF0A0203.toInt()
+        val jitterPat = floatArrayOf(10f, -14f, 6f, -6f, 16f, -10f, 4f, -16f, 12f, -4f)
+
+        fun ghost(nm: String, col: Int, sign: Float, baseAlpha: Float): Layer {
+            val g = Layer().apply {
+                kind = KIND_TEXT; name = nm; text = "SEREM"
+                fontKey = "sans_black"; textSize = 225f; bold = true; align = "center"
+                color = col; blend = "screen"; alpha = baseAlpha
+                x = 540f; y = 900f; start = 0f; dur = 6f
             }
-            val offY = barIdx * 960f
-            Anim.setKey(bar, "y", 0f, offY, "linear")
-            Anim.setKey(bar, "y", 2.5f, offY + 1920f, "linear")
-            Anim.setKey(bar, "y", 2.51f, offY, "linear")
-            Anim.setKey(bar, "y", 5f, offY + 1920f, "linear")
-            p.layers.add(bar)
+            var gt = 0f
+            while (gt < 6f) {
+                Anim.setKey(g, "x", gt, 540f + 30f * sign, "linear")
+                Anim.setKey(g, "x", minOf(6f, gt + 0.09f), 540f + 8f * sign, "linear")
+                gt += 0.5f
+            }
+            return g
+        }
+        p.layers.add(ghost("Bayangan merah", 0xFFFF2D40.toInt(), 1f, 0.55f))
+        p.layers.add(ghost("Bayangan putih", 0xFFB8E3FF.toInt(), -1f, 0.4f))
+
+        val main = Layer().apply {
+            kind = KIND_TEXT; name = "SEREM"; text = "SEREM"
+            fontKey = "sans_black"; textSize = 225f; bold = true; align = "center"
+            color = 0xFFD90429.toInt()
+            x = 540f; y = 900f; start = 0f; dur = 6f
+            fxGlow = 34f; glowColor = 0xFFD90429.toInt()
+            shadowBlur = 22f; shadowDy = 14f; shadowColor = 0xFF000000.toInt()
+        }
+        // jitter keras tiap 0.07 dtk
+        var jt = 0f
+        var ji = 0
+        while (jt < 6f) {
+            Anim.setKey(main, "x", jt, 540f + jitterPat[ji % jitterPat.size], "linear")
+            Anim.setKey(main, "y", jt, 900f + jitterPat[(ji + 3) % jitterPat.size] * 0.5f, "linear")
+            jt += 0.07f
+            ji++
+        }
+        var bt = 0f
+        while (bt < 6f) {
+            Anim.setKey(main, "scale", bt, 1.22f, "linear")
+            Anim.setKey(main, "scale", minOf(6f, bt + 0.1f), 1f, "easeOut")
+            bt += 0.5f
+        }
+        p.layers.add(main)
+
+        // goresan vertikal (vektor) di kiri
+        val scratchPts = StringBuilder()
+        for (sy in -400..400 step 66) {
+            if (scratchPts.isNotEmpty()) scratchPts.append(';')
+            val wob = if ((sy / 66) % 2 == 0) -14 else 14
+            scratchPts.append(wob).append(',').append(sy)
+        }
+        val scratch = Layer().apply {
+            kind = KIND_VECTOR; name = "Goresan"
+            vecPoints = scratchPts.toString(); vecStrokeW = 5f
+            color = 0xFFFFFFFF.toInt(); alpha = 0.3f
+            x = 120f; y = 900f; w = 40f; h = 800f
+            start = 0f; dur = 6f
+        }
+        Anim.setKey(scratch, "y", 0f, 860f, "linear")
+        Anim.setKey(scratch, "y", 6f, 980f, "linear")
+        p.layers.add(scratch)
+
+        // vignette tepi gelap
+        val vigSpecs = arrayOf(
+            floatArrayOf(540f, 50f, 1080f, 110f), floatArrayOf(540f, 1870f, 1080f, 110f),
+            floatArrayOf(35f, 960f, 80f, 1920f), floatArrayOf(1045f, 960f, 80f, 1920f)
+        )
+        for (vi in vigSpecs.indices) {
+            val vig = Layer().apply {
+                kind = KIND_SHAPE; name = "Vignette ${vi + 1}"; shape = "rect"
+                w = vigSpecs[vi][2]; h = vigSpecs[vi][3]; fill = 0xFF000000.toInt()
+                x = vigSpecs[vi][0]; y = vigSpecs[vi][1]; alpha = 0.55f
+                start = 0f; dur = 6f; fxBlur = 18f
+            }
+            p.layers.add(vig)
         }
 
-        // indikator REC berkedip
-        val recDot = Layer().apply {
-            kind = KIND_SHAPE; name = "Titik REC"; shape = "circle"
-            w = 34f; h = 34f; fill = 0xFFFF2D55.toInt()
-            x = 110f; y = 150f; start = 0f; dur = 5f
+        // kedip hitam mendadak
+        val blink = Layer().apply {
+            kind = KIND_SHAPE; name = "Kedip hitam"; shape = "rect"
+            w = 1080f; h = 1920f; fill = 0xFF000000.toInt()
+            x = 540f; y = 960f; alpha = 0f; start = 0f; dur = 6f
         }
-        var recT = 0f
-        var recOn = true
-        while (recT < 5f) {
-            Anim.setKey(recDot, "alpha", recT, if (recOn) 1f else 0.15f, "linear")
-            recT += 0.5f
-            recOn = !recOn
+        for (bl in floatArrayOf(1.5f, 3.5f, 5f)) {
+            Anim.setKey(blink, "alpha", bl, 0.92f, "linear")
+            Anim.setKey(blink, "alpha", bl + 0.07f, 0f, "linear")
         }
-        p.layers.add(recDot)
-        val recText = Layer().apply {
-            kind = KIND_TEXT; name = "Teks REC"; text = "REC"
-            fontKey = "mono"; textSize = 46f; bold = true; align = "left"
-            color = 0xFFFF2D55.toInt()
-            x = 150f; y = 168f; start = 0f; dur = 5f
-        }
-        p.layers.add(recText)
+        p.layers.add(blink)
 
         val sub = Layer().apply {
-            kind = KIND_TEXT; name = "Sub glitch"; text = "rgb split + scanline ala tiktok"
-            fontKey = "mono"; textSize = 38f; bold = false; align = "center"
-            color = 0xFF2EE6C0.toInt(); typing = 0f
-            x = 540f; y = 1150f; start = 0.3f; dur = 4.7f
+            kind = KIND_TEXT; name = "Sub serem"; text = "sound serem viral - volume naik"
+            fontKey = "mono"; textSize = 36f; bold = false; align = "center"
+            color = 0xFFB3061F.toInt(); typing = 0f
+            x = 540f; y = 1180f; start = 0.4f; dur = 5.6f
         }
-        Anim.setKey(sub, "typing", 0.3f, 0f, "linear")
-        Anim.setKey(sub, "typing", 2f, 1f, "linear")
+        Anim.setKey(sub, "typing", 0.4f, 0f, "linear")
+        Anim.setKey(sub, "typing", 2.4f, 1f, "linear")
         p.layers.add(sub)
         return p
     }

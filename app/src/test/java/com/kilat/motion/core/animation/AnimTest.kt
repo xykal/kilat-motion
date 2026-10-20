@@ -116,6 +116,35 @@ class AnimTest {
     }
 
     @Test
+    fun `cubic bezier monoton dan bisa overshoot`() {
+        assertEquals(0f, Anim.cubicBezier(0f, 0.2f, 1.6f, 0.4f, 1f), 0.001f)
+        assertEquals(1f, Anim.cubicBezier(1f, 0.2f, 1.6f, 0.4f, 1f), 0.001f)
+        // kurva pantul JJ harus overshoot di atas 1 di tengah jalan
+        var maxV = 0f
+        var i = 0
+        while (i <= 20) {
+            val v = Anim.cubicBezier(i / 20f, 0.2f, 1.6f, 0.4f, 1f)
+            if (v > maxV) maxV = v
+            i++
+        }
+        assertTrue("bezier JJ harus overshoot", maxV > 1.05f)
+        // bezier linear (0,0,1,1) ~ identitas
+        assertEquals(0.5f, Anim.cubicBezier(0.5f, 0f, 0f, 1f, 1f), 0.02f)
+    }
+
+    @Test
+    fun `keyframe custom mengikuti kurva layer`() {
+        val l = Layer().apply {
+            kind = KIND_TEXT; start = 0f; dur = 4f; x = 100f
+            bezX1 = 0.2f; bezY1 = 1.6f; bezX2 = 0.4f; bezY2 = 1f
+        }
+        Anim.setKey(l, "x", 0f, 100f, "custom")
+        Anim.setKey(l, "x", 2f, 300f, "easeOut")
+        val mid = Anim.value(l, "x", 1f)
+        assertTrue("nilai tengah bezier harus melampaui linear (200): $mid", mid > 215f)
+    }
+
+    @Test
     fun `format waktu dan warna`() {
         assertEquals("00:01.50", Format.time(1.5f))
         assertEquals("#FF2EE6C0", Format.color(0xFF2EE6C0.toInt()))

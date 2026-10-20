@@ -203,6 +203,9 @@ class TimelineView(context: Context) : View(context) {
         KIND_TEXT -> 0xFF6EA8FF.toInt()
         KIND_SHAPE -> 0xFFFFB84D.toInt()
         KIND_IMAGE -> 0xFF2EE6C0.toInt()
+        KIND_VECTOR -> 0xFFFF5C7A.toInt()
+        KIND_SVG -> 0xFFFF8A3D.toInt()
+        KIND_3D -> 0xFF00E5FF.toInt()
         else -> 0xFF8B7CFF.toInt()
     }
 

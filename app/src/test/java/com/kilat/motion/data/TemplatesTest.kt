@@ -12,14 +12,18 @@ class TemplatesTest {
     fun `id template unik`() {
         val ids = Templates.ALL.map { it.id }
         assertEquals(ids.size, ids.distinct().size)
-        assertTrue(Templates.ALL.size >= 11)
+        assertTrue(Templates.ALL.size >= 6)
     }
 
     @Test
     fun `template viral tiktok tersedia`() {
         val ids = Templates.ALL.map { it.id }.toSet()
-        for (required in listOf("jedag_jedug", "morph_shapes", "rgb_glitch")) {
+        for (required in listOf("jj_velocity", "jj_lirik", "jj_beat130", "jj_soft", "jj_tipis", "jj_serem")) {
             assertTrue("template $required harus ada", required in ids)
+        }
+        // template lama harus sudah dihapus
+        for (gone in listOf("intro_bold", "quote_minimal", "promo_pop", "jedag_jedug", "morph_shapes")) {
+            assertTrue("template lama $gone harus hilang", gone !in ids)
         }
     }
 
