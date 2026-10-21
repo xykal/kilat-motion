@@ -11,8 +11,19 @@ android {
         applicationId = "com.kilat.motion"
         minSdk = 29
         targetSdk = 34
-        versionCode = 17
-        versionName = "1.15.0"
+        versionCode = 18
+        versionName = "1.16.0"
+
+        // Client ID Google (publik, bukan secret). Isi di gradle.properties:
+        //   googleClientIdAndroid=XXXX.apps.googleusercontent.com
+        val gClientId = (project.findProperty("googleClientIdAndroid") as String?)
+            ?: System.getenv("GOOGLE_CLIENT_ID_ANDROID") ?: ""
+        val gScheme = if (gClientId.endsWith(".apps.googleusercontent.com"))
+            "com.googleusercontent.apps." + gClientId.removeSuffix(".apps.googleusercontent.com")
+        else "kilat-unconfigured"
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"$gClientId\"")
+        buildConfigField("String", "GOOGLE_REDIRECT_SCHEME", "\"$gScheme\"")
+        manifestPlaceholders["googleRedirectScheme"] = gScheme
     }
 
     buildTypes {
@@ -35,6 +46,10 @@ android {
         jvmTarget = "17"
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
@@ -50,4 +65,6 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     // test: JUnit untuk memverifikasi engine animasi di JVM
     testImplementation("junit:junit:4.13.2")
+    // org.json asli untuk test JVM (stub Android hanya mengembalikan nilai kosong)
+    testImplementation("org.json:json:20231013")
 }

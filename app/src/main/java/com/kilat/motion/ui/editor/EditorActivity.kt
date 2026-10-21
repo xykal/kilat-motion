@@ -50,6 +50,8 @@ import com.kilat.motion.ui.theme.roundedRect
 import com.kilat.motion.ui.theme.roundedTop
 import kotlin.math.max
 import kotlin.math.min
+import com.kilat.motion.ui.settings.AiActions
+import com.kilat.motion.ui.settings.CloudSettings
 
 /**
  * Editor KILAT Motion.
@@ -1611,6 +1613,9 @@ class EditorActivity : Activity() {
             KilatSheet.Item("Muat demo", "Ganti isi project ini dengan demo", KilatIcon.BOLT, KColors.Amber),
             KilatSheet.Item("Project baru (kosong)", "Isi project ini dikosongkan", KilatIcon.PLUS, KColors.Violet),
             KilatSheet.Item("Export frame PNG", "Simpan frame saat ini sebagai gambar", KilatIcon.IMAGE, KColors.Rose),
+            KilatSheet.Item("Layer dari AI", "Tulis prompt, AI menyusun teks dan animasi", KilatIcon.SPARK, KColors.Violet),
+            KilatSheet.Item("Caption otomatis", "Transkrip musik jadi teks (Groq Whisper)", KilatIcon.TEXT, KColors.Sky),
+            KilatSheet.Item("Bagikan project", "Unggah ke link share (perlu login Google)", KilatIcon.SHARE, KColors.Green),
             KilatSheet.Item("Panduan", "Cara pakai editor", KilatIcon.BOOK, KColors.Sky),
             KilatSheet.Item("Tentang", "Versi dan info aplikasi", KilatIcon.INFO, KColors.Muted),
             KilatSheet.Item("Kembali ke Beranda", "Project tersimpan otomatis", KilatIcon.HOME, KColors.Accent)
@@ -1626,11 +1631,23 @@ class EditorActivity : Activity() {
                 3 -> loadDemo()
                 4 -> newProject()
                 5 -> exportPng()
-                6 -> showGuide()
-                7 -> showAbout()
-                8 -> finish()
+                6 -> AiActions.promptLayers(this, project) { addAiLayers(it) }
+                7 -> AiActions.captionsFromMusic(this, project) { addAiLayers(it) }
+                8 -> CloudSettings.shareProject(this, project)
+                9 -> showGuide()
+                10 -> showAbout()
+                11 -> finish()
             }
         }
+    }
+
+    /** Tambah layer hasil AI ke project, pilih layer terakhir, lalu simpan. */
+    private fun addAiLayers(layers: List<Layer>) {
+        val p = project
+        p.layers.addAll(layers)
+        afterChange(layers.last().id)
+        ProjectLibrary.save(applicationContext, p)
+        toast("${layers.size} layer AI ditambahkan", KilatIcon.SPARK)
     }
 
     private fun showProjectSettings() {

@@ -14,6 +14,10 @@ import android.widget.ScrollView
 import com.kilat.motion.core.model.Format
 import com.kilat.motion.core.model.Project
 import com.kilat.motion.data.Prefs
+import com.kilat.motion.BuildConfig
+import com.kilat.motion.core.cloud.GoogleAuth
+import com.kilat.motion.core.cloud.CloudConfig
+import com.kilat.motion.ui.settings.CloudSettings
 import com.kilat.motion.data.ProjectLibrary
 import com.kilat.motion.data.Templates
 import com.kilat.motion.ui.components.IconView
@@ -590,7 +594,7 @@ class HomeActivity : Activity() {
         val nameCol = LinearLayout(this)
         nameCol.orientation = LinearLayout.VERTICAL
         nameCol.addView(kText("Kreator Kilat", 17f, KColors.Text, bold = true))
-        nameCol.addView(kText("KILAT Motion 1.4.1", 11f, KColors.Dim))
+        nameCol.addView(kText("KILAT Motion ${BuildConfig.VERSION_NAME}", 11f, KColors.Dim))
         val lpN = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpN.marginStart = dp(13f)
         head.addView(nameCol, lpN)
@@ -637,6 +641,26 @@ class HomeActivity : Activity() {
         stats.addView(s3, lpS3)
         col.addView(stats, lpStats)
 
+        // akun, share, dan AI
+        col.addView(sectionHeader("Akun & cloud"))
+        val session = GoogleAuth.session(this)
+        if (session != null) {
+            col.addView(menuRow(KilatIcon.USER, KColors.Accent, "Login sebagai", session.email.ifEmpty { session.name }) {
+                CloudSettings.confirmLogout(this) { showPage("profile") }
+            })
+        } else {
+            col.addView(menuRow(
+                KilatIcon.USER, KColors.Accent, "Login Google",
+                if (CloudConfig.googleConfigured) "Untuk share project dan preset" else "Belum dikonfigurasi"
+            ) { CloudSettings.startLogin(this) })
+        }
+        addSpaced(col, menuRow(KilatIcon.SHARE, KColors.Sky, "Impor project dari link", "Tempel ID atau link share") {
+            CloudSettings.showImport(this) { p -> openEditorProject(p.id) }
+        })
+        addSpaced(col, menuRow(KilatIcon.SPARK, KColors.Violet, "Pengaturan AI", "Groq atau OpenRouter, pakai key sendiri") {
+            CloudSettings.showAiSettings(this) { showPage("profile") }
+        })
+
         col.addView(sectionHeader("Aplikasi"))
         col.addView(menuRow(KilatIcon.BOOK, KColors.Sky, "Panduan", "Cara pakai editor dan keyframe") { showGuide() })
         addSpaced(col, menuRow(KilatIcon.SPARK, KColors.Amber, "Ulangi Onboarding", "Lihat lagi tur pembuka aplikasi") {
@@ -645,7 +669,7 @@ class HomeActivity : Activity() {
             i.putExtra(OnboardingActivity.EXTRA_REPLAY, true)
             startActivity(i)
         })
-        addSpaced(col, menuRow(KilatIcon.INFO, KColors.Muted, "Tentang KILAT Motion", "Versi 1.4.1 - native, tanpa iklan") { showAbout() })
+        addSpaced(col, menuRow(KilatIcon.INFO, KColors.Muted, "Tentang KILAT Motion", "Versi ${BuildConfig.VERSION_NAME} - native, tanpa iklan") { showAbout() })
         addSpaced(col, menuRow(KilatIcon.TRASH, KColors.Rose, "Hapus Semua Project", "Kosongkan pustaka project di HP ini", danger = true) {
             KilatSheet.showConfirm(
                 this, "Hapus semua project?",
@@ -729,7 +753,7 @@ class HomeActivity : Activity() {
     private fun showAbout() {
         KilatSheet.showMessage(
             this, "KILAT Motion",
-            "Motion graphics editor native Android.\n\nVersi 1.4.1\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa watermark, tanpa library eksternal.\nSeluruh tampilan dan ikon dibuat custom pakai Canvas.",
+            "Motion graphics editor native Android.\n\nVersi ${BuildConfig.VERSION_NAME}\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa watermark, tanpa library eksternal.\nSeluruh tampilan dan ikon dibuat custom pakai Canvas.",
             icon = KilatIcon.BOLT
         )
     }

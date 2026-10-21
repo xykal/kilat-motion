@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- login Google, share preset, dan AI (Groq/OpenRouter) butuh internet -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- picker media custom (galeri foto/video & musik). Android 13+ pakai READ_MEDIA_*. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
@@ -49,6 +52,19 @@
             android:exported="false"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize" />
+        <!-- callback OAuth Google (PKCE): skema diisi dari client ID di gradle.properties -->
+        <activity
+            android:name=".ui.auth.AuthRedirectActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="${googleRedirectScheme}" android:path="/oauth2redirect" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
