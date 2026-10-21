@@ -13,8 +13,8 @@ android {
         applicationId = "com.kilat.motion"
         minSdk = 29
         targetSdk = 34
-        versionCode = 19
-        versionName = "1.16.1"
+        versionCode = 20
+        versionName = "1.17.0"
 
         // Web client ID Google (publik, bukan secret) untuk Credential Manager.
         // Isi di gradle.properties: googleWebClientId=XXXX.apps.googleusercontent.com

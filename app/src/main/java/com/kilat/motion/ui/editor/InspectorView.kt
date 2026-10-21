@@ -28,6 +28,7 @@ import com.kilat.motion.ui.components.KilatSwitch
 import com.kilat.motion.ui.components.KilatButton
 import com.kilat.motion.ui.components.KilatButtonStyle
 import com.kilat.motion.ui.components.KilatChip
+import com.kilat.motion.ui.components.LayerPreviewView
 import com.kilat.motion.ui.components.KilatDropdown
 import com.kilat.motion.ui.components.KilatIcon
 import com.kilat.motion.ui.components.KilatIconButton
@@ -403,15 +404,6 @@ class InspectorView(context: Context) : LinearLayout(context) {
         chipRow.orientation = HORIZONTAL
         val scroll = android.widget.HorizontalScrollView(context)
         scroll.isHorizontalScrollBarEnabled = false
-        val presetIcons = mapOf(
-            "fade" to KilatIcon.EYE, "slideUp" to KilatIcon.LAYER_UP, "zoom" to KilatIcon.PLUS,
-            "spin" to KilatIcon.LOOP, "bounce" to KilatIcon.CHEVRON_DOWN, "typing" to KilatIcon.TEXT,
-            "kenBurns" to KilatIcon.IMAGE, "glitch" to KilatIcon.WAND, "jedag" to KilatIcon.BOLT,
-            "slideDown" to KilatIcon.CHEVRON_DOWN, "slideLeft" to KilatIcon.BACK, "zoomOut" to KilatIcon.RATIO,
-            "popIn" to KilatIcon.PLUS, "rotateIn" to KilatIcon.LOOP, "flipX" to KilatIcon.TRANSFORM,
-            "blurIn" to KilatIcon.EYE, "shake" to KilatIcon.CROSSHAIR, "wobble" to KilatIcon.MAGNET,
-            "pulse" to KilatIcon.SPARK, "flash" to KilatIcon.BOLT, "fadeOut" to KilatIcon.EYE_OFF
-        )
         for (id in Anim.PRESETS) {
             if (id == "typing" && l.kind != KIND_TEXT) continue
             if (id == "kenBurns" && l.kind != KIND_IMAGE) continue
@@ -421,17 +413,17 @@ class InspectorView(context: Context) : LinearLayout(context) {
             tile.isClickable = true
             val box = android.widget.FrameLayout(context)
             box.background = roundRectBg(0xFF11141C.toInt(), dp(12f))
-            val iv = IconView(context, presetIcons[id] ?: KilatIcon.SPARK, cAccent)
-            val padIv = dp(11f).toInt()
-            iv.setPadding(padIv, padIv, padIv, padIv)
-            box.addView(iv, android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-            tile.addView(box, LayoutParams(dp(46f).toInt(), dp(46f).toInt()))
+            box.addView(
+                LayerPreviewView(context).also { it.showPreset(id) },
+                android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            )
+            tile.addView(box, LayoutParams(dp(68f).toInt(), dp(46f).toInt()))
             val lbl = labelTv(Anim.PRESET_LABELS[id] ?: id, 9f, cMuted)
             lbl.gravity = Gravity.CENTER
             val lpLbl = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
             lpLbl.topMargin = dp(4f).toInt()
             tile.addView(lbl, lpLbl)
-            val lp = LayoutParams(dp(60f).toInt(), LayoutParams.WRAP_CONTENT)
+            val lp = LayoutParams(dp(68f).toInt(), LayoutParams.WRAP_CONTENT)
             lp.rightMargin = dp(7f).toInt()
             chipRow.addView(tile, lp)
             tile.setOnClickListener { listener?.onApplyPreset(l, id) }
@@ -752,11 +744,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
 
 
     // ---------------- slider statis (bukan keyframe) ----------------
-    private fun defaultEffectColor(type: String): Int = when (type) {
-        "lightleak" -> 0xFFFF8A3D.toInt()
-        "tint" -> 0xFF2EE6C0.toInt()
-        else -> 0xFF000000.toInt()
-    }
+    private fun defaultEffectColor(type: String): Int = com.kilat.motion.core.preview.PreviewSamples.defaultEffectColor(type)
 
     /** Stack efek: deretan chip untuk menambah, lalu kartu per efek (urutan = urutan tampil). */
     private fun buildEffectStack(l: Layer, parent: LinearLayout) {
@@ -766,15 +754,30 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val addRow = LinearLayout(context)
         addRow.orientation = HORIZONTAL
         for (type in EFFECT_TYPES) {
-            val chip = KilatChip(context, "+ " + (EFFECT_LABELS[type] ?: type))
-            chip.setOnClickListener {
+            val tile = LinearLayout(context)
+            tile.orientation = VERTICAL
+            tile.gravity = Gravity.CENTER_HORIZONTAL
+            tile.isClickable = true
+            val box = android.widget.FrameLayout(context)
+            box.background = roundRectBg(0xFF11141C.toInt(), dp(12f))
+            box.addView(
+                LayerPreviewView(context).also { it.showEffect(type) },
+                android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            )
+            tile.addView(box, LayoutParams(dp(68f).toInt(), dp(46f).toInt()))
+            val lbl = labelTv("+ " + (EFFECT_LABELS[type] ?: type), 9f, cMuted)
+            lbl.gravity = Gravity.CENTER
+            val lpLbl = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            lpLbl.topMargin = dp(4f).toInt()
+            tile.addView(lbl, lpLbl)
+            tile.setOnClickListener {
                 l.effects.add(LayerEffect(type = type, amount = 0.5f, size = 0.5f, color = defaultEffectColor(type)))
                 listener?.onEdited(true)
                 rebind()
             }
-            val lpChip = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-            lpChip.rightMargin = dp(6f).toInt()
-            addRow.addView(chip, lpChip)
+            val lpTile = LayoutParams(dp(68f).toInt(), LayoutParams.WRAP_CONTENT)
+            lpTile.rightMargin = dp(7f).toInt()
+            addRow.addView(tile, lpTile)
         }
         addScroll.addView(addRow)
         parent.addView(addScroll, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
