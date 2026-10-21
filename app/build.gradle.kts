@@ -1,3 +1,5 @@
+import java.io.File
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -11,8 +13,8 @@ android {
         applicationId = "com.kilat.motion"
         minSdk = 29
         targetSdk = 34
-        versionCode = 18
-        versionName = "1.16.0"
+        versionCode = 19
+        versionName = "1.16.1"
 
         // Client ID Google (publik, bukan secret). Isi di gradle.properties:
         //   googleClientIdAndroid=XXXX.apps.googleusercontent.com
@@ -26,13 +28,31 @@ android {
         manifestPlaceholders["googleRedirectScheme"] = gScheme
     }
 
+    // Keystore rilis tetap (dari GitHub Secrets di CI, atau env lokal). Tanpa itu, pakai debug.
+    val kilatKeystore: String? = System.getenv("KILAT_KEYSTORE_PATH")?.takeIf { File(it).exists() }
+
+    signingConfigs {
+        create("kilat") {
+            if (kilatKeystore != null) {
+                storeFile = File(kilatKeystore)
+                storePassword = System.getenv("KILAT_STORE_PASSWORD")
+                keyAlias = System.getenv("KILAT_KEY_ALIAS") ?: "kilat"
+                keyPassword = System.getenv("KILAT_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            // debug juga ditandatangani kunci tetap agar SHA-1-nya sama dengan release
+            if (kilatKeystore != null) signingConfig = signingConfigs.getByName("kilat")
+        }
         release {
             // R8 aktif: Material/AndroidX ikut masuk, tanpa shrink APK release jadi ~10 MB
             isMinifyEnabled = true
             isShrinkResources = true
             // supaya APK release bisa langsung di-install (sideload) tanpa keystore sendiri
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (kilatKeystore != null) "kilat" else "debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
