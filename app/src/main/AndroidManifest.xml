@@ -52,19 +52,6 @@
             android:exported="false"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize" />
-        <!-- callback OAuth Google (PKCE): skema diisi dari client ID di gradle.properties -->
-        <activity
-            android:name=".ui.auth.AuthRedirectActivity"
-            android:exported="true"
-            android:launchMode="singleTask"
-            android:screenOrientation="portrait">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="${googleRedirectScheme}" android:path="/oauth2redirect" />
-            </intent-filter>
-        </activity>
     </application>
 
 </manifest>

@@ -7,9 +7,8 @@ object CloudConfig {
     /** Worker share preset (Cloudflare Worker + KV). Sumber: share-worker/ di repo. */
     const val SHARE_BASE_URL = "https://kilat-share.dikanjut.workers.dev"
 
-    val googleClientId: String get() = BuildConfig.GOOGLE_CLIENT_ID
-    val googleRedirectScheme: String get() = BuildConfig.GOOGLE_REDIRECT_SCHEME
-    val googleRedirectUri: String get() = "$googleRedirectScheme:/oauth2redirect"
+    /** Web client ID dipakai sebagai serverClientId; id_token yang keluar punya aud = ID ini. */
+    val googleWebClientId: String get() = BuildConfig.GOOGLE_WEB_CLIENT_ID
 
-    val googleConfigured: Boolean get() = googleClientId.endsWith(".apps.googleusercontent.com")
+    val googleConfigured: Boolean get() = googleWebClientId.endsWith(".apps.googleusercontent.com")
 }

@@ -652,7 +652,7 @@ class HomeActivity : Activity() {
             col.addView(menuRow(
                 KilatIcon.USER, KColors.Accent, "Login Google",
                 if (CloudConfig.googleConfigured) "Untuk share project dan preset" else "Belum dikonfigurasi"
-            ) { CloudSettings.startLogin(this) })
+            ) { CloudSettings.startLogin(this) { showPage("profile") } })
         }
         addSpaced(col, menuRow(KilatIcon.SHARE, KColors.Sky, "Impor project dari link", "Tempel ID atau link share") {
             CloudSettings.showImport(this) { p -> openEditorProject(p.id) }

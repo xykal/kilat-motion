@@ -16,16 +16,11 @@ android {
         versionCode = 19
         versionName = "1.16.1"
 
-        // Client ID Google (publik, bukan secret). Isi di gradle.properties:
-        //   googleClientIdAndroid=XXXX.apps.googleusercontent.com
-        val gClientId = (project.findProperty("googleClientIdAndroid") as String?)
-            ?: System.getenv("GOOGLE_CLIENT_ID_ANDROID") ?: ""
-        val gScheme = if (gClientId.endsWith(".apps.googleusercontent.com"))
-            "com.googleusercontent.apps." + gClientId.removeSuffix(".apps.googleusercontent.com")
-        else "kilat-unconfigured"
-        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"$gClientId\"")
-        buildConfigField("String", "GOOGLE_REDIRECT_SCHEME", "\"$gScheme\"")
-        manifestPlaceholders["googleRedirectScheme"] = gScheme
+        // Web client ID Google (publik, bukan secret) untuk Credential Manager.
+        // Isi di gradle.properties: googleWebClientId=XXXX.apps.googleusercontent.com
+        val gWebClientId = (project.findProperty("googleWebClientId") as String?)
+            ?: System.getenv("GOOGLE_WEB_CLIENT_ID") ?: ""
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$gWebClientId\"")
     }
 
     // Keystore rilis tetap (dari GitHub Secrets di CI, atau env lokal). Tanpa itu, pakai debug.
@@ -83,6 +78,10 @@ dependencies {
     // UI: Material Components (Material3) untuk tema dasar, widget default, dan kontrol sistem.
     // Komponen editor tetap custom (Canvas/View) agar tampilan flat KILAT konsisten.
     implementation("com.google.android.material:material:1.12.0")
+    // login Google native lewat Credential Manager (tanpa browser)
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     // test: JUnit untuk memverifikasi engine animasi di JVM
     testImplementation("junit:junit:4.13.2")
     // org.json asli untuk test JVM (stub Android hanya mengembalikan nilai kosong)

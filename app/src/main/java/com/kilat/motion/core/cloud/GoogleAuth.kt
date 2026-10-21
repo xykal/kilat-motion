@@ -1,39 +1,32 @@
 package com.kilat.motion.core.cloud
 
+import android.app.Activity
 import android.content.Context
-import android.net.Uri
+import androidx.core.content.ContextCompat
+import androidx.credentials.CredentialManager
+import androidx.credentials.CredentialManagerCallback
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import org.json.JSONObject
-import java.security.MessageDigest
-import java.security.SecureRandom
 import java.util.Base64
 
 /**
- * Login Google memakai OAuth 2.0 Authorization Code + PKCE lewat browser.
- * Tidak memakai client secret: client Android/native memang tidak punya secret di APK.
+ * Login Google lewat Credential Manager (akun native, tanpa browser dan tanpa redirect).
+ * Hasilnya id_token dengan aud = Web client ID. Tidak ada secret di APK.
  */
 object GoogleAuth {
 
     private const val PREFS = "kilat_auth"
-    private const val AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
-    private const val TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
-    private const val SCOPE = "openid email profile"
 
     data class Session(val email: String, val name: String, val idToken: String, val expiresAt: Long)
 
-    // ----- PKCE helpers (diuji dengan vektor RFC 7636) -----
-
-    fun codeChallenge(verifier: String): String {
-        val digest = MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII))
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(digest)
-    }
-
-    fun randomUrlSafe(bytes: Int): String {
-        val b = ByteArray(bytes)
-        SecureRandom().nextBytes(b)
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(b)
-    }
-
-    /** Ambil klaim dari payload JWT (tanpa verifikasi tanda tangan; token dari TLS ke Google). */
+    /** Ambil klaim dari payload JWT. Dipakai untuk membaca exp dan aud (tanpa verifikasi tanda tangan). */
     fun jwtClaims(jwt: String): JSONObject? = try {
         val payload = jwt.split(".")[1]
         JSONObject(String(Base64.getUrlDecoder().decode(payload), Charsets.UTF_8))
@@ -61,70 +54,68 @@ object GoogleAuth {
 
     // ----- alur login -----
 
-    /** Bangun URL login dan simpan verifier + state sementara. */
-    fun buildAuthUrl(ctx: Context): String {
-        val verifier = randomUrlSafe(48)
-        val state = randomUrlSafe(16)
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString("pending_verifier", verifier)
-            .putString("pending_state", state)
-            .apply()
-        val q = Uri.Builder()
-            .appendQueryParameter("client_id", CloudConfig.googleClientId)
-            .appendQueryParameter("redirect_uri", CloudConfig.googleRedirectUri)
-            .appendQueryParameter("response_type", "code")
-            .appendQueryParameter("scope", SCOPE)
-            .appendQueryParameter("code_challenge", codeChallenge(verifier))
-            .appendQueryParameter("code_challenge_method", "S256")
-            .appendQueryParameter("state", state)
-            .appendQueryParameter("prompt", "select_account")
-            .build()
-        return AUTH_ENDPOINT + "?" + q.encodedQuery
+    /**
+     * Tampilkan pilihan akun Google. Callback dipanggil di main thread.
+     * ok = true bila sukses. message kosong berarti dibatalkan user (tidak perlu ditampilkan).
+     */
+    fun signIn(activity: Activity, onDone: (ok: Boolean, message: String) -> Unit) {
+        if (!CloudConfig.googleConfigured) {
+            onDone(false, "Login Google belum dikonfigurasi")
+            return
+        }
+        // GetSignInWithGoogleOption selalu menampilkan semua akun + opsi tambah akun
+        val option = GetSignInWithGoogleOption.Builder(CloudConfig.googleWebClientId).build()
+        val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
+
+        CredentialManager.create(activity).getCredentialAsync(
+            activity,
+            request,
+            null,
+            ContextCompat.getMainExecutor(activity),
+            object : CredentialManagerCallback<GetCredentialResponse, GetCredentialException> {
+                override fun onResult(result: GetCredentialResponse) {
+                    val err = saveCredential(activity.applicationContext, result.credential)
+                    if (err == null) {
+                        onDone(true, "Login sebagai ${lastEmail(activity).orEmpty()}")
+                    } else {
+                        onDone(false, err)
+                    }
+                }
+
+                override fun onError(e: GetCredentialException) {
+                    when (e) {
+                        is GetCredentialCancellationException -> onDone(false, "")
+                        is NoCredentialException ->
+                            onDone(false, "Tambah akun Google di HP ini dulu, lalu coba lagi")
+                        else -> onDone(false, "Login gagal (${e.type})")
+                    }
+                }
+            }
+        )
     }
 
-    /**
-     * Proses callback redirect. Dipanggil dari background thread.
-     * Mengembalikan null jika sukses, atau pesan error untuk ditampilkan.
-     */
-    fun handleRedirect(ctx: Context, uri: Uri): String? {
-        val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        uri.getQueryParameter("error")?.let { return "Login dibatalkan ($it)" }
-        val code = uri.getQueryParameter("code") ?: return "Callback login tidak berisi kode"
-        val state = uri.getQueryParameter("state")
-        if (state == null || state != prefs.getString("pending_state", null))
-            return "State login tidak cocok, coba login ulang"
-        val verifier = prefs.getString("pending_verifier", null) ?: return "Sesi login hilang, coba lagi"
+    /** Simpan id_token dari credential. Mengembalikan null bila sukses, atau pesan error. */
+    private fun saveCredential(ctx: Context, credential: androidx.credentials.Credential): String? {
+        if (credential !is CustomCredential ||
+            credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+        ) return "Jenis akun tidak didukung"
 
-        val body = Net.formEncode(
-            mapOf(
-                "grant_type" to "authorization_code",
-                "code" to code,
-                "client_id" to CloudConfig.googleClientId,
-                "redirect_uri" to CloudConfig.googleRedirectUri,
-                "code_verifier" to verifier
-            )
-        ).toByteArray(Charsets.UTF_8)
-        val res = Net.request(
-            "POST", TOKEN_ENDPOINT, body = body,
-            contentType = "application/x-www-form-urlencoded"
-        )
-        if (!res.ok) return "Tukar kode gagal (${res.code})"
-
-        val json = try { JSONObject(res.body) } catch (e: Exception) { return "Respons login tidak valid" }
-        val idToken = json.optString("id_token", "")
-        if (idToken.isEmpty()) return "Google tidak mengirim id_token"
+        val google = try {
+            GoogleIdTokenCredential.createFrom(credential.data)
+        } catch (e: Exception) {
+            return "Respons login Google tidak valid"
+        }
+        val idToken = google.idToken
         val claims = jwtClaims(idToken) ?: return "id_token tidak bisa dibaca"
-        if (claims.optString("aud") != CloudConfig.googleClientId) return "Audience token tidak cocok"
+        if (claims.optString("aud") != CloudConfig.googleWebClientId) return "Audience token tidak cocok"
         val exp = claims.optLong("exp", 0L) * 1000L
-        val expires = if (exp > 0) exp else System.currentTimeMillis() + json.optLong("expires_in", 3600L) * 1000L
+        val expires = if (exp > 0) exp else System.currentTimeMillis() + 3_600_000L
 
-        prefs.edit()
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString("id_token", idToken)
-            .putString("email", claims.optString("email", ""))
-            .putString("name", claims.optString("name", ""))
+            .putString("email", google.id)
+            .putString("name", google.displayName ?: "")
             .putLong("expires_at", expires)
-            .remove("pending_verifier")
-            .remove("pending_state")
             .apply()
         return null
     }

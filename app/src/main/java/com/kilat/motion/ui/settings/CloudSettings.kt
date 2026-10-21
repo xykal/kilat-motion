@@ -4,8 +4,6 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import com.kilat.motion.core.ai.AiProvider
@@ -30,19 +28,23 @@ object CloudSettings {
 
     private val io = Executors.newCachedThreadPool()
 
-    fun startLogin(activity: Activity) {
+    /** Login Google native. onChanged dipanggil setelah sukses atau gagal agar halaman Profil segar. */
+    fun startLogin(activity: Activity, onChanged: () -> Unit) {
         if (!CloudConfig.googleConfigured) {
             KilatSheet.showMessage(
                 activity, "Login belum aktif",
-                "Client ID Google untuk Android belum diisi.\n\n" +
-                    "Isi googleClientIdAndroid di gradle.properties, lalu build ulang.",
+                "Web client ID Google belum diisi.\n\n" +
+                    "Isi googleWebClientId di gradle.properties, lalu build ulang.",
                 icon = KilatIcon.USER
             )
             return
         }
-        val url = GoogleAuth.buildAuthUrl(activity)
-        activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-        KilatToast.show(activity, "Selesaikan login di browser", KilatIcon.USER)
+        GoogleAuth.signIn(activity) { ok, message ->
+            if (message.isNotEmpty()) {
+                KilatToast.show(activity, message, if (ok) KilatIcon.CHECK else KilatIcon.INFO)
+            }
+            onChanged()
+        }
     }
 
     fun confirmLogout(activity: Activity, onChanged: () -> Unit) {
