@@ -9,6 +9,7 @@ import com.kilat.motion.data.ProjectLibrary
 import com.kilat.motion.data.ProjectStore
 import com.kilat.motion.data.Templates
 import com.kilat.motion.core.audio.VideoAudio
+import com.kilat.motion.core.video.VideoFrames
 import com.kilat.motion.ui.picker.MediaPickerActivity
 import com.kilat.motion.ui.export.ExportPreviewActivity
 import com.kilat.motion.ui.export.ExportSettingsSheet
@@ -460,6 +461,7 @@ class EditorActivity : Activity() {
             Triple(KilatIcon.TEXT, "Teks") { addTextLayer() },
             Triple(KilatIcon.SHAPE, "Bentuk") { showShapePicker() },
             Triple(KilatIcon.IMAGE, "Gambar") { pickImage(null) },
+            Triple(KilatIcon.FILM, "Video") { pickVideoLayer() },
             Triple(KilatIcon.PENCIL, "Coret") { toggleDrawMode() },
             Triple(KilatIcon.VECTOR, "SVG") { pickSvg() },
             Triple(KilatIcon.CUBE, "3D") { show3DPicker() },
@@ -1411,11 +1413,12 @@ class EditorActivity : Activity() {
             return
         }
         if (resultCode != RESULT_OK && resultCode != MediaPickerActivity.RESULT_FALLBACK) return
-        if (requestCode == REQ_PICK_IMAGE || requestCode == REQ_PICK_AUDIO || requestCode == REQ_PICK_VIDEO_AUDIO) {
+        if (requestCode == REQ_PICK_IMAGE || requestCode == REQ_PICK_AUDIO || requestCode == REQ_PICK_VIDEO_AUDIO || requestCode == REQ_PICK_VIDEO_LAYER) {
             if (resultCode == MediaPickerActivity.RESULT_FALLBACK) {
                 when (requestCode) {
                     REQ_PICK_IMAGE -> pickImageSystem()
                     REQ_PICK_AUDIO -> pickAudioSystem()
+                    REQ_PICK_VIDEO_LAYER -> pickVideoLayerSystem()
                     else -> pickVideoSystem()
                 }
                 return
@@ -1425,6 +1428,7 @@ class EditorActivity : Activity() {
             when (requestCode) {
                 REQ_PICK_IMAGE -> handleImagePicked(puri)
                 REQ_PICK_AUDIO -> importAudioFrom(puri)
+                REQ_PICK_VIDEO_LAYER -> handleVideoPicked(puri)
                 else -> extractAudioFromVideo(puri)
             }
             return
@@ -1468,6 +1472,51 @@ class EditorActivity : Activity() {
                 } else {
                     importAudioFrom(Uri.fromFile(java.io.File(res.path)), "$base (audio)")
                 }
+            }
+        }.start()
+    }
+
+    private fun pickVideoLayer() {
+        launchPicker(MediaPickerActivity.MODE_VIDEO, REQ_PICK_VIDEO_LAYER) { pickVideoLayerSystem() }
+    }
+
+    private fun pickVideoLayerSystem() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "video/*"
+        }
+        startActivityForResult(intent, REQ_PICK_VIDEO_LAYER)
+    }
+
+    private fun handleVideoPicked(uri: Uri) {
+        toast("Mengimpor video...", KilatIcon.FILM)
+        Thread {
+            val path = ProjectStore.importVideo(applicationContext, uri)
+            val info = if (path != null) VideoFrames.info(path) else null
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                if (path == null || info == null || info.width <= 0 || info.height <= 0) {
+                    toast("Gagal membaca video", KilatIcon.INFO)
+                    return@runOnUiThread
+                }
+                val p = project
+                val sc = min(p.width * 0.8f / info.width, p.height * 0.62f / info.height)
+                val clipDur = if (info.durationSec > 0.05f) info.durationSec else 5f
+                val l = Layer().apply {
+                    kind = KIND_VIDEO
+                    name = "Video ${p.layers.count { it.kind == KIND_VIDEO } + 1}"
+                    imgPath = path
+                    imgW = info.width * sc
+                    imgH = info.height * sc
+                    x = p.width / 2f
+                    y = p.height / 2f
+                    start = playhead.coerceAtLeast(0f)
+                    dur = clipDur
+                }
+                p.layers.add(l)
+                afterChange(l.id)
+                selectLayer(l.id, openPanel = true)
+                toast("Video ditambahkan", KilatIcon.FILM)
             }
         }.start()
     }
@@ -1920,6 +1969,7 @@ class EditorActivity : Activity() {
         private const val REQ_PICK_AUDIO = 1102
         private const val REQ_PICK_VIDEO_AUDIO = 1103
         private const val REQ_PICK_VIDEO_AUDIO_SYS = 1104
+        private const val REQ_PICK_VIDEO_LAYER = 1105
         private const val REQ_EXPORT_PREVIEW = 1105
     }
 }

@@ -4,6 +4,8 @@ import com.kilat.motion.core.model.*
 import com.kilat.motion.core.animation.Anim
 
 import android.app.Activity
+import android.app.AlertDialog
+import com.kilat.motion.core.render.EffectMath
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -495,6 +497,20 @@ class InspectorView(context: Context) : LinearLayout(context) {
         fx.addView(header("Efek Cahaya"))
         addProp(fx, l, "fx.blur", "Blur", 0f, 40f, 0.5f, false)
         addProp(fx, l, "fx.glow", "Glow", 0f, 60f, 1f, true)
+        fx.addView(header("Blur layer"))
+        val blurLabels = listOf("Tanpa blur") + EffectMath.BLUR_TYPES.map { it.second }
+        val blurIdx = EffectMath.BLUR_TYPES.indexOfFirst { it.first == l.blurType } + 1
+        val lpBlur = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpBlur.topMargin = dp(6f).toInt()
+        fx.addView(dropdown(blurLabels, blurIdx.coerceAtLeast(0), "Jenis blur") { i ->
+            l.blurType = if (i <= 0) "none" else EffectMath.BLUR_TYPES[i - 1].first
+            listener?.onEdited(true)
+        }, lpBlur)
+        staticSlider(fx, "Jumlah", l.blurAmount, 200, 1f) { l.blurAmount = it; listener?.onEdited(true) }
+        fx.addView(header("Kaca (glass)"))
+        staticSlider(fx, "Blur latar", l.fxGlass, 60, 1f) { l.fxGlass = it; listener?.onEdited(true) }
+        staticSlider(fx, "Tint putih", l.glassTint, 100, 1f) { l.glassTint = it; listener?.onEdited(true) }
+        staticSlider(fx, "Border", l.glassBorder, 8, 1f) { l.glassBorder = it; listener?.onEdited(true) }
         val glowLbl = labelTv("Warna glow", widthDp = 84f)
         val lpGlow = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         lpGlow.topMargin = dp(8f).toInt()
@@ -859,8 +875,37 @@ class InspectorView(context: Context) : LinearLayout(context) {
         }
         seek.onReleased = { listener?.onEdited(true) }
         row.addView(seek, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        valTv.isClickable = true
+        valTv.setOnClickListener {
+            promptNumber(label, value) { v ->
+                onChange(v)
+                valTv.text = Format.dec(v, if (div > 10f) 2 else if (div > 1f) 1 else 0)
+                listener?.onEdited(true)
+            }
+        }
         row.addView(valTv, LayoutParams(dp(40f).toInt(), LayoutParams.WRAP_CONTENT))
         parent.addView(row, lp)
+    }
+
+    /** Dialog input angka. Tidak ada batas nilai; hanya angka yang diterima. */
+    private fun promptNumber(title: String, current: Float, onSet: (Float) -> Unit) {
+        val input = EditText(context).apply {
+            setText(Format.dec(current, 3))
+            setSelectAllOnFocus(true)
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED
+            setTextColor(cText)
+            setPadding(dp(16f).toInt(), dp(8f).toInt(), dp(16f).toInt(), dp(8f).toInt())
+        }
+        val dlg = AlertDialog.Builder(context)
+            .setTitle(title)
+            .setView(input)
+            .setPositiveButton("Simpan") { _, _ ->
+                input.text.toString().replace(',', '.').toFloatOrNull()?.let(onSet)
+            }
+            .setNegativeButton("Batal", null)
+            .create()
+        dlg.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(cCard))
+        dlg.show()
     }
 
     private fun swatchBlock(parent: LinearLayout, label: String, selected: Int, onPick: (Int) -> Unit) {
@@ -1236,6 +1281,15 @@ class InspectorView(context: Context) : LinearLayout(context) {
             }
         }
         seek.onReleased = { listener?.onEdited(true) }
+        valTv.isClickable = true
+        valTv.setOnClickListener {
+            promptNumber(label, Anim.value(l, key, curPlayhead)) { v ->
+                applyValue(l, key, v)
+                valTv.text = if (isInt) v.roundToInt().toString() else Format.dec(v, 2)
+                listener?.onEdited(true)
+                syncValues()
+            }
+        }
         keyBtn.setOnClickListener {
             val t = curPlayhead
             if (Anim.keyAt(l, key, t) != null) {

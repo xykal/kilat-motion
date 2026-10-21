@@ -12,6 +12,7 @@ const val KIND_IMAGE = "image"
 const val KIND_VECTOR = "vector"
 const val KIND_SVG = "svg"
 const val KIND_3D = "obj3d"
+const val KIND_VIDEO = "video"
 
 /** Semua properti yang bisa dianimasikan. */
 val PROP_KEYS = listOf(
@@ -165,6 +166,13 @@ class Layer {
     var fxSaturate: Float = 100f
     var fxHue: Float = 0f
     var fxGlow: Float = 0f
+    // Glass: blur latar di belakang layer (0..60), tint putih (0..100 %), border (0..8 px)
+    var fxGlass: Float = 0f
+    var glassTint: Float = 0f
+    var glassBorder: Float = 0f
+    // Blur layer: jenis (lihat EffectMath.BLUR_TYPES) dan jumlah (0..200)
+    var blurType: String = "none"
+    var blurAmount: Float = 0f
     var glowColor: Int = 0xFF2EE6C0.toInt()
     var blend: String = "normal"
     /** Stack efek (renderer menerapkan sesuai urutan). */
@@ -335,6 +343,11 @@ class Layer {
         c.fxSaturate = fxSaturate
         c.fxHue = fxHue
         c.fxGlow = fxGlow
+        c.fxGlass = fxGlass
+        c.glassTint = glassTint
+        c.glassBorder = glassBorder
+        c.blurType = blurType
+        c.blurAmount = blurAmount
         c.glowColor = glowColor
         c.blend = blend
         for ((k, ch) in channels) {

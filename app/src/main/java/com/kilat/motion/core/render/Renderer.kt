@@ -28,6 +28,7 @@ import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.cos
 import kotlin.math.max
+import com.kilat.motion.core.video.VideoFrames
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -137,15 +138,49 @@ object Renderer {
 
     /** Gambar seluruh project pada waktu t. Canvas dianggap sudah di-scale ke ukuran project. */
     fun renderFrame(canvas: Canvas, project: Project, t: Float, withBackground: Boolean = true) {
-        if (withBackground) canvas.drawColor(project.bg)
-        for (layer in project.layers) {
-            if (layer.hidden) continue
-            drawLayer(canvas, layer, t)
+        val needsBackdrop = project.layers.any { !it.hidden && it.fxGlass > 0.5f }
+        if (!needsBackdrop) {
+            if (withBackground) canvas.drawColor(project.bg)
+            for (layer in project.layers) {
+                if (layer.hidden) continue
+                drawLayer(canvas, layer, t)
+            }
+            return
         }
+        // Mode kaca: frame disusun dulu di bitmap kerja supaya layer glass bisa membaca latar di bawahnya.
+        // Bitmap diisi warna latar project; Exporter juga menggambar warna yang sama.
+        val w = canvas.width
+        val h = canvas.height
+        if (w <= 0 || h <= 0) return
+        val base = Matrix()
+        canvas.getMatrix(base)
+        val work = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val wc = Canvas(work)
+        wc.drawColor(project.bg)
+        wc.setMatrix(base)
+        val prevBack = backdrop
+        val prevBase = baseMatrix
+        backdrop = work
+        baseMatrix = base
+        try {
+            for (layer in project.layers) {
+                if (layer.hidden) continue
+                drawLayer(wc, layer, t)
+            }
+        } finally {
+            backdrop = prevBack
+            baseMatrix = prevBase
+        }
+        canvas.save()
+        canvas.setMatrix(null)
+        canvas.drawBitmap(work, 0f, 0f, null)
+        canvas.restore()
+        work.recycle()
     }
 
     fun drawLayer(canvas: Canvas, layer: Layer, t: Float) {
         if (t < layer.start - 0.0001f || t > layer.start + layer.dur + 0.0001f) return
+        curT = t
         val fx = Anim.evalLayer(layer, t)
         val alpha = (fx["alpha"] ?: 1f).coerceIn(0f, 1f)
         if (alpha <= 0.004f) return
@@ -168,8 +203,8 @@ object Renderer {
         canvas.translate(fx["x"] ?: layer.x, fx["y"] ?: layer.y)
         // Kemiringan 3D (perspektif Camera) untuk layer 2D. Objek 3D diputar
         // langsung oleh proyektor mesh, jadi tidak boleh ditimpa Camera dua kali.
-        val rX = (fx["rotX"] ?: 0f).coerceIn(-80f, 80f)
-        val rY = (fx["rotY"] ?: 0f).coerceIn(-80f, 80f)
+        val rX = fx["rotX"] ?: 0f
+        val rY = fx["rotY"] ?: 0f
         if (layer.kind != KIND_3D && (abs(rX) > 0.1f || abs(rY) > 0.1f)) {
             camera.save()
             camera.setLocation(0f, 0f, -14f)
@@ -180,12 +215,13 @@ object Renderer {
             canvas.concat(camMatrix)
         }
         canvas.rotate(fx["rot"] ?: 0f)
-        val s = (fx["scale"] ?: 1f).coerceIn(0.01f, 20f)
-        val sX = (fx["scaleX"] ?: 1f).coerceIn(-20f, 20f)
-        val sY = (fx["scaleY"] ?: 1f).coerceIn(-20f, 20f)
+        // Transform tanpa batas. Hanya nol yang dicegah agar matriks tidak mengempis.
+        val s = (fx["scale"] ?: 1f).let { if (it > -0.0001f && it < 0.0001f) 0.0001f else it }
+        val sX = fx["scaleX"] ?: 1f
+        val sY = fx["scaleY"] ?: 1f
         canvas.scale(s * sX, s * sY)
-        val skX = (fx["skewX"] ?: 0f).coerceIn(-2f, 2f)
-        val skY = (fx["skewY"] ?: 0f).coerceIn(-2f, 2f)
+        val skX = fx["skewX"] ?: 0f
+        val skY = fx["skewY"] ?: 0f
         if (abs(skX) > 0.001f || abs(skY) > 0.001f) canvas.skew(skX, skY)
 
         // bayangan (siluet blur bergeser di belakang konten)
@@ -228,7 +264,9 @@ object Renderer {
             if (layer.maskInvert) canvas.clipOutPath(maskPath) else canvas.clipPath(maskPath)
         }
 
-        drawWithEffects(canvas, layer, fx, t, fillPaint, strokePaint)
+        if (layer.fxGlass > 0.5f) drawGlassBackdrop(canvas, layer, alpha)
+        if (layer.blurType != "none" && layer.blurAmount > 0.5f) drawBlurredLayer(canvas, layer, fx, t, fillPaint, strokePaint)
+        else drawWithEffects(canvas, layer, fx, t, fillPaint, strokePaint)
         canvas.restore()
     }
 
@@ -403,9 +441,127 @@ object Renderer {
             KIND_TEXT -> drawTextLayer(canvas, layer, fx, fp, sp, isGlow)
             KIND_SHAPE -> drawShapeLayer(canvas, layer, fp, sp, isGlow)
             KIND_IMAGE -> drawImageLayer(canvas, layer, fx, fp)
+            KIND_VIDEO -> drawVideoLayer(canvas, layer, fx, fp)
             KIND_VECTOR -> drawVectorLayer(canvas, layer, fp, sp, isGlow)
             KIND_SVG -> drawSvgLayer(canvas, layer, fp, sp, isGlow)
             KIND_3D -> drawObj3DLayer(canvas, layer, fx, fp, sp, isGlow)
+        }
+    }
+
+    private var curT = 0f
+
+    /** Bitmap frame yang sedang disusun (mode kaca) dan matriks dasar project di dalamnya. */
+    private var backdrop: Bitmap? = null
+    private var baseMatrix: Matrix? = null
+    private val glassTintPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val glassBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val GLASS_CORNER = 24f
+
+    private fun drawVideoLayer(canvas: Canvas, layer: Layer, fx: HashMap<String, Float>, fp: Paint) {
+        val w = max(1f, layer.imgW)
+        val h = max(1f, layer.imgH)
+        layer.lastW = w
+        layer.lastH = h
+        rectF.set(-w / 2f, -h / 2f, w / 2f, h / 2f)
+        val frame = VideoFrames.frameAt(layer.imgPath, max(0f, curT - layer.start))
+        if (frame == null) {
+            fp.style = Paint.Style.FILL
+            fp.color = 0xFF1B2230.toInt()
+            canvas.drawRoundRect(rectF, 24f, 24f, fp)
+            fp.color = 0xFF5B6B85.toInt()
+            fp.textSize = min(w, h) * 0.12f
+            fp.textAlign = Paint.Align.CENTER
+            canvas.drawText("VIDEO", 0f, 0f, fp)
+            return
+        }
+        fp.isFilterBitmap = true
+        canvas.drawBitmap(frame, null, rectF, fp)
+    }
+
+    /**
+     * Layer dirender ke offscreen, lalu diblur dengan jenis yang dipilih, dan ditempel kembali.
+     * Ukuran offscreen dibatasi BLUR_MAX_SIDE agar memori dan waktu render tetap wajar.
+     */
+    private fun drawBlurredLayer(canvas: Canvas, layer: Layer, fx: HashMap<String, Float>, t: Float, fp: Paint, sp: Paint) {
+        val r = layer.blurAmount.coerceAtLeast(0f) * 0.6f
+        val (cw, ch) = contentDims(layer)
+        val pad = max(cw, ch) * 0.5f + r * 1.5f + 40f
+        val bw = cw + pad * 2f
+        val bh = ch + pad * 2f
+        val s = min(1f, EffectMath.BLUR_MAX_SIDE / max(bw, bh))
+        val ow = max(2, (bw * s).toInt())
+        val oh = max(2, (bh * s).toInt())
+        val off = Bitmap.createBitmap(ow, oh, Bitmap.Config.ARGB_8888)
+        off.eraseColor(0)
+        val oc = Canvas(off)
+        oc.scale(s, s)
+        oc.translate(bw / 2f, bh / 2f)
+        val innerFill = Paint(fp).apply { alpha = 255; xfermode = null }
+        val innerStroke = Paint(sp).apply { alpha = 255; xfermode = null }
+        drawWithEffects(oc, layer, fx, t, innerFill, innerStroke)
+        val out = BlurOps.apply(off, layer.blurType, r * s)
+        canvas.save()
+        canvas.translate(-bw / 2f, -bh / 2f)
+        canvas.scale(1f / s, 1f / s)
+        val dp = Paint(Paint.FILTER_BITMAP_FLAG).apply { alpha = fp.alpha; xfermode = fp.xfermode }
+        canvas.drawBitmap(out, 0f, 0f, dp)
+        canvas.restore()
+        if (out !== off) out.recycle()
+        off.recycle()
+    }
+
+    /**
+     * Panel kaca: latar di bawah layer diblur (hanya latar, bukan konten layer), lalu diberi tint putih
+     * dan border tipis. Dipanggil di dalam transform layer, jadi mengikuti posisi, rotasi, dan skala.
+     */
+    private fun drawGlassBackdrop(canvas: Canvas, layer: Layer, alpha: Float) {
+        val src = backdrop ?: return
+        val base = baseMatrix ?: return
+        val (cw, ch) = contentDims(layer)
+        val hw = cw / 2f
+        val hh = ch / 2f
+        rectF.set(-hw, -hh, hw, hh)
+        val bv = FloatArray(9)
+        base.getValues(bv)
+        val k = sqrt(abs(bv[0] * bv[4] - bv[1] * bv[3])).coerceAtLeast(0.0001f)
+        val devM = Matrix()
+        canvas.getMatrix(devM)
+        val devPath = Path()
+        devPath.addRoundRect(rectF, GLASS_CORNER, GLASS_CORNER, Path.Direction.CW)
+        devPath.transform(devM)
+
+        val f = EffectMath.glassDownscale(src.width, src.height)
+        val sw = max(1, (src.width * f).toInt())
+        val sh = max(1, (src.height * f).toInt())
+        val small = Bitmap.createScaledBitmap(src, sw, sh, true)
+        val blurred = BlurOps.apply(small, "gauss", layer.fxGlass * k * f)
+
+        canvas.save()
+        canvas.setMatrix(null)
+        canvas.clipPath(devPath)
+        val bp = Paint(Paint.FILTER_BITMAP_FLAG).apply { this.alpha = (255f * alpha).toInt().coerceIn(0, 255) }
+        canvas.drawBitmap(blurred, null, RectF(0f, 0f, src.width.toFloat(), src.height.toFloat()), bp)
+        canvas.restore()
+        if (blurred !== small) blurred.recycle()
+        small.recycle()
+
+        val tintA = (EffectMath.glassTintAlpha(layer.glassTint) * alpha).toInt().coerceIn(0, 255)
+        if (tintA > 0) {
+            glassTintPaint.reset()
+            glassTintPaint.isAntiAlias = true
+            glassTintPaint.color = Color.argb(tintA, 255, 255, 255)
+            canvas.drawRoundRect(rectF, GLASS_CORNER, GLASS_CORNER, glassTintPaint)
+        }
+        if (layer.glassBorder > 0.05f) {
+            glassBorderPaint.reset()
+            glassBorderPaint.isAntiAlias = true
+            glassBorderPaint.style = Paint.Style.STROKE
+            glassBorderPaint.strokeWidth = layer.glassBorder
+            glassBorderPaint.color = Color.argb((90f * alpha).toInt().coerceIn(0, 255), 255, 255, 255)
+            val inset = layer.glassBorder / 2f
+            rectF.set(-hw + inset, -hh + inset, hw - inset, hh - inset)
+            canvas.drawRoundRect(rectF, GLASS_CORNER, GLASS_CORNER, glassBorderPaint)
+            rectF.set(-hw, -hh, hw, hh)
         }
     }
 
@@ -704,7 +860,7 @@ object Renderer {
             for (ln in lines) mw = max(mw, fillPaint.measureText(ln))
             Pair(mw, max(layer.textSize * 1.24f, lines.size * layer.textSize * 1.24f))
         }
-        KIND_IMAGE -> Pair(max(1f, layer.imgW), max(1f, layer.imgH))
+        KIND_IMAGE, KIND_VIDEO -> Pair(max(1f, layer.imgW), max(1f, layer.imgH))
         else -> Pair(max(1f, layer.w), max(1f, layer.h))
     }
 

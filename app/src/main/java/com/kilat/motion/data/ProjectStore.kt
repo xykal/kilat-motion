@@ -124,6 +124,11 @@ object ProjectStore {
         o.put("imgW", l.imgW.toDouble())
         o.put("imgH", l.imgH.toDouble())
         o.put("fxBlur", l.fxBlur.toDouble())
+        o.put("fxGlass", l.fxGlass.toDouble())
+        o.put("glassTint", l.glassTint.toDouble())
+        o.put("glassBorder", l.glassBorder.toDouble())
+        o.put("blurType", l.blurType)
+        o.put("blurAmount", l.blurAmount.toDouble())
         o.put("fxBright", l.fxBright.toDouble())
         o.put("fxContrast", l.fxContrast.toDouble())
         o.put("fxSaturate", l.fxSaturate.toDouble())
@@ -246,6 +251,11 @@ object ProjectStore {
             l.imgW = lo.optDouble("imgW", 480.0).toFloat()
             l.imgH = lo.optDouble("imgH", 480.0).toFloat()
             l.fxBlur = lo.optDouble("fxBlur", 0.0).toFloat()
+            l.fxGlass = lo.optDouble("fxGlass", 0.0).toFloat()
+            l.glassTint = lo.optDouble("glassTint", 0.0).toFloat()
+            l.glassBorder = lo.optDouble("glassBorder", 0.0).toFloat()
+            l.blurType = lo.optString("blurType", "none")
+            l.blurAmount = lo.optDouble("blurAmount", 0.0).toFloat()
             l.fxBright = lo.optDouble("fxBright", 100.0).toFloat()
             l.fxContrast = lo.optDouble("fxContrast", 100.0).toFloat()
             l.fxSaturate = lo.optDouble("fxSaturate", 100.0).toFloat()
@@ -358,6 +368,19 @@ object ProjectStore {
     }
 
     // ---------------- IMAGE IMPORT ----------------
+    /** Menyalin video ke penyimpanan app. Frame dibaca lewat VideoFrames. */
+    fun importVideo(ctx: Context, uri: Uri): String? {
+        return try {
+            val dir = File(ctx.filesDir, "videos").apply { if (!exists()) mkdirs() }
+            val dest = File(dir, "vid_" + UUID.randomUUID().toString().substring(0, 8) + ".mp4")
+            val input = ctx.contentResolver.openInputStream(uri) ?: return null
+            input.use { src -> dest.outputStream().use { src.copyTo(it) } }
+            dest.absolutePath
+        } catch (e: Throwable) {
+            null
+        }
+    }
+
     fun importImage(ctx: Context, uri: Uri): String? {
         return try {
             val name = "img_" + UUID.randomUUID().toString().substring(0, 8) + ".jpg"
