@@ -52,6 +52,8 @@ import kotlin.math.max
 import kotlin.math.min
 import com.kilat.motion.ui.settings.AiActions
 import com.kilat.motion.ui.settings.CloudSettings
+import com.kilat.motion.core.animation.BeatKeys
+import java.io.File
 
 /**
  * Editor KILAT Motion.
@@ -1615,6 +1617,7 @@ class EditorActivity : Activity() {
             KilatSheet.Item("Export frame PNG", "Simpan frame saat ini sebagai gambar", KilatIcon.IMAGE, KColors.Rose),
             KilatSheet.Item("Layer dari AI", "Tulis prompt, AI menyusun teks dan animasi", KilatIcon.SPARK, KColors.Violet),
             KilatSheet.Item("Caption otomatis", "Transkrip musik jadi teks (Groq Whisper)", KilatIcon.TEXT, KColors.Sky),
+            KilatSheet.Item("Keyframe ke beat", "Pulsa zoom, goyang, atau kedip mengikuti ketukan lagu", KilatIcon.SPARK, KColors.Amber),
             KilatSheet.Item("Bagikan project", "Unggah ke link share (perlu login Google)", KilatIcon.SHARE, KColors.Green),
             KilatSheet.Item("Panduan", "Cara pakai editor", KilatIcon.BOOK, KColors.Sky),
             KilatSheet.Item("Tentang", "Versi dan info aplikasi", KilatIcon.INFO, KColors.Muted),
@@ -1633,12 +1636,53 @@ class EditorActivity : Activity() {
                 5 -> exportPng()
                 6 -> AiActions.promptLayers(this, project) { addAiLayers(it) }
                 7 -> AiActions.captionsFromMusic(this, project) { addAiLayers(it) }
-                8 -> CloudSettings.shareProject(this, project)
-                9 -> showGuide()
-                10 -> showAbout()
-                11 -> finish()
+                8 -> showBeatSheet()
+                9 -> CloudSettings.shareProject(this, project)
+                10 -> showGuide()
+                11 -> showAbout()
+                12 -> finish()
             }
         }
+    }
+
+    /** Pilih gaya pulsa beat, lalu pasang keyframe di layer terpilih. */
+    private fun showBeatSheet() {
+        val m = project.music
+        if (m == null || m.path.isEmpty() || !File(m.path).exists()) {
+            toast("Tambah musik latar dulu di menu editor", KilatIcon.MUSIC)
+            return
+        }
+        if (selectedLayerOrToastMember() == null) return
+        val styles = BeatKeys.Style.values()
+        val items = styles.map { KilatSheet.Item(it.label, it.desc, it.icon, KColors.Amber) }
+        KilatSheet.showList(this, "Keyframe ke beat", items) { which -> applyBeatStyle(styles[which]) }
+    }
+
+    /** Deteksi beat di background, lalu tulis keyframe ke layer yang dipilih. */
+    private fun applyBeatStyle(style: BeatKeys.Style) {
+        val m = project.music ?: return
+        val layerId = selectedId ?: return
+        val handle = KilatSheet.showProgress(this, "Mendeteksi beat", "Membaca audio...")
+        Thread {
+            val beats = try {
+                BeatKeys.detect(m.path, m.start, m.offset, m.dur, project.duration)
+            } catch (e: Exception) {
+                emptyList()
+            }
+            runOnUiThread {
+                handle.dismiss()
+                val layer = project.findLayer(layerId)
+                when {
+                    beats.isEmpty() -> toast("Beat tidak terdeteksi di musik ini", KilatIcon.INFO)
+                    layer == null -> toast("Layer sudah tidak ada", KilatIcon.INFO)
+                    else -> {
+                        val n = BeatKeys.apply(layer, beats, style)
+                        afterChange(layer.id)
+                        toast("$n pulsa di ketukan lagu", KilatIcon.SPARK)
+                    }
+                }
+            }
+        }.start()
     }
 
     /** Tambah layer hasil AI ke project, pilih layer terakhir, lalu simpan. */

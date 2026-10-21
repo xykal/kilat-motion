@@ -79,14 +79,15 @@ class TimelineView(context: Context) : View(context) {
         textSize = dp(10.5f)
     }
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    // Keyframe dibuat terang dengan tepi gelap supaya terbaca di atas bar layer
     private val diamondPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF0A0C11.toInt()
+        color = 0xFFE9EEF7.toInt()
         style = Paint.Style.FILL
     }
     private val diamondStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFE9EEF7.toInt()
+        color = 0xFF0A0C11.toInt()
         style = Paint.Style.STROKE
-        strokeWidth = dp(1.2f)
+        strokeWidth = dp(1.4f)
     }
     private val diamondActive = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0xFF2EE6C0.toInt()
@@ -291,7 +292,7 @@ class TimelineView(context: Context) : View(context) {
                 val kx = timeToX(kt)
                 if (kx < leftW - dp(2f) || kx > width) continue
                 val ky = top + rh / 2f
-                val r = if (dragMode == MODE_KEY && dragLayer === layer && abs(kt - dragKeyNow) < 0.03f) dp(5.2f) else dp(3.4f)
+                val r = if (dragMode == MODE_KEY && dragLayer === layer && abs(kt - dragKeyNow) < 0.03f) dp(6f) else dp(4.4f)
                 playheadHead.reset()
                 playheadHead.moveTo(kx, ky - r)
                 playheadHead.lineTo(kx + r, ky)
