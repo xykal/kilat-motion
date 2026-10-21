@@ -13,14 +13,27 @@ android {
         applicationId = "com.kilat.motion"
         minSdk = 29
         targetSdk = 34
-        versionCode = 21
-        versionName = "1.18.0"
+        versionCode = 22
+        versionName = "1.19.0"
 
         // Web client ID Google (publik, bukan secret) untuk Credential Manager.
         // Isi di gradle.properties: googleWebClientId=XXXX.apps.googleusercontent.com
         val gWebClientId = (project.findProperty("googleWebClientId") as String?)
             ?: System.getenv("GOOGLE_WEB_CLIENT_ID") ?: ""
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$gWebClientId\"")
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
+    }
+
+    // Native kecil untuk timestamp export (libkilat_timing.so). Tanpa .so, export pakai jalur real-time.
+    ndkVersion = "26.1.10909125"
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     // Keystore rilis tetap (dari GitHub Secrets di CI, atau env lokal). Tanpa itu, pakai debug.

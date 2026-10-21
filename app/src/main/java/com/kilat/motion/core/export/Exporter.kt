@@ -20,6 +20,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -78,12 +79,71 @@ object Exporter {
         }
     }
 
+    /**
+     * Export video. Jalur cepat (tanpa menunggu waktu nyata) dipakai kalau libkilat_timing tersedia.
+     * Hasilnya diverifikasi durasinya. Kalau gagal atau tidak cocok, ulang dengan jalur real-time.
+     */
     fun exportVideo(
         context: Context,
         project: Project,
         longSide: Int,
         fps: Int,
         bitrateMbps: Int = 0,
+        onProgress: (Float) -> Unit
+    ): VideoResult {
+        val frameRate = fps.coerceIn(15, 120)
+        if (NativeTiming.available) {
+            val fast = exportVideoOnce(context, project, longSide, fps, bitrateMbps, true, onProgress)
+            val file = fast.file
+            if (fast.error == null && file != null && verifyDuration(file, project.duration, frameRate)) {
+                return fast
+            }
+            file?.delete()
+        }
+        return exportVideoOnce(context, project, longSide, fps, bitrateMbps, false, onProgress)
+    }
+
+    /** Cek durasi video hasil export terhadap durasi project. */
+    fun verifyDuration(file: File, expectedSec: Float, fps: Int): Boolean {
+        val ex = MediaExtractor()
+        return try {
+            ex.setDataSource(file.absolutePath)
+            for (i in 0 until ex.trackCount) {
+                val f = ex.getTrackFormat(i)
+                val mime = f.getString(MediaFormat.KEY_MIME) ?: continue
+                if (!mime.startsWith("video/")) continue
+                val durSec = if (f.containsKey(MediaFormat.KEY_DURATION)) {
+                    f.getLong(MediaFormat.KEY_DURATION) / 1_000_000f
+                } else {
+                    // tanpa durasi di header: pakai timestamp sampel terakhir + satu frame
+                    ex.selectTrack(i)
+                    var last = 0L
+                    while (true) {
+                        val ts = ex.sampleTime
+                        if (ts < 0) break
+                        if (ts > last) last = ts
+                        if (!ex.advance()) break
+                    }
+                    last / 1_000_000f + 1f / fps
+                }
+                val tol = max(0.25f, expectedSec * 0.02f)
+                return abs(durSec - expectedSec) <= tol
+            }
+            false
+        } catch (e: Throwable) {
+            false
+        } finally {
+            try { ex.release() } catch (e: Throwable) {}
+        }
+    }
+
+    private fun exportVideoOnce(
+        context: Context,
+        project: Project,
+        longSide: Int,
+        fps: Int,
+        bitrateMbps: Int,
+        native: Boolean,
         onProgress: (Float) -> Unit
     ): VideoResult {
         var codec: MediaCodec? = null
@@ -173,14 +233,16 @@ object Exporter {
             var lastPct = -1
 
             for (frame in 0 until totalFrames) {
-                // pacing real-time biar timestamp & durasi video pas
-                val target = t0 + frame * frameNs
-                while (true) {
-                    val now = SystemClock.elapsedRealtimeNanos()
-                    val remain = target - now
-                    if (remain <= 0) break
-                    val ms = remain / 1_000_000
-                    if (ms > 1) Thread.sleep(ms - 1) else Thread.yield()
+                if (!native) {
+                    // jalur real-time: pacing biar timestamp & durasi video pas
+                    val target = t0 + frame * frameNs
+                    while (true) {
+                        val now = SystemClock.elapsedRealtimeNanos()
+                        val remain = target - now
+                        if (remain <= 0) break
+                        val ms = remain / 1_000_000
+                        if (ms > 1) Thread.sleep(ms - 1) else Thread.yield()
+                    }
                 }
 
                 val t = frame.toFloat() / frameRate
@@ -197,6 +259,9 @@ object Exporter {
                     canvas.scale(scaleX, scaleY)
                     Renderer.renderFrame(canvas, project, t, false)
                     canvas.restore()
+                    if (native && !NativeTiming.setPresentationNs(surface, frame * frameNs)) {
+                        throw IllegalStateException("timestamp native gagal")
+                    }
                     surface.unlockCanvasAndPost(canvas)
                 }
                 drain(codec, state, false)

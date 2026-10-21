@@ -35,6 +35,7 @@ import com.kilat.motion.ui.components.KilatIconButton
 import com.kilat.motion.ui.components.KilatSlider
 import com.kilat.motion.ui.components.kEditText
 import kotlin.math.roundToInt
+import com.kilat.motion.ui.components.SliderRange
 
 class InspectorView(context: Context) : LinearLayout(context) {
 
@@ -682,8 +683,9 @@ class InspectorView(context: Context) : LinearLayout(context) {
             lp.topMargin = dp(6f).toInt()
             row.addView(labelTv(label, widthDp = 60f))
             val seek = KilatSlider(context)
-            seek.max = maxVal
-            seek.progress = value.toInt().coerceIn(0, maxVal)
+            val rangeMax = SliderRange.dimMax(value, maxVal)
+            seek.max = rangeMax
+            seek.progress = SliderRange.progressOf(value, rangeMax)
             val valTv = labelTv(value.toInt().toString(), 11f, cText)
             seek.onProgress = { progress ->
                 onChange(progress.toFloat())
@@ -724,8 +726,9 @@ class InspectorView(context: Context) : LinearLayout(context) {
             lp.topMargin = dp(6f).toInt()
             row.addView(labelTv(label, widthDp = 60f))
             val seek = KilatSlider(context)
-            seek.max = maxVal
-            seek.progress = value.toInt().coerceIn(0, maxVal)
+            val rangeMax = SliderRange.dimMax(value, maxVal)
+            seek.max = rangeMax
+            seek.progress = SliderRange.progressOf(value, rangeMax)
             val valTv = labelTv(value.toInt().toString(), 11f, cText)
             seek.onProgress = { progress ->
                 onChange(progress.toFloat())
@@ -846,7 +849,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
         row.addView(labelTv(label, widthDp = 84f))
         val seek = KilatSlider(context)
         seek.max = maxInt
-        seek.progress = ((value - minV) * div).toInt().coerceIn(0, maxInt)
+        seek.progress = SliderRange.progressOf((value - minV) * div, maxInt)
         val valTv = labelTv(Format.dec(value, if (div > 10f) 2 else if (div > 1f) 1 else 0), 11f, cText)
         seek.onProgress = { progress ->
             val v = minV + progress / div
@@ -1176,8 +1179,8 @@ class InspectorView(context: Context) : LinearLayout(context) {
     private fun buildSvgSection(l: Layer, parent: LinearLayout) {
         val c = card()
         c.addView(header("Vektor SVG"))
-        staticSlider(c, "Lebar", l.w, 2000, 1f) { l.w = maxOf(10f, it) }
-        staticSlider(c, "Tinggi", l.h, 2000, 1f) { l.h = maxOf(10f, it) }
+        staticSlider(c, "Lebar", l.w, SliderRange.dimMax(l.w), 1f) { l.w = maxOf(10f, it) }
+        staticSlider(c, "Tinggi", l.h, SliderRange.dimMax(l.h), 1f) { l.h = maxOf(10f, it) }
         swatchBlock(c, "Warna isi", l.fill) { col -> l.fill = col }
         parent.addView(c)
     }
