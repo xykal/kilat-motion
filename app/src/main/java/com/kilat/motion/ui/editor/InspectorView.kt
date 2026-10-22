@@ -1,5 +1,6 @@
 package com.kilat.motion.ui.editor
 
+import com.kilat.motion.core.render.EffectPreview
 import com.kilat.motion.core.model.*
 import com.kilat.motion.core.animation.Anim
 
@@ -498,14 +499,9 @@ class InspectorView(context: Context) : LinearLayout(context) {
         addProp(fx, l, "fx.blur", "Blur", 0f, 40f, 0.5f, false)
         addProp(fx, l, "fx.glow", "Glow", 0f, 60f, 1f, true)
         fx.addView(header("Blur layer"))
-        val blurLabels = listOf("Tanpa blur") + EffectMath.BLUR_TYPES.map { it.second }
-        val blurIdx = EffectMath.BLUR_TYPES.indexOfFirst { it.first == l.blurType } + 1
         val lpBlur = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         lpBlur.topMargin = dp(6f).toInt()
-        fx.addView(dropdown(blurLabels, blurIdx.coerceAtLeast(0), "Jenis blur") { i ->
-            l.blurType = if (i <= 0) "none" else EffectMath.BLUR_TYPES[i - 1].first
-            listener?.onEdited(true)
-        }, lpBlur)
+        fx.addView(blurStrip(l), lpBlur)
         staticSlider(fx, "Jumlah", l.blurAmount, 200, 1f) { l.blurAmount = it; listener?.onEdited(true) }
         fx.addView(header("Kaca (glass)"))
         staticSlider(fx, "Blur latar", l.fxGlass, 60, 1f) { l.fxGlass = it; listener?.onEdited(true) }
@@ -765,6 +761,47 @@ class InspectorView(context: Context) : LinearLayout(context) {
     // ---------------- slider statis (bukan keyframe) ----------------
     private fun defaultEffectColor(type: String): Int = com.kilat.motion.core.preview.PreviewSamples.defaultEffectColor(type)
 
+    /**
+     * Semua jenis blur sebagai deretan thumbnail. Setiap thumbnail dirender dari gambar contoh
+     * dengan BlurOps yang sama dengan renderer, jadi yang terlihat = hasil di layer.
+     */
+    private fun blurStrip(l: Layer): android.view.View {
+        val scroll = android.widget.HorizontalScrollView(context)
+        scroll.isHorizontalScrollBarEnabled = false
+        val row = LinearLayout(context)
+        row.orientation = HORIZONTAL
+        val options: List<Pair<String?, String>> =
+            listOf<Pair<String?, String>>(null to "Tanpa blur") + EffectMath.BLUR_TYPES.map { it.first to it.second }
+        for ((id, label) in options) {
+            val selected = if (id == null) l.blurType == "none" else l.blurType == id
+            val tile = LinearLayout(context)
+            tile.orientation = VERTICAL
+            tile.gravity = Gravity.CENTER_HORIZONTAL
+            tile.isClickable = true
+            val img = android.widget.ImageView(context)
+            img.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            img.setImageBitmap(EffectPreview.blur(id))
+            img.background = roundRectBg(0xFF11141C.toInt(), dp(10f), if (selected) cAccent else null)
+            img.clipToOutline = true
+            tile.addView(img, LayoutParams(dp(78f).toInt(), dp(52f).toInt()))
+            val tv = labelTv(label, 9f, if (selected) cAccent else cMuted)
+            tv.gravity = Gravity.CENTER
+            val lpTv = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            lpTv.topMargin = dp(4f).toInt()
+            tile.addView(tv, lpTv)
+            tile.setOnClickListener {
+                l.blurType = id ?: "none"
+                listener?.onEdited(true)
+                rebind()
+            }
+            val lpTile = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+            lpTile.rightMargin = dp(7f).toInt()
+            row.addView(tile, lpTile)
+        }
+        scroll.addView(row)
+        return scroll
+    }
+
     /** Stack efek: deretan chip untuk menambah, lalu kartu per efek (urutan = urutan tampil). */
     private fun buildEffectStack(l: Layer, parent: LinearLayout) {
         parent.addView(header("Stack efek"))
@@ -780,7 +817,10 @@ class InspectorView(context: Context) : LinearLayout(context) {
             val box = android.widget.FrameLayout(context)
             box.background = roundRectBg(0xFF11141C.toInt(), dp(12f))
             box.addView(
-                LayerPreviewView(context).also { it.showEffect(type) },
+                android.widget.ImageView(context).also {
+                    it.setImageBitmap(EffectPreview.effect(type))
+                    it.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+                },
                 android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             )
             tile.addView(box, LayoutParams(dp(68f).toInt(), dp(46f).toInt()))

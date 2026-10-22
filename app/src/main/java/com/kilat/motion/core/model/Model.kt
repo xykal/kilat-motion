@@ -61,7 +61,9 @@ class LayerEffect(
 
 /** Jenis efek yang didukung renderer. */
 val EFFECT_TYPES = listOf(
-    "vignette", "scanlines", "grain", "lightleak", "tint", "glitch", "rgbsplit"
+    "vignette", "scanlines", "grain", "lightleak", "tint", "glitch", "rgbsplit",
+    "grayscale", "sepia", "invert", "contrast", "saturate", "warm", "cool", "flicker",
+    "letterbox", "dust", "border", "shake", "flash"
 )
 val EFFECT_LABELS = mapOf(
     "vignette" to "Vignette",
@@ -70,10 +72,23 @@ val EFFECT_LABELS = mapOf(
     "lightleak" to "Light leak",
     "tint" to "Tint warna",
     "glitch" to "Glitch slice",
-    "rgbsplit" to "RGB split"
+    "rgbsplit" to "RGB split",
+    "grayscale" to "Hitam putih",
+    "sepia" to "Sepia",
+    "invert" to "Invers warna",
+    "contrast" to "Kontras",
+    "saturate" to "Saturasi",
+    "warm" to "Hangat",
+    "cool" to "Dingin",
+    "flicker" to "Kedip cahaya",
+    "letterbox" to "Letterbox",
+    "dust" to "Debu film",
+    "border" to "Bingkai",
+    "shake" to "Getar kamera",
+    "flash" to "Kilatan"
 )
 /** Efek yang memakai warna. */
-val EFFECT_USES_COLOR = setOf("vignette", "lightleak", "tint")
+val EFFECT_USES_COLOR = setOf("vignette", "lightleak", "tint", "letterbox", "border")
 
 class Keyframe(var t: Float = 0f, var v: Float = 0f, var ease: String = "easeOut")
 
