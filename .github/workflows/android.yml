@@ -25,7 +25,8 @@ jobs:
           KILAT_KEYSTORE_B64: ${{ secrets.KILAT_KEYSTORE_B64 }}
         run: |
           if [ -z "$KILAT_KEYSTORE_B64" ]; then
-            echo "Secret keystore belum ada, pakai debug"; exit 0
+            echo "::error::Secret KILAT_KEYSTORE_B64 kosong. Build dibatalkan agar tidak memakai kunci debug."
+            exit 1
           fi
           echo "$KILAT_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/kilat-release.jks"
           echo "KILAT_KEYSTORE_PATH=$RUNNER_TEMP/kilat-release.jks" >> "$GITHUB_ENV"
@@ -47,12 +48,47 @@ jobs:
       - name: Grant execute permission untuk gradlew
         run: chmod +x gradlew
 
+      - name: Unit test
+        env:
+          KILAT_STORE_PASSWORD: ${{ secrets.KILAT_STORE_PASSWORD }}
+          KILAT_KEY_PASSWORD: ${{ secrets.KILAT_KEY_PASSWORD }}
+          KILAT_KEY_ALIAS: ${{ secrets.KILAT_KEY_ALIAS }}
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
+      - name: Upload hasil unit test
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kilat-motion-test-report
+          path: app/build/reports/tests/
+          if-no-files-found: warn
+
+      - name: Lint (non-blocking sementara)
+        continue-on-error: true
+        run: ./gradlew :app:lintDebug --stacktrace
+
+      - name: Upload laporan lint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kilat-motion-lint-report
+          path: app/build/reports/lint-results-debug.html
+          if-no-files-found: warn
+
       - name: Build APK (debug + release)
         env:
           KILAT_STORE_PASSWORD: ${{ secrets.KILAT_STORE_PASSWORD }}
           KILAT_KEY_PASSWORD: ${{ secrets.KILAT_KEY_PASSWORD }}
           KILAT_KEY_ALIAS: ${{ secrets.KILAT_KEY_ALIAS }}
         run: ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
+
+      - name: Verifikasi signer APK (harus kunci release KILAT)
+        env:
+          KILAT_EXPECTED_SHA1: 10b3bfec6ce707b1e46a2f0aebfc2b1b2326dd85
+        run: |
+          set -e
+          python3 tools/verify_apk_signer.py app/build/outputs/apk/release/app-release.apk "$KILAT_EXPECTED_SHA1"
+          python3 tools/verify_apk_signer.py app/build/outputs/apk/debug/app-debug.apk "$KILAT_EXPECTED_SHA1"
 
       - name: Upload APK Debug
         uses: actions/upload-artifact@v4
@@ -79,7 +115,7 @@ jobs:
 
       - name: Ringkasan build
         run: |
-          echo "### ✅ KILAT Motion APK" >> $GITHUB_STEP_SUMMARY
+          echo "### KILAT Motion APK" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           ls -lh app/build/outputs/apk/debug/ app/build/outputs/apk/release/ >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
           echo "" >> $GITHUB_STEP_SUMMARY

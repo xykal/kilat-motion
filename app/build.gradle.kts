@@ -39,6 +39,11 @@ android {
     // Keystore rilis tetap (dari GitHub Secrets di CI, atau env lokal). Tanpa itu, pakai debug.
     val kilatKeystore: String? = System.getenv("KILAT_KEYSTORE_PATH")?.takeIf { File(it).exists() }
 
+    // Di CI, keystore rilis wajib ada. Tanpa ini release diam-diam ditandatangani kunci debug.
+    if (System.getenv("CI") == "true" && kilatKeystore == null) {
+        throw GradleException("CI: keystore rilis tidak ada (KILAT_KEYSTORE_PATH). Secret KILAT_KEYSTORE_B64 kosong atau gagal didekode.")
+    }
+
     signingConfigs {
         create("kilat") {
             if (kilatKeystore != null) {
