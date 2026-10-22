@@ -3,6 +3,7 @@ package com.kilat.motion.core.ai
 import android.content.Context
 import com.kilat.motion.core.cloud.Net
 import com.kilat.motion.core.cloud.HttpResult
+import com.kilat.motion.core.security.SecretStore
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
@@ -31,9 +32,28 @@ object AiSettings {
     fun provider(ctx: Context): AiProvider = AiProvider.fromId(p(ctx).getString("provider", null))
     fun setProvider(ctx: Context, v: AiProvider) = p(ctx).edit().putString("provider", v.id).apply()
 
-    fun key(ctx: Context, v: AiProvider): String = p(ctx).getString("key_${v.id}", "") ?: ""
-    fun setKey(ctx: Context, v: AiProvider, key: String) =
-        p(ctx).edit().putString("key_${v.id}", key.trim()).apply()
+    /**
+     * Key disimpan terenkripsi (Android Keystore). Versi lama menyimpan plaintext di "key_<id>";
+     * itu dimigrasikan saat dibaca lalu dihapus.
+     */
+    fun key(ctx: Context, v: AiProvider): String {
+        val sp = p(ctx)
+        val legacy = sp.getString("key_${v.id}", null)
+        if (legacy != null) {
+            val k = legacy.trim()
+            sp.edit().putString("enc_key_${v.id}", SecretStore.encrypt(k)).remove("key_${v.id}").apply()
+            return k
+        }
+        val enc = sp.getString("enc_key_${v.id}", "") ?: ""
+        return SecretStore.decrypt(enc) ?: ""
+    }
+
+    fun setKey(ctx: Context, v: AiProvider, key: String) {
+        p(ctx).edit()
+            .putString("enc_key_${v.id}", SecretStore.encrypt(key.trim()))
+            .remove("key_${v.id}")
+            .apply()
+    }
 
     fun openRouterModel(ctx: Context): String =
         p(ctx).getString("openrouter_model", OPENROUTER_DEFAULT_MODEL).takeIf { !it.isNullOrBlank() }
