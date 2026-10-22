@@ -465,6 +465,7 @@ class EditorActivity : Activity() {
             Triple(KilatIcon.SHAPE, "Bentuk") { showShapePicker() },
             Triple(KilatIcon.IMAGE, "Gambar") { pickImage(null) },
             Triple(KilatIcon.FILM, "Video") { pickVideoLayer() },
+            Triple(KilatIcon.MUSIC, "Musik") { showMusicDialog() },
             Triple(KilatIcon.PENCIL, "Coret") { toggleDrawMode() },
             Triple(KilatIcon.VECTOR, "SVG") { pickSvg() },
             Triple(KilatIcon.CUBE, "3D") { show3DPicker() },
