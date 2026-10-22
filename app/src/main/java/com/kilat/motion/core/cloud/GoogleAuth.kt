@@ -13,6 +13,7 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.kilat.motion.core.security.SecretStore
 import org.json.JSONObject
 import java.util.Base64
 
@@ -38,10 +39,18 @@ object GoogleAuth {
 
     fun session(ctx: Context, nowMs: Long = System.currentTimeMillis()): Session? {
         val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val token = p.getString("id_token", null) ?: return null
+        migrateLegacyToken(p)
+        val token = SecretStore.decrypt(p.getString("id_token_enc", "") ?: "")
+            ?.takeIf { it.isNotEmpty() } ?: return null
         val exp = p.getLong("expires_at", 0L)
         if (exp - 60_000L <= nowMs) return null // sudah habis atau hampir habis
         return Session(p.getString("email", "") ?: "", p.getString("name", "") ?: "", token, exp)
+    }
+
+    /** Versi lama menyimpan id_token plaintext. Dipindah ke bentuk terenkripsi, lalu plaintext dihapus. */
+    private fun migrateLegacyToken(p: android.content.SharedPreferences) {
+        val legacy = p.getString("id_token", null) ?: return
+        p.edit().putString("id_token_enc", SecretStore.encrypt(legacy)).remove("id_token").apply()
     }
 
     /** Email terakhir yang login, meski sesi sudah habis (untuk tampilan). */
@@ -112,7 +121,8 @@ object GoogleAuth {
         val expires = if (exp > 0) exp else System.currentTimeMillis() + 3_600_000L
 
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString("id_token", idToken)
+            .putString("id_token_enc", SecretStore.encrypt(idToken))
+            .remove("id_token")
             .putString("email", google.id)
             .putString("name", google.displayName ?: "")
             .putLong("expires_at", expires)
