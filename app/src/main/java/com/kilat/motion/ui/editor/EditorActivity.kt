@@ -1431,7 +1431,7 @@ class EditorActivity : Activity() {
             when (requestCode) {
                 REQ_PICK_IMAGE -> handleImagePicked(puri)
                 REQ_PICK_AUDIO -> importAudioFrom(puri)
-                REQ_PICK_VIDEO_LAYER -> handleVideoPicked(puri)
+                REQ_PICK_VIDEO_LAYER -> handleVideoPicked(puri, data?.getStringExtra(MediaPickerActivity.EXTRA_KEY))
                 else -> extractAudioFromVideo(puri)
             }
             return
@@ -1491,12 +1491,15 @@ class EditorActivity : Activity() {
         startActivityForResult(intent, REQ_PICK_VIDEO_LAYER)
     }
 
-    private fun handleVideoPicked(uri: Uri) {
-        toast("Mengimpor video...", KilatIcon.FILM)
+    private fun handleVideoPicked(uri: Uri, key: String? = null) {
+        val prog = KilatSheet.showProgress(this, "Menyiapkan video", "Menyalin video ke penyimpanan app")
         Thread {
-            val path = ProjectStore.importVideo(applicationContext, uri)
+            val path = ProjectStore.importVideo(applicationContext, uri, key) { f ->
+                runOnUiThread { if (!isFinishing) prog.setProgress(f, "${(f * 100).toInt()}%") }
+            }
             val info = if (path != null) VideoFrames.info(path) else null
             runOnUiThread {
+                prog.dismiss()
                 if (isFinishing) return@runOnUiThread
                 if (path == null || info == null || info.width <= 0 || info.height <= 0) {
                     toast("Gagal membaca video", KilatIcon.INFO)

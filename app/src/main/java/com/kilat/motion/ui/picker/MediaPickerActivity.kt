@@ -12,6 +12,7 @@ import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import com.kilat.motion.ui.components.KilatSheet
 import android.util.LruCache
 import android.util.Size
 import android.view.Gravity
@@ -48,8 +49,14 @@ class MediaPickerActivity : Activity() {
         val name: String,
         val durMs: Long,
         val kind: Kind,
-        val sub: String
+        val sub: String,
+        val bucket: String = "",   // nama folder (MediaStore BUCKET_DISPLAY_NAME)
+        val key: String = ""       // kunci stabil untuk cache impor (id + ukuran + tanggal ubah)
     )
+
+    private val allItems = ArrayList<Item>()
+    private var bucketFilter: String? = null   // null = semua folder
+    private lateinit var folderChip: TextView
 
     private lateinit var kind: Kind
     private val items = ArrayList<Item>()
@@ -66,8 +73,8 @@ class MediaPickerActivity : Activity() {
         const val MODE_VIDEO = "video"
         const val MODE_AUDIO = "audio"
         const val RESULT_FALLBACK = 7001
+        const val EXTRA_KEY = "kilat.picker.key"
         private const val PERM_REQ = 4411
-        private const val MAX_ITEMS = 240
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -104,6 +111,17 @@ class MediaPickerActivity : Activity() {
         lpT.marginStart = dp(8f)
         header.addView(title, lpT)
         root.addView(header, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+
+        folderChip = kText("Semua folder  \u25BE", 13f, KColors.Text, bold = true)
+        folderChip.setPadding(dp(14f), dp(8f), dp(14f), dp(8f))
+        folderChip.background = roundedRect(KColors.Card, dpf(16f))
+        folderChip.setOnClickListener { showFolderSheet() }
+        folderChip.visibility = View.GONE
+        val chipRow = LinearLayout(this)
+        chipRow.orientation = LinearLayout.HORIZONTAL
+        chipRow.setPadding(dp(12f), dp(2f), dp(12f), dp(8f))
+        chipRow.addView(folderChip, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        root.addView(chipRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
         val content = FrameLayout(this)
         grid = GridView(this).apply {
@@ -166,8 +184,9 @@ class MediaPickerActivity : Activity() {
             val list = query()
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
-                items.clear()
-                items.addAll(list)
+                allItems.clear()
+                allItems.addAll(list)
+                applyFilter()
                 if (items.isEmpty()) {
                     status.visibility = View.VISIBLE
                     status.text = when (kind) {
@@ -179,6 +198,7 @@ class MediaPickerActivity : Activity() {
                     status.visibility = View.GONE
                     grid.visibility = View.VISIBLE
                     grid.adapter = adapter
+                    folderChip.visibility = if (kind == Kind.AUDIO) View.GONE else View.VISIBLE
                 }
             }
         }
@@ -186,36 +206,54 @@ class MediaPickerActivity : Activity() {
 
     private fun query(): List<Item> {
         val out = ArrayList<Item>()
-        val (uriBase, projection, sort) = when (kind) {
-            Kind.IMAGE -> Triple(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DISPLAY_NAME),
-                "${MediaStore.Images.Media.DATE_ADDED} DESC"
-            )
-            Kind.VIDEO -> Triple(
-                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.DURATION),
-                "${MediaStore.Video.Media.DATE_ADDED} DESC"
-            )
-            Kind.AUDIO -> Triple(
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                arrayOf(
-                    MediaStore.Audio.Media._ID, MediaStore.Audio.Media.DISPLAY_NAME,
-                    MediaStore.Audio.Media.DURATION, MediaStore.Audio.Media.ARTIST
-                ),
-                "${MediaStore.Audio.Media.DATE_ADDED} DESC"
-            )
+        val uriBase: android.net.Uri = when (kind) {
+            Kind.IMAGE -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            Kind.VIDEO -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            Kind.AUDIO -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        }
+        val bucketCol = when (kind) {
+            Kind.IMAGE -> MediaStore.Images.Media.BUCKET_DISPLAY_NAME
+            Kind.VIDEO -> MediaStore.Video.Media.BUCKET_DISPLAY_NAME
+            Kind.AUDIO -> null
+        }
+        val durCol = when (kind) {
+            Kind.IMAGE -> null
+            Kind.VIDEO -> MediaStore.Video.Media.DURATION
+            Kind.AUDIO -> MediaStore.Audio.Media.DURATION
+        }
+        val artistCol = if (kind == Kind.AUDIO) MediaStore.Audio.Media.ARTIST else null
+        val sizeCol = if (kind == Kind.VIDEO) MediaStore.MediaColumns.SIZE else null
+        val modCol = if (kind == Kind.VIDEO) MediaStore.MediaColumns.DATE_MODIFIED else null
+        val cols = listOfNotNull(
+            MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME,
+            bucketCol, durCol, artistCol, sizeCol, modCol
+        ).toTypedArray()
+        val sort = when (kind) {
+            Kind.IMAGE -> "${MediaStore.Images.Media.DATE_ADDED} DESC"
+            Kind.VIDEO -> "${MediaStore.Video.Media.DATE_ADDED} DESC"
+            Kind.AUDIO -> "${MediaStore.Audio.Media.DATE_ADDED} DESC"
         }
         val selection = if (kind == Kind.AUDIO) "${MediaStore.Audio.Media.IS_MUSIC} != 0" else null
         var c: Cursor? = null
         try {
-            c = contentResolver.query(uriBase, projection, selection, null, sort)
-            c?.let {
-                while (it.moveToNext() && out.size < MAX_ITEMS) {
-                    val id = it.getLong(it.getColumnIndexOrThrow(projection[0]))
-                    val name = it.getString(it.getColumnIndexOrThrow(projection[1])) ?: "media"
-                    val dur = if (projection.size > 2) it.getLong(it.getColumnIndexOrThrow(projection[2])) else 0L
-                    val artist = if (projection.size > 3) it.getString(it.getColumnIndexOrThrow(projection[3])) else null
+            c = contentResolver.query(uriBase, cols, selection, null, sort)
+            c?.let { cur ->
+                fun col(n: String?): Int? = n?.let { x -> cur.getColumnIndex(x).takeIf { i -> i >= 0 } }
+                val iId = col(MediaStore.MediaColumns._ID) ?: return@let
+                val iName = col(MediaStore.MediaColumns.DISPLAY_NAME)
+                val iBucket = col(bucketCol)
+                val iDur = col(durCol)
+                val iArtist = col(artistCol)
+                val iSize = col(sizeCol)
+                val iMod = col(modCol)
+                while (cur.moveToNext()) {
+                    val id = cur.getLong(iId)
+                    val name = iName?.let { cur.getString(it) } ?: "media"
+                    val bucket = iBucket?.let { cur.getString(it) } ?: ""
+                    val dur = iDur?.let { cur.getLong(it) } ?: 0L
+                    val artist = iArtist?.let { cur.getString(it) }
+                    val size = iSize?.let { cur.getLong(it) } ?: 0L
+                    val mod = iMod?.let { cur.getLong(it) } ?: 0L
                     out.add(
                         Item(
                             id = id,
@@ -223,16 +261,41 @@ class MediaPickerActivity : Activity() {
                             name = name,
                             durMs = dur,
                             kind = kind,
-                            sub = artist?.takeIf { a -> a.isNotBlank() && a != "<unknown>" } ?: ""
+                            sub = artist?.takeIf { a -> a.isNotBlank() && a != "<unknown>" } ?: "",
+                            bucket = bucket,
+                            key = if (kind == Kind.VIDEO) "v${id}_${size}_$mod" else ""
                         )
                     )
                 }
             }
-        } catch (_: Throwable) {
+        } catch (_: Exception) {
         } finally {
             c?.close()
         }
         return out
+    }
+
+    /** Terapkan filter folder ke daftar yang tampil di grid. */
+    private fun applyFilter() {
+        items.clear()
+        items.addAll(if (bucketFilter == null) allItems else allItems.filter { it.bucket == bucketFilter })
+        folderChip.text = "${bucketFilter?.let { bucketLabel(it) } ?: "Semua folder"}  \u25BE"
+        if (::grid.isInitialized && grid.adapter != null) adapter.notifyDataSetChanged()
+    }
+
+    private fun bucketLabel(b: String): String = b.ifBlank { "Lainnya" }
+
+    /** Daftar folder dengan jumlah item, dibuka sebagai sheet gelap. */
+    private fun showFolderSheet() {
+        val groups = allItems.groupingBy { it.bucket }.eachCount().toList()
+            .sortedBy { bucketLabel(it.first).lowercase() }
+        val list = ArrayList<KilatSheet.Item>()
+        list.add(KilatSheet.Item("Semua folder", "${allItems.size} item"))
+        groups.forEach { (b, n) -> list.add(KilatSheet.Item(bucketLabel(b), "$n item")) }
+        KilatSheet.showList(this, "Pilih folder", list) { idx ->
+            bucketFilter = if (idx == 0) null else groups[idx - 1].first
+            applyFilter()
+        }
     }
 
     private fun pick(item: Item) {
@@ -240,6 +303,7 @@ class MediaPickerActivity : Activity() {
             setData(item.uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             putExtra("kilat.picker.name", item.name)
+            putExtra(EXTRA_KEY, item.key)
         }
         setResult(RESULT_OK, data)
         finish()

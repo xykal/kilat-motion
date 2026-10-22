@@ -369,14 +369,44 @@ object ProjectStore {
 
     // ---------------- IMAGE IMPORT ----------------
     /** Menyalin video ke penyimpanan app. Frame dibaca lewat VideoFrames. */
-    fun importVideo(ctx: Context, uri: Uri): String? {
+    /**
+     * Salin video ke penyimpanan app. Dengan [key] (id + ukuran + tanggal ubah dari MediaStore),
+     * video yang sama tidak disalin ulang. Salinan ditulis ke ".part" dulu lalu di-rename,
+     * jadi file setengah jadi tidak pernah dipakai. [onProgress] menerima 0..1 bila ukuran diketahui.
+     */
+    fun importVideo(ctx: Context, uri: Uri, key: String? = null, onProgress: ((Float) -> Unit)? = null): String? {
         return try {
             val dir = File(ctx.filesDir, "videos").apply { if (!exists()) mkdirs() }
-            val dest = File(dir, "vid_" + UUID.randomUUID().toString().substring(0, 8) + ".mp4")
+            val safe = key?.replace(Regex("[^A-Za-z0-9_-]"), "")?.takeIf { it.isNotEmpty() }
+            val name = if (safe != null) "vid_$safe.mp4"
+            else "vid_" + UUID.randomUUID().toString().substring(0, 8) + ".mp4"
+            val dest = File(dir, name)
+            if (dest.exists() && dest.length() > 0L) {
+                onProgress?.invoke(1f)
+                return dest.absolutePath
+            }
+            val total = ctx.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1L
+            val tmp = File(dir, "$name.part")
             val input = ctx.contentResolver.openInputStream(uri) ?: return null
-            input.use { src -> dest.outputStream().use { src.copyTo(it) } }
+            input.use { src ->
+                tmp.outputStream().use { out ->
+                    val buf = ByteArray(64 * 1024)
+                    var copied = 0L
+                    while (true) {
+                        val n = src.read(buf)
+                        if (n <= 0) break
+                        out.write(buf, 0, n)
+                        copied += n
+                        if (total > 0) onProgress?.invoke((copied.toFloat() / total).coerceIn(0f, 1f))
+                    }
+                }
+            }
+            if (!tmp.renameTo(dest)) {
+                tmp.delete()
+                return null
+            }
             dest.absolutePath
-        } catch (e: Throwable) {
+        } catch (e: Exception) {
             null
         }
     }
