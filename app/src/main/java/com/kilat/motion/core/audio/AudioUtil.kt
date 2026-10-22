@@ -112,9 +112,9 @@ object AudioUtil {
         } catch (e: Throwable) {
             return null
         } finally {
-            try { codec?.stop() } catch (e: Throwable) {}
-            try { codec?.release() } catch (e: Throwable) {}
-            try { extractor?.release() } catch (e: Throwable) {}
+            try { codec?.stop() } catch (e: Exception) {}
+            try { codec?.release() } catch (e: Exception) {}
+            try { extractor?.release() } catch (e: Exception) {}
         }
     }
 

@@ -133,7 +133,7 @@ object Exporter {
         } catch (e: Throwable) {
             false
         } finally {
-            try { ex.release() } catch (e: Throwable) {}
+            try { ex.release() } catch (e: Exception) {}
         }
     }
 
@@ -279,7 +279,7 @@ object Exporter {
             codec.signalEndOfInputStream()
             drain(codec, state, true)
             try { audioWriter?.writeUntil(Long.MAX_VALUE / 4) } catch (e: Throwable) {}
-            try { audioExtractor?.release() } catch (e: Throwable) {}
+            try { audioExtractor?.release() } catch (e: Exception) {}
             onProgress(1f)
 
             try {

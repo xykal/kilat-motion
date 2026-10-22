@@ -145,6 +145,9 @@ class EditorActivity : Activity() {
 
     override fun onDestroy() {
         musicPlayer.release()
+        // Retriever video tidak boleh tertinggal setelah editor benar-benar ditutup.
+        // Saat rotasi (bukan selesai), cache dibiarkan agar tidak membuka ulang video.
+        if (isFinishing) VideoFrames.clear()
         super.onDestroy()
     }
 

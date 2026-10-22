@@ -35,7 +35,7 @@ object VideoFrames {
         } catch (e: Throwable) {
             null
         } finally {
-            try { r.release() } catch (e: Throwable) {}
+            try { r.release() } catch (e: Exception) {}
         }
     }
 
@@ -60,12 +60,14 @@ object VideoFrames {
         return scaled
     }
 
-    /** Lepas semua retriever dan frame cache. */
+    /**
+     * Lepas semua retriever dan buang frame cache. Bitmap tidak di-recycle di sini karena
+     * pemanggil mungkin masih memakainya; GC yang membersihkannya.
+     */
     @Synchronized
     fun clear() {
         for (e in entries.values) {
-            try { e.retriever.release() } catch (ex: Throwable) {}
-            e.lastFrame?.takeIf { !it.isRecycled }?.recycle()
+            try { e.retriever.release() } catch (ex: Exception) {}
         }
         entries.clear()
     }
@@ -78,13 +80,13 @@ object VideoFrames {
             if (entries.size >= MAX_ENTRIES) {
                 val oldestKey = entries.keys.first()
                 entries.remove(oldestKey)?.let { old ->
-                    try { old.retriever.release() } catch (ex: Throwable) {}
+                    try { old.retriever.release() } catch (ex: Exception) {}
                     old.lastFrame?.takeIf { !it.isRecycled }?.recycle()
                 }
             }
             Entry(r).also { entries[path] = it }
         } catch (e: Throwable) {
-            try { r.release() } catch (ex: Throwable) {}
+            try { r.release() } catch (ex: Exception) {}
             null
         }
     }

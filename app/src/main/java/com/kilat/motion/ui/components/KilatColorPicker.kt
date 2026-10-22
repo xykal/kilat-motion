@@ -108,7 +108,7 @@ class KilatColorPickerView(context: Context) : LinearLayout(context) {
             sw.background = roundedRect(c, dpf(8f))
             val lpS = LayoutParams(0, dp(30f), 1f)
             if (idx % 8 != 0) lpS.leftMargin = dp(6f)
-            row!!.addView(sw, lpS)
+            row?.addView(sw, lpS)
             sw.setOnClickListener { setColor(c, notify = true) }
         }
 

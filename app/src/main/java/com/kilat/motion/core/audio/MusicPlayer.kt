@@ -57,8 +57,8 @@ class MusicPlayer(private val context: Context) {
     }
 
     fun release() {
-        try { player?.stop() } catch (e: Throwable) {}
-        try { player?.release() } catch (e: Throwable) {}
+        try { player?.stop() } catch (e: Exception) {}
+        try { player?.release() } catch (e: Exception) {}
         player = null
         loadedPath = ""
     }
