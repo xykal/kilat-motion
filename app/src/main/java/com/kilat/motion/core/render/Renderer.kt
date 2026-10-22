@@ -38,7 +38,7 @@ import kotlin.math.sqrt
  * Semua koordinat dalam satuan project (mis. 1080x1920); canvas di-scale oleh pemanggil.
  */
 /** Efek yang ditimpa di atas konten (SRC_ATOP, hanya pada piksel konten). */
-private val OVERLAY_EFFECTS = setOf("vignette", "scanlines", "grain", "lightleak")
+private val OVERLAY_EFFECTS = EffectDraw.OVERLAY_TYPES
 
 object Renderer {
 
@@ -291,24 +291,35 @@ object Renderer {
         val rgb = active.firstOrNull { it.type == "rgbsplit" }
         val tint = active.firstOrNull { it.type == "tint" }
         val overlays = active.filter { it.type in OVERLAY_EFFECTS }
-        val needsLayer = rgb != null || tint != null || overlays.isNotEmpty()
+        val colorFx = active.filter { it.type in EffectDraw.COLOR_TYPES }
+        val colorMatrix = EffectDraw.composeColor(colorFx, t)
+        val shake = active.firstOrNull { it.type == "shake" }
+        val needsLayer = rgb != null || tint != null || overlays.isNotEmpty() || colorMatrix != null
 
         if (needsLayer) {
             // Mode blend & alpha layer dipindah ke saveLayer supaya tetap berlaku.
             fxLayerPaint.reset()
             fxLayerPaint.alpha = fp.alpha
             fxLayerPaint.xfermode = fp.xfermode
+            fxLayerPaint.colorFilter = colorMatrix?.let { ColorMatrixColorFilter(ColorMatrix(it)) }
             fp.alpha = 255
             sp.alpha = 255
             fp.xfermode = null
             canvas.saveLayer(fxBounds, fxLayerPaint)
         }
 
+        // Shake menggeser konten saja (bukan overlay), dengan save/restore supaya stack tetap seimbang.
+        val shakeOff = shake?.let { EffectDraw.shakeOffset(it, cw, t) }
+        if (shakeOff != null) {
+            canvas.save()
+            canvas.translate(shakeOff.first, shakeOff.second)
+        }
         when {
             glitch != null -> drawGlitch(canvas, layer, fx, fp, sp, glitch, t, cw)
             rgb != null -> drawRgbSplit(canvas, layer, fx, fp, sp, rgb)
             else -> drawContent(canvas, layer, fx, fp, sp, isGlow = false)
         }
+        if (shakeOff != null) canvas.restore()
 
         if (tint != null) {
             fxOverlay.reset()
@@ -365,52 +376,7 @@ object Renderer {
     }
 
     private fun drawOverlay(canvas: Canvas, e: LayerEffect, cw: Float, ch: Float, t: Float) {
-        fxOverlay.reset()
-        fxOverlay.isAntiAlias = true
-        fxOverlay.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
-        val a = (e.amount * 255f).toInt().coerceIn(0, 255)
-        when (e.type) {
-            "vignette" -> {
-                val r = max(1f, hypot(cw, ch) / 2f * (0.35f + 0.65f * (1f - e.size)))
-                fxOverlay.shader = RadialGradient(
-                    0f, 0f, r,
-                    intArrayOf(withAlpha(e.color, 0), withAlpha(e.color, a)),
-                    floatArrayOf(0.55f, 1f), Shader.TileMode.CLAMP
-                )
-                canvas.drawRect(fxBounds, fxOverlay)
-            }
-            "lightleak" -> {
-                val cx = -cw / 2f + e.size * cw
-                val cy = -ch / 2f
-                fxOverlay.shader = RadialGradient(
-                    cx, cy, max(cw, ch) * 0.9f,
-                    intArrayOf(withAlpha(e.color, a), withAlpha(e.color, 0)),
-                    floatArrayOf(0f, 1f), Shader.TileMode.CLAMP
-                )
-                canvas.drawRect(fxBounds, fxOverlay)
-            }
-            "scanlines" -> {
-                val step = 4f + e.size * 16f
-                val thick = step * 0.45f
-                fxOverlay.color = withAlpha(0xFF000000.toInt(), a)
-                var y = fxBounds.top
-                while (y < fxBounds.bottom) {
-                    canvas.drawRect(fxBounds.left, y, fxBounds.right, min(fxBounds.bottom, y + thick), fxOverlay)
-                    y += step
-                }
-            }
-            "grain" -> {
-                val tile = grainBitmap()
-                val shader = android.graphics.BitmapShader(tile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-                val seed = floor(t * 24f).toInt()
-                val m = Matrix()
-                m.setTranslate(hash01(seed) * tile.width, hash01(seed + 7) * tile.height)
-                shader.setLocalMatrix(m)
-                fxOverlay.shader = shader
-                fxOverlay.alpha = a
-                canvas.drawRect(fxBounds, fxOverlay)
-            }
-        }
+        EffectDraw.drawOverlay(canvas, fxOverlay, e, fxBounds, cw, ch, t) { grainBitmap() }
     }
 
     private fun grainBitmap(): Bitmap {
