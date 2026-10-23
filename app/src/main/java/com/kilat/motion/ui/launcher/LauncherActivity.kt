@@ -21,6 +21,7 @@ import com.kilat.motion.ui.theme.dp
 import com.kilat.motion.ui.theme.dpf
 import com.kilat.motion.ui.theme.kText
 import com.kilat.motion.ui.theme.kilatSolid
+import com.kilat.motion.ui.theme.roundedRect
 
 /**
  * Layar pembuka: splash singkat logo KILAT, lalu diarahkan ke onboarding
