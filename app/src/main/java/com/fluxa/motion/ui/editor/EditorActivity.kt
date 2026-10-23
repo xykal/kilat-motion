@@ -1,6 +1,7 @@
 package com.fluxa.motion.ui.editor
 
 import com.fluxa.motion.core.model.*
+import kotlin.math.roundToInt
 import com.fluxa.motion.core.animation.Anim
 import com.fluxa.motion.core.audio.AudioUtil
 import com.fluxa.motion.core.audio.MusicPlayer
@@ -232,10 +233,9 @@ class EditorActivity : Activity() {
         undoBtn.setOnClickListener { undo() }
         val lpUndo = LinearLayout.LayoutParams(dp(40f), dp(40f))
         lpUndo.marginStart = dp(6f)
-        top.addView(undoBtn, lpUndo)
         redoBtn = FluxaIconButton(this, FluxaIcon.REDO, FluxaColors.Faint, filled = false, sizeDp = 40f)
         redoBtn.setOnClickListener { redo() }
-        top.addView(redoBtn, LinearLayout.LayoutParams(dp(40f), dp(40f)))
+        // undo/redo dipasang di transport bar, di samping tombol play
 
         nameEdit = EditText(this)
         nameEdit.setText(project.name)
@@ -291,7 +291,8 @@ class EditorActivity : Activity() {
                 timeline.invalidate()
                 if (commit) {
                     autosave()
-                    if (inspectorPanel.visibility == View.VISIBLE) showInspectorFor(project.findLayer(selectedId))
+                    // saat play jangan bangun ulang inspector, supaya keyframe bisa ditambah sambil memutar
+                    if (inspectorPanel.visibility == View.VISIBLE && !playing) showInspectorFor(project.findLayer(selectedId))
                 }
             }
 
@@ -344,6 +345,9 @@ class EditorActivity : Activity() {
         timecode = kText("00:00.00 / 00:00.00", 11.5f, FluxaColors.Text, bold = true, font = "monospace")
         timecode.gravity = Gravity.CENTER_VERTICAL or Gravity.START
         transport.addView(timecode, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+
+        transport.addView(undoBtn, LinearLayout.LayoutParams(dp(38f), dp(38f)))
+        transport.addView(redoBtn, LinearLayout.LayoutParams(dp(38f), dp(38f)))
 
         val playWrap = FrameLayout(this)
         playWrap.background = ovalBg(0xFFFFFFFF.toInt())
@@ -1673,6 +1677,26 @@ class EditorActivity : Activity() {
         }
     }
 
+    /** Format durasi: 45 dtk, 2 mnt 5 dtk, 1 jam 3 mnt. */
+    private fun formatDuration(sec: Float): String {
+        val s = sec.roundToInt().coerceAtLeast(0)
+        val h = s / 3600
+        val m = (s % 3600) / 60
+        val r = s % 60
+        return when {
+            h > 0 -> "$h jam $m mnt"
+            m > 0 -> "$m mnt $r dtk"
+            else -> "$r dtk"
+        }
+    }
+
+    /** Jam selesai perkiraan (HH:mm) dari sekarang + sisa detik. */
+    private fun clockAfter(sec: Float): String {
+        val cal = java.util.Calendar.getInstance()
+        cal.add(java.util.Calendar.SECOND, sec.roundToInt().coerceAtLeast(0))
+        return String.format("%02d:%02d", cal.get(java.util.Calendar.HOUR_OF_DAY), cal.get(java.util.Calendar.MINUTE))
+    }
+
     private fun runExport(longSide: Int, fps: Int = 30, mbps: Int = 0) {
         if (playing) stopPlay()
         musicPlayer.sync(project.music, playhead, false)
@@ -1681,8 +1705,18 @@ class EditorActivity : Activity() {
 
         Thread {
             val ctx = applicationContext
+            val startedAt = System.currentTimeMillis()
             fun progressFn(f: Float) {
-                runOnUiThread { if (!isFinishing) handle.setProgress(f, "Merender frame video...") }
+                // perkiraan sisa waktu dari kecepatan render sejauh ini
+                val elapsed = (System.currentTimeMillis() - startedAt) / 1000f
+                val pct = (f * 100f).toInt().coerceIn(0, 100)
+                val eta = if (f > 0.01f) elapsed * (1f - f) / f else -1f
+                val status = if (eta >= 0f) {
+                    "Merender frame video · $pct% · sisa ${formatDuration(eta)} (selesai ${clockAfter(eta)})"
+                } else {
+                    "Merender frame video · $pct% · menghitung perkiraan..."
+                }
+                runOnUiThread { if (!isFinishing) handle.setProgress(f, status) }
             }
             var result = Exporter.exportVideo(ctx, p, longSide, fps, mbps) { f -> progressFn(f) }
             // fallback otomatis: beberapa HP tidak mendukung encode 1080p tertentu
@@ -1971,7 +2005,7 @@ class EditorActivity : Activity() {
             p.height = h
         }
         p.bg = bg
-        val nd = dur.coerceIn(2f, 60f)
+        val nd = dur.coerceIn(0.5f, 3600f) // durasi tanpa batas praktis
         p.duration = nd
         for (l in p.layers) {
             if (l.start > nd - 0.2f) l.start = max(0f, nd - 1f)

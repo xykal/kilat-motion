@@ -1411,9 +1411,25 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val valTv = labelTv("", 11f, cText, 40f)
         val keyBtn = KeyframeButton(context)
 
-        row.addView(seek, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-        row.addView(valTv)
+        // slider diganti kontrol −/+ dan nilai yang bisa diketik (tanpa batas min/max)
+        seek.visibility = View.GONE
+        row.addView(seek, LayoutParams(0, 0))
+        val minusBtn = FluxaIconButton(context, FluxaIcon.MINUS, cText, filled = true, sizeDp = 30f)
+        val plusBtn = FluxaIconButton(context, FluxaIcon.PLUS, cText, filled = true, sizeDp = 30f)
+        valTv.gravity = Gravity.CENTER
+        row.addView(minusBtn, LayoutParams(dp(30f).toInt(), dp(30f).toInt()))
+        row.addView(valTv, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(plusBtn, LayoutParams(dp(30f).toInt(), dp(30f).toInt()))
         row.addView(keyBtn, LayoutParams(dp(30f).toInt(), dp(30f).toInt()))
+        fun nudge(d: Float) {
+            val nv = Anim.value(l, key, curPlayhead) + d
+            applyValue(l, key, nv)
+            valTv.text = if (isInt) nv.roundToInt().toString() else Format.dec(nv, 2)
+            listener?.onEdited(true)
+            syncValues()
+        }
+        minusBtn.setOnClickListener { nudge(-step * 5f) }
+        plusBtn.setOnClickListener { nudge(step * 5f) }
 
         val ref = RowRef(key, seek, valTv, keyBtn, minV, step, isInt, l)
         rows.add(ref)

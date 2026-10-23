@@ -146,38 +146,19 @@ object Templates {
 
     val ALL: List<TemplateInfo> = listOf(
         TemplateInfo(
-            "jj_velocity", "JJ Velocity", "Speed ramp + balik 3D + motion blur ala preset velocity TikTok",
-            0xFF00E5FF.toInt(), 2.6f
-        ) { jjVelocity() },
-        TemplateInfo(
-            "jj_lirik", "JJ Lirik DJ", "Kata per kata menghentak ikuti beat + garis karaoke, tinggal ganti liriknya",
-            0xFFFFD166.toInt(), 2.5f
-        ) { jjLirik() },
-        TemplateInfo(
-            "jj_beat130", "JJ Jedag Jedug 130", "Kotak foto menghentak tiap beat 130 BPM + flash - ganti dengan fotomu",
-            0xFFFF2D78.toInt(), 1.9f
-        ) { jjBeat130() },
-        TemplateInfo(
-            "jj_soft", "JJ Soft Spoken", "Pastel lembut + light leak + hentakan halus ala preset soft spoken",
-            0xFFFFB3C7.toInt(), 3.2f
-        ) { jjSoft() },
-        TemplateInfo(
-            "jj_tipis", "JJ Tipis", "Hentakan super tipis & bersih, favorit buat foto aesthetic",
-            0xFF2EE6C0.toInt(), 2.2f
-        ) { jjTipis() },
-        TemplateInfo(
-            "jj_serem", "JJ Kece Serem", "Gelap merah, getar glitch & kedip hitam ala sound serem viral",
-            0xFFD90429.toInt(), 1.7f
-        ) { jjSerem() },
-        TemplateInfo(
             "jj_reportase", "JJ Reportase", "Kotak judul putih slide masuk, kartu foto miring blur-in tiap hentakan, glitch tipis & kredit by : nama",
             0xFF59A8FF.toInt(), 2.6f
-        ) { jjReportase() }
+        ) { jjReportase() },
+        TemplateInfo(
+            "jj_kartu", "JJ Kartu Miring", "Kartu foto ungu, judul tegas, hentakan lebih cepat + glitch & blur-in",
+            0xFF9B5DE5.toInt(), 2.6f
+        ) { jjKartuMiring() }
     )
 
     /** Asset audio bawaan per template (di app/src/main/assets). Kalau file tidak ada, template tetap jalan tanpa musik. */
     fun musicAssetFor(id: String): String? = when (id) {
         "jj_reportase" -> "sound/reportase-a.m4a"
+        "jj_kartu" -> "sound/reportase-b.m4a"
         else -> null
     }
 
@@ -196,18 +177,21 @@ object Templates {
 
     /** JJ Velocity: speed ramp (pelan -> menghentak), flip 3D, motion blur sesaat, kubus 3D berputar. */
     /** JJ Reportase: gaya kartu berita viral. Ganti kartu "FOTO KAMU" dan teks judul/kredit dengan punyamu. */
-    fun jjReportase(): Project {
+    fun jjReportase(): Project = reportStyle("JJ Reportase", 0xFF0A1424.toInt(), 0xFF2A5C9A.toInt(), 0.4528f, 0.39f, "PENAMPAKAN VIRAL")
+
+    fun jjKartuMiring(): Project = reportStyle("JJ Kartu Miring", 0xFF120A1E.toInt(), 0xFF6A2AB0.toInt(), 0.678f, 0.2f, "KABAR TERBARU")
+
+    /** Gaya kartu berita viral. beat = detik per ketukan, ph = fase pukulan pertama. */
+    private fun reportStyle(name: String, bgColor: Int, glowColor: Int, beat: Float, ph: Float, headline: String): Project {
         val p = Project()
-        p.name = "JJ Reportase"
+        p.name = name
         p.duration = 10f
-        p.bg = 0xFF0A1424.toInt()
-        val beat = 0.4528f // ~132.5 BPM (estimasi dari audio referensi, sudah dicek ulang)
-        val ph = 0.39f     // fase pukulan pertama (detik)
+        p.bg = bgColor
 
         // glow latar berdenyut tiap 2 beat
         val glow = Layer().apply {
             kind = KIND_SHAPE; name = "Glow latar"; shape = "circle"
-            w = 1000f; h = 1000f; fill = 0xFF2A5C9A.toInt()
+            w = 1000f; h = 1000f; fill = glowColor
             x = 540f; y = 900f; alpha = 0.55f; blend = "screen"; fxBlur = 60f
             start = 0f; dur = 10f
         }
@@ -256,7 +240,7 @@ object Templates {
             shadowBlur = 20f; shadowDy = 8f
         }
         val headTxt = Layer().apply {
-            kind = KIND_TEXT; name = "Judul"; text = "PENAMPAKAN VIRAL"
+            kind = KIND_TEXT; name = "Judul"; text = headline
             fontKey = "sans_black"; textSize = 66f; bold = true; align = "center"
             color = 0xFF0A0A0A.toInt()
             x = 540f; y = 322f; start = 0f; dur = 10f
