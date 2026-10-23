@@ -217,6 +217,10 @@ def main():
 
     def template_reportase():
         dismiss_anr()
+        # tutup editor JJ Velocity yang masih terbuka dari langkah sebelumnya
+        for _ in range(2):
+            adb("shell", "input", "keyevent", "KEYCODE_BACK")
+            time.sleep(1)
         tap_text("Template")
         time.sleep(1.5)
         for _ in range(8):
