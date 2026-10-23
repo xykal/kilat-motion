@@ -3,6 +3,10 @@ package com.fluxa.motion.ui.components
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.widget.Toast
+import android.widget.HorizontalScrollView
+import android.content.ClipboardManager
+import android.content.ClipData
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -45,6 +49,12 @@ class FluxaColorPickerView(context: Context) : LinearLayout(context) {
     private val rgbLabel: TextView
     private var syncingHex = false
 
+    // ambil warna dari media (sampel pixel) — tersembunyi kecuali ada media
+    private val mediaLabel = context.kText("AMBIL DARI MEDIA · ketuk untuk sampel", 9.5f, FluxaColors.Dim, bold = true)
+    private val sampleView = SampleView(context)
+    // warna saya: daftar tersimpan (SharedPreferences)
+    private val savedRow = LinearLayout(context)
+
     init {
         orientation = VERTICAL
         Color.colorToHSV(color, hsv)
@@ -76,6 +86,10 @@ class FluxaColorPickerView(context: Context) : LinearLayout(context) {
         val lpRgb = LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpRgb.leftMargin = dp(10f)
         infoRow.addView(rgbLabel, lpRgb)
+        val copyBtn = context.kText("Salin", 11f, FluxaColors.Accent, bold = true)
+        copyBtn.setPadding(dp(10f), dp(8f), dp(6f), dp(8f))
+        copyBtn.setOnClickListener { copyHex() }
+        infoRow.addView(copyBtn, LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         addView(infoRow, lpInfo)
         hexInput.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus && !syncingHex) {
@@ -111,6 +125,25 @@ class FluxaColorPickerView(context: Context) : LinearLayout(context) {
             row?.addView(sw, lpS)
             sw.setOnClickListener { setColor(c, notify = true) }
         }
+
+        // ambil warna dari media
+        val lpML = LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpML.topMargin = dp(14f)
+        addView(mediaLabel, lpML)
+        addView(sampleView, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(150f)).apply { topMargin = dp(8f) })
+        mediaLabel.visibility = View.GONE
+        sampleView.visibility = View.GONE
+
+        // warna saya (tersimpan)
+        val savedLabel = context.kText("WARNA SAYA · tahan untuk hapus", 9.5f, FluxaColors.Dim, bold = true)
+        val lpSL = LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpSL.topMargin = dp(14f)
+        addView(savedLabel, lpSL)
+        val savedScroll = HorizontalScrollView(context)
+        savedScroll.isHorizontalScrollBarEnabled = false
+        savedScroll.addView(savedRow)
+        addView(savedScroll, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8f) })
+        refreshSaved()
 
         svView.onPick = { s, v ->
             hsv[1] = s; hsv[2] = v; pushFromHsv()
@@ -309,12 +342,107 @@ class FluxaColorPickerView(context: Context) : LinearLayout(context) {
             return true
         }
     }
+    fun setMedia(bmp: Bitmap?) {
+        sampleView.bmp = bmp
+        val vis = if (bmp != null) View.VISIBLE else View.GONE
+        mediaLabel.visibility = vis
+        sampleView.visibility = vis
+        sampleView.invalidate()
+    }
+
+    private fun prefs() = context.getSharedPreferences("fluxa_colors", Context.MODE_PRIVATE)
+
+    private fun savedColors(): MutableList<Int> =
+        (prefs().getString("list", "") ?: "").split(",").mapNotNull { it.toLongOrNull(16)?.toInt() }.toMutableList()
+
+    private fun persistSaved(list: List<Int>) {
+        prefs().edit().putString("list", list.joinToString(",") { Integer.toHexString(it) }).apply()
+    }
+
+    private fun refreshSaved() {
+        savedRow.removeAllViews()
+        for (c in savedColors()) {
+            val sw = View(context)
+            sw.background = roundedRect(c, dpf(8f))
+            val lp = LayoutParams(dp(30f), dp(30f))
+            lp.rightMargin = dp(6f)
+            savedRow.addView(sw, lp)
+            sw.setOnClickListener { setColor(c, notify = true) }
+            sw.setOnLongClickListener {
+                val list = savedColors()
+                list.remove(c)
+                persistSaved(list)
+                refreshSaved()
+                true
+            }
+        }
+        val add = context.kText("+", 16f, FluxaColors.Accent, bold = true)
+        add.gravity = Gravity.CENTER
+        add.background = roundedRect(FluxaColors.Field, dpf(8f))
+        add.setOnClickListener {
+            val list = savedColors()
+            if (!list.contains(color)) {
+                list.add(color)
+                persistSaved(list)
+            }
+            refreshSaved()
+        }
+        savedRow.addView(add, LayoutParams(dp(30f), dp(30f)))
+    }
+
+    private fun copyHex() {
+        val text = if (alpha >= 255) String.format("#%06X", color and 0xFFFFFF) else String.format("#%08X", color)
+        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("warna", text))
+        Toast.makeText(context, "Disalin $text", Toast.LENGTH_SHORT).show()
+    }
+
+    /** Sampel pixel dari media: ketuk/seret di atas gambar untuk ambil warnanya. */
+    private inner class SampleView(ctx: Context) : View(ctx) {
+        var bmp: Bitmap? = null
+        private val dst = RectF()
+        private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = dpf(2f)
+            color = FluxaColors.Accent
+        }
+        private var mx = -1f
+        private var my = -1f
+
+        override fun onDraw(canvas: Canvas) {
+            val b = bmp ?: return
+            if (width <= 0 || height <= 0) return
+            val sc = min(width / b.width.toFloat(), height / b.height.toFloat())
+            val w = b.width * sc
+            val h = b.height * sc
+            val l = (width - w) / 2f
+            val t = (height - h) / 2f
+            dst.set(l, t, l + w, t + h)
+            canvas.drawBitmap(b, null, dst, null)
+            if (mx >= 0f) canvas.drawCircle(mx, my, dpf(9f), ring)
+        }
+
+        override fun onTouchEvent(e: MotionEvent): Boolean {
+            val b = bmp ?: return false
+            parent?.requestDisallowInterceptTouchEvent(true)
+            if (!dst.contains(e.x, e.y)) return true
+            val px = ((e.x - dst.left) / dst.width() * b.width).toInt().coerceIn(0, b.width - 1)
+            val py = ((e.y - dst.top) / dst.height() * b.height).toInt().coerceIn(0, b.height - 1)
+            mx = e.x
+            my = e.y
+            val c = b.getPixel(px, py)
+            setColor((c and 0x00FFFFFF) or 0xFF000000.toInt(), notify = true)
+            invalidate()
+            return true
+        }
+    }
 }
 
 object FluxaColorPicker {
-    fun show(activity: Activity, initial: Int, title: String = "Pilih Warna", onPick: (Int) -> Unit) {
+    fun show(activity: Activity, initial: Int, title: String = "Pilih Warna", media: Bitmap? = null, onPick: (Int) -> Unit) {
         val picker = FluxaColorPickerView(activity)
         picker.setColor(initial, notify = false)
+        picker.setMedia(media)
         FluxaSheet.show(
             activity, title, picker,
             positiveText = "Pakai Warna", positiveIcon = FluxaIcon.CHECK,

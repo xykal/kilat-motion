@@ -380,7 +380,7 @@ class TimelineView(context: Context) : View(context) {
             // preview kecil klip (warna sesuai jenis) di kolom kiri
             val tileC = kindColor(layer.kind)
             barPaint.color = if (layer.hidden) solidMix(tileC, 0.6f) else tileC
-            canvas.drawRoundRect(dp(8f), top + rh / 2f - dp(12f), dp(32f), top + rh / 2f + dp(12f), dp(5f), dp(5f), barPaint)
+            canvas.drawRoundRect(dp(8f), top + rh / 2f - dp(8f), dp(26f), top + rh / 2f + dp(8f), dp(4f), dp(4f), barPaint)
             canvas.drawText(label, dp(40f), nameY, namePaint)
             // dot visibility / ikon kunci
             if (layer.locked) {

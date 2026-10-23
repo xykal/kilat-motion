@@ -1179,6 +1179,16 @@ class EditorActivity : Activity() {
         }
     }
 
+    /** Gambar preview saat ini (untuk ambil warna dari media). */
+    private fun previewBitmap(): android.graphics.Bitmap? {
+        val w = preview.width
+        val h = preview.height
+        if (w <= 0 || h <= 0) return null
+        val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        preview.draw(android.graphics.Canvas(bmp))
+        return bmp
+    }
+
     private fun splitLayerAtPlayhead(layer: Layer) {
         val second = Anim.splitAt(layer, playhead)
         if (second == null) {
@@ -1988,7 +1998,7 @@ class EditorActivity : Activity() {
         wrap.addView(swRow)
         val customBgBtn = FluxaButton(this, "Warna Custom...", FluxaIcon.SPARK, FluxaButtonStyle.GHOST, 11.5f)
         customBgBtn.setOnClickListener {
-            FluxaColorPicker.show(this, newBg, "Warna Latar Custom") { col ->
+            FluxaColorPicker.show(this, newBg, "Warna Latar Custom", media = previewBitmap()) { col ->
                 newBg = col
                 bgLabel.text = "Warna latar: " + com.fluxa.motion.core.model.Format.color(col)
                 refreshSwatches()
