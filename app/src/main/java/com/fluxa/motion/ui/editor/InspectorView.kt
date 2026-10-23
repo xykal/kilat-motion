@@ -48,6 +48,8 @@ class InspectorView(context: Context) : LinearLayout(context) {
     interface Listener {
         fun onEdited(commit: Boolean)
         fun onRequestImage(layer: Layer)
+        /** Minta media untuk isi shape. mode: "image" atau "video". */
+        fun onRequestFill(layer: Layer, mode: String)
         fun onDelete(layer: Layer)
         fun onDuplicate(layer: Layer)
         fun onApplyPreset(layer: Layer, preset: String)
@@ -700,6 +702,34 @@ class InspectorView(context: Context) : LinearLayout(context) {
         typeRow.addView(sp, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         c.addView(typeRow)
 
+        val fillRow = LinearLayout(context)
+        fillRow.orientation = HORIZONTAL
+        fillRow.gravity = Gravity.CENTER_VERTICAL
+        val lpFill = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpFill.topMargin = dp(8f).toInt()
+        fillRow.addView(labelTv("Isi", widthDp = 60f))
+        val fillPicker = visualPicker(
+            listOf("color", "image", "video"), l.fillMode,
+            { k -> when (k) { "image" -> "Isi gambar"; "video" -> "Isi video"; else -> "Warna" } },
+            { cv, r, k -> PickerArt.fillKind(cv, r, k, l.fill) }
+        ) { k ->
+            if (k == "color") {
+                l.fillMode = "color"
+                listener?.onEdited(true)
+                rebind()
+            } else {
+                listener?.onRequestFill(l, k)
+            }
+        }
+        fillRow.addView(fillPicker, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        c.addView(fillRow, lpFill)
+        if (l.fillMode == "color") {
+            val sw = swatchRow(l.fill) { col -> l.fill = col }
+            val lpSw = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+            lpSw.topMargin = dp(6f).toInt()
+            c.addView(sw, lpSw)
+        }
+
         fun dimRow(label: String, value: Float, maxVal: Int, onChange: (Float) -> Unit) {
             val row = LinearLayout(context)
             row.orientation = HORIZONTAL
@@ -729,14 +759,6 @@ class InspectorView(context: Context) : LinearLayout(context) {
             dimRow("Jumlah sisi", l.shapeSides.toFloat(), 12) { l.shapeSides = it.toInt().coerceIn(3, 12) }
         }
 
-        val fillLbl = labelTv("Isi", widthDp = 84f)
-        val lpFill = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-        lpFill.topMargin = dp(10f).toInt()
-        c.addView(fillLbl, lpFill)
-        val sw = swatchRow(l.fill) { col -> l.fill = col }
-        val lpSw = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-        lpSw.topMargin = dp(6f).toInt()
-        c.addView(sw, lpSw)
         parent.addView(c)
     }
 

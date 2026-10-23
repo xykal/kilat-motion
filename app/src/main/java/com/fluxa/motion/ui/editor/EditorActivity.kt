@@ -518,6 +518,10 @@ class EditorActivity : Activity() {
                 pickImage(layer)
             }
 
+            override fun onRequestFill(layer: Layer, mode: String) {
+                pickFill(layer, mode)
+            }
+
             override fun onDelete(layer: Layer) {
                 deleteLayer(layer)
             }
@@ -1389,8 +1393,21 @@ class EditorActivity : Activity() {
     // image pick
     // =====================================================================
     private var pendingImageLayer: Layer? = null
+    /** Shape yang menunggu media untuk isinya (null = pilihan galeri biasa). */
+    private var pendingFillLayer: Layer? = null
+
+    private fun pickFill(layer: Layer, mode: String) {
+        pendingFillLayer = layer
+        if (mode == "video") {
+            launchPicker(MediaPickerActivity.MODE_VIDEO, REQ_PICK_VIDEO_LAYER) { pickVideoLayerSystem() }
+        } else {
+            pendingImageLayer = null
+            launchPicker(MediaPickerActivity.MODE_IMAGE, REQ_PICK_IMAGE) { pickImageSystem() }
+        }
+    }
 
     private fun pickImage(replace: Layer?) {
+        pendingFillLayer = null
         pendingImageLayer = replace
         launchPicker(MediaPickerActivity.MODE_IMAGE, REQ_PICK_IMAGE) { pickImageSystem() }
     }
@@ -1481,6 +1498,7 @@ class EditorActivity : Activity() {
     }
 
     private fun pickVideoLayer() {
+        pendingFillLayer = null
         launchPicker(MediaPickerActivity.MODE_VIDEO, REQ_PICK_VIDEO_LAYER) { pickVideoLayerSystem() }
     }
 
@@ -1493,6 +1511,8 @@ class EditorActivity : Activity() {
     }
 
     private fun handleVideoPicked(uri: Uri, key: String? = null) {
+        val fillTarget = pendingFillLayer
+        pendingFillLayer = null
         val prog = FluxaSheet.showProgress(this, "Menyiapkan video", "Menyalin video ke penyimpanan app")
         Thread {
             val path = ProjectStore.importVideo(applicationContext, uri, key) { f ->
@@ -1504,6 +1524,14 @@ class EditorActivity : Activity() {
                 if (isFinishing) return@runOnUiThread
                 if (path == null || info == null || info.width <= 0 || info.height <= 0) {
                     toast("Gagal membaca video", FluxaIcon.INFO)
+                    return@runOnUiThread
+                }
+                if (fillTarget != null) {
+                    fillTarget.fillMode = "video"
+                    fillTarget.fillPath = path
+                    fillTarget.fillBitmap = null
+                    afterChange(fillTarget.id)
+                    toast("Isi shape diganti video", FluxaIcon.FILM)
                     return@runOnUiThread
                 }
                 val p = project
@@ -1529,6 +1557,8 @@ class EditorActivity : Activity() {
     }
 
     private fun handleImagePicked(uri: Uri) {
+        val fillTarget = pendingFillLayer
+        pendingFillLayer = null
         toast("Mengimpor gambar...", FluxaIcon.IMAGE)
         Thread {
             val ctx = applicationContext
@@ -1539,6 +1569,14 @@ class EditorActivity : Activity() {
                 if (isFinishing) return@runOnUiThread
                 if (path == null || bounds.outWidth <= 0) {
                     toast("Gagal membaca gambar", FluxaIcon.INFO)
+                    return@runOnUiThread
+                }
+                if (fillTarget != null) {
+                    fillTarget.fillMode = "image"
+                    fillTarget.fillPath = path
+                    fillTarget.fillBitmap = null
+                    afterChange(fillTarget.id)
+                    toast("Isi shape diganti gambar", FluxaIcon.IMAGE)
                     return@runOnUiThread
                 }
                 val p = project
