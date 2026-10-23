@@ -13,8 +13,8 @@ android {
         applicationId = "com.fluxa.motion"
         minSdk = 29
         targetSdk = 34
-        versionCode = 24
-        versionName = "1.20.1"
+        versionCode = 25
+        versionName = "1.21.0"
 
         // Web client ID Google (publik, bukan secret) untuk Credential Manager.
         // Isi di gradle.properties: googleWebClientId=XXXX.apps.googleusercontent.com
