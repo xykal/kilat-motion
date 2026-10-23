@@ -202,13 +202,32 @@ def main():
     step("editor panels", editor_panels)
 
     # status proses dan crash
+    def template_velocity():
+        tap_text("Beranda")
+        time.sleep(1.5)
+        tap_text("JJ Velocity")
+        time.sleep(4)
+        snapshot("11-template-velocity")
+    step("template velocity", template_velocity)
+
     def health():
         alive = adb("shell", "pidof", PKG).strip()
         log(f"  pid: {alive or 'MATI'}")
-        crashes = [l for l in adb("logcat", "-d").splitlines() if "FATAL EXCEPTION" in l or "ANR in" in l]
+        lines = adb("logcat", "-d").splitlines()
+        crashes = [l for l in lines if "FATAL EXCEPTION" in l or "ANR in" in l]
         log(f"  crash/ANR: {len(crashes)}")
         for c in crashes[:10]:
             log("    " + c)
+        thumb = [l for l in lines if "FluxaThumb" in l]
+        log(f"  log thumbnail gagal: {len(thumb)}")
+        for t in thumb[:6]:
+            log("    " + t)
+        # stack trace pertama sesudah baris thumbnail
+        for i, l in enumerate(lines):
+            if "FluxaThumb" in l:
+                for x in lines[i:i + 12]:
+                    log("      " + x)
+                break
     step("health", health)
 
     REPORT.close()

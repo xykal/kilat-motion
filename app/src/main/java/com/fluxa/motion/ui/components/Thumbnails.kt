@@ -1,6 +1,7 @@
 package com.fluxa.motion.ui.components
 
 import android.graphics.Bitmap
+import android.util.Log
 import android.graphics.Canvas
 import android.graphics.Outline
 import android.view.View
@@ -25,6 +26,7 @@ object Thumbnails {
             Renderer.renderFrame(canvas, project, time.coerceIn(0f, project.duration), true)
             bmp
         } catch (e: Throwable) {
+            Log.e("FluxaThumb", "render thumbnail gagal: ${project.name}", e)
             null
         }
     }

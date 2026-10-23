@@ -59,7 +59,7 @@ class IconView(
 ) : View(context) {
 
     var icon: FluxaIcon = icon
-        set(v) { field = v; contentDescription = v.name; invalidate() }
+        set(v) { field = v; contentDescription = FluxaIconLabels.of(v); invalidate() }
     var tintColor: Int = tint
         set(v) { field = v; invalidate() }
     var tintColor2: Int? = tint2
@@ -69,7 +69,7 @@ class IconView(
         set(v) { field = v; invalidate() }
 
     init {
-        contentDescription = icon.name
+        contentDescription = FluxaIconLabels.of(icon)
     }
 
     override fun onDraw(canvas: Canvas) {
