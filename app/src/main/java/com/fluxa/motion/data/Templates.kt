@@ -479,8 +479,11 @@ object Templates {
             w = 1080f; h = 1920f; fill = 0xFFFFFFFF.toInt()
             x = 540f; y = 960f; alpha = 0f; start = 0f; dur = 8f
         }
+        // keyframe 0 di awal dan 0 sebelum tiap hentakan, supaya flash tidak "menggantung" di antara beat
+        Anim.setKey(flash, "alpha", 0f, 0f, "linear")
         var ft = beat * 2f
         while (ft < 8f) {
+            if (ft - 0.03f > 0.001f) Anim.setKey(flash, "alpha", ft - 0.03f, 0f, "linear")
             Anim.setKey(flash, "alpha", ft, 0.55f, "linear")
             Anim.setKey(flash, "alpha", minOf(8f, ft + 0.08f), 0f, "linear")
             ft += beat * 2f
