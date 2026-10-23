@@ -57,7 +57,7 @@ import com.kilat.motion.core.animation.BeatKeys
 import java.io.File
 
 /**
- * Editor KILAT Motion.
+ * Editor Fluxa.
  * Seluruh UI dibangun dari komponen custom (ui/components) dan ikon Canvas
  * (Icons.kt) - tanpa dialog, spinner, seekbar, toast, maupun ikon bawaan Android.
  */
@@ -1937,12 +1937,12 @@ class EditorActivity : Activity() {
             - Efek Blur pada gambar memakai downscale supaya ringan
             - Preview terasa berat? turunkan Glow atau kurangi jumlah layer
         """.trimIndent()
-        KilatSheet.showMessage(this, "Panduan KILAT Motion", msg, icon = KilatIcon.BOOK)
+        KilatSheet.showMessage(this, "Panduan Fluxa", msg, icon = KilatIcon.BOOK)
     }
 
     private fun showAbout() {
         KilatSheet.showMessage(
-            this, "KILAT Motion",
+            this, "Fluxa",
             "Motion graphics editor native Android.\n\nVersi 1.4.1\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa library eksternal.\nSemua ikon digambar manual pakai Canvas.",
             icon = KilatIcon.BOLT
         )

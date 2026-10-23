@@ -8,7 +8,7 @@ import android.widget.TextView
 import kotlin.math.roundToInt
 
 /**
- * Design system KILAT Motion.
+ * Design system Fluxa.
  * Semua warna, radius, dan tipografi UI di satu tempat supaya konsisten
  * di onboarding, homescreen, dan editor.
  */
@@ -25,8 +25,8 @@ object KColors {
     val Dim = 0xFF687389.toInt()
     val Faint = 0xFF4D5871.toInt()
 
-    val Accent = 0xFF2EE6C0.toInt()      // teal kilat (utama)
-    val AccentInk = 0xFF06231D.toInt()   // teks di atas accent
+    val Accent = 0xFFF4F6FA.toInt()      // putih Fluxa (utama, selaras logo putih)
+    val AccentInk = 0xFF0A0B0F.toInt()   // teks di atas accent (gelap)
     val Violet = 0xFF8B7CFF.toInt()
     val Sky = 0xFF59E3FF.toInt()
     val Amber = 0xFFFFD166.toInt()

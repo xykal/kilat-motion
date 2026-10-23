@@ -21,6 +21,7 @@ import com.kilat.motion.ui.theme.dp
 import com.kilat.motion.ui.theme.dpf
 import com.kilat.motion.ui.theme.kText
 import com.kilat.motion.ui.theme.kilatSolid
+import com.kilat.motion.ui.theme.roundedRect
 
 /**
  * Layar pembuka: splash singkat logo KILAT, lalu diarahkan ke onboarding
@@ -42,14 +43,14 @@ class LauncherActivity : Activity() {
         root.fitsSystemWindows = true
 
         val tile = FrameLayout(this)
-        tile.background = kilatSolid(dpf(26f))
-        val bolt = IconView(this, KilatIcon.BOLT, 0xFF05131F.toInt())
+        tile.background = roundedRect(KColors.Card, dpf(26f))
+        val bolt = android.widget.ImageView(this).apply { setImageResource(com.kilat.motion.R.drawable.brand_logo) }
         val p = dp(22f)
         bolt.setPadding(p, p, p, p)
         tile.addView(bolt, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         root.addView(tile, LinearLayout.LayoutParams(dp(92f), dp(92f)))
 
-        val brand = kText("KILAT", 30f, KColors.Text, bold = true)
+        val brand = kText("FLUXA", 30f, KColors.Text, bold = true)
         brand.letterSpacing = 0.18f
         brand.gravity = Gravity.CENTER
         val lpB = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)

@@ -151,7 +151,7 @@ object CloudSettings {
                     positiveText = "Salin link", positiveIcon = KilatIcon.COPY,
                     onPositive = {
                         val cm = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        cm.setPrimaryClip(ClipData.newPlainText("KILAT share", out.url))
+                        cm.setPrimaryClip(ClipData.newPlainText("Fluxa share", out.url))
                         KilatToast.show(activity, "Link disalin", KilatIcon.COPY)
                     },
                     negativeText = "Tutup"
