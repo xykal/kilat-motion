@@ -36,7 +36,7 @@ class OnboardingActivity : Activity() {
 
     private val pages = listOf(
         Page(
-            "Selamat datang di KILAT Motion",
+            "Selamat datang di Fluxa",
             "Editor motion graphics native Android untuk bikin intro, teks animasi, dan video pendek yang geraknya halus - langsung dari HP kamu.",
             KColors.Accent
         ),
@@ -91,13 +91,13 @@ class OnboardingActivity : Activity() {
         top.orientation = LinearLayout.HORIZONTAL
         top.gravity = Gravity.CENTER_VERTICAL
         val tile = FrameLayout(this)
-        tile.background = kilatSolid(dpf(9f))
-        val bolt = IconView(this, KilatIcon.BOLT, 0xFF05131F.toInt())
+        tile.background = roundedRect(KColors.Card, dpf(9f))
+        val bolt = android.widget.ImageView(this).apply { setImageResource(com.kilat.motion.R.drawable.brand_logo) }
         val bp = dp(6f)
         bolt.setPadding(bp, bp, bp, bp)
         tile.addView(bolt, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         top.addView(tile, LinearLayout.LayoutParams(dp(30f), dp(30f)))
-        val brand = kText("KILAT Motion", 13f, KColors.Text, bold = true)
+        val brand = kText("Fluxa", 13f, KColors.Text, bold = true)
         val lpBrand = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         lpBrand.marginStart = dp(9f)
         top.addView(brand, lpBrand)

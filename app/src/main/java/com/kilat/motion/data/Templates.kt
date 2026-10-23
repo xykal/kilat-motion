@@ -53,7 +53,7 @@ object Templates {
 
         // judul
         val title = Layer().apply {
-            kind = KIND_TEXT; name = "Judul KILAT"; text = "KILAT"
+            kind = KIND_TEXT; name = "Judul Fluxa"; text = "FLUXA"
             fontKey = "sans_black"; textSize = 190f; bold = true; align = "center"
             color = 0xFFFFFFFF.toInt()
             x = 540f; y = 900f; start = 0.25f; dur = 5.75f

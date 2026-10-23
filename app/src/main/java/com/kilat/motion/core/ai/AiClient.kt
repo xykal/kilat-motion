@@ -83,7 +83,7 @@ object AiClient {
         val headers = mutableMapOf("Authorization" to "Bearer $key")
         if (prov == AiProvider.OPENROUTER) {
             headers["HTTP-Referer"] = "https://github.com/xykal/kilat-motion"
-            headers["X-Title"] = "KILAT Motion"
+            headers["X-Title"] = "Fluxa"
         }
         val res = Net.request(
             "POST", prov.chatUrl, headers = headers,

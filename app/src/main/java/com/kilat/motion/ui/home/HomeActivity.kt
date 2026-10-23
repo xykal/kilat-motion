@@ -47,7 +47,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Homescreen KILAT Motion dengan bottom navigation custom:
+ * Homescreen Fluxa dengan bottom navigation custom:
  * Beranda | Project | (Buat) | Template | Profil.
  * Thumbnail kartu dirender langsung dari isi project/template.
  */
@@ -93,15 +93,15 @@ class HomeActivity : Activity() {
         header.setBackgroundColor(KColors.BgTop)
         header.setPadding(dp(16f), dp(10f), dp(12f), dp(10f))
         val tile = FrameLayout(this)
-        tile.background = kilatSolid(dpf(11f))
-        val bolt = IconView(this, KilatIcon.BOLT, 0xFF05131F.toInt())
+        tile.background = roundedRect(KColors.Card, dpf(11f))
+        val bolt = android.widget.ImageView(this).apply { setImageResource(com.kilat.motion.R.drawable.brand_logo) }
         val bp = dp(8f)
         bolt.setPadding(bp, bp, bp, bp)
         tile.addView(bolt, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         header.addView(tile, LinearLayout.LayoutParams(dp(36f), dp(36f)))
         val brandCol = LinearLayout(this)
         brandCol.orientation = LinearLayout.VERTICAL
-        val b1 = kText("KILAT Motion", 14f, KColors.Text, bold = true)
+        val b1 = kText("Fluxa", 14f, KColors.Text, bold = true)
         brandCol.addView(b1)
         brandCol.addView(kText("Motion editor di saku kamu", 10f, KColors.Dim))
         val lpBrand = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
@@ -256,15 +256,15 @@ class HomeActivity : Activity() {
         val hero = FrameLayout(this)
         hero.background = kilatSolid(dpf(20f))
         hero.isClickable = true
-        val decor = IconView(this, KilatIcon.BOLT, 0xFF1FA98F.toInt())
+        val decor = IconView(this, KilatIcon.BOLT, 0xFFDDE2EC.toInt())
         val lpDecor = FrameLayout.LayoutParams(dp(150f), dp(150f), Gravity.END or Gravity.CENTER_VERTICAL)
         lpDecor.rightMargin = -dp(30f)
         hero.addView(decor, lpDecor)
         val heroCol = LinearLayout(this)
         heroCol.orientation = LinearLayout.VERTICAL
         heroCol.setPadding(dp(18f), dp(18f), dp(18f), dp(18f))
-        heroCol.addView(kText("Buat Project Baru", 20f, 0xFF05131F.toInt(), bold = true))
-        heroCol.addView(kText("Mulai dari kanvas kosong, pilih rasio favoritmu.", 12f, 0xFF0D3D3F.toInt()))
+        heroCol.addView(kText("Buat Project Baru", 20f, 0xFF0A0B0F.toInt(), bold = true))
+        heroCol.addView(kText("Mulai dari kanvas kosong, pilih rasio favoritmu.", 12f, 0xFF3A4150.toInt()))
         val chipRow = LinearLayout(this)
         chipRow.orientation = LinearLayout.HORIZONTAL
         val chipScroll = HorizontalScrollView(this)
@@ -293,7 +293,7 @@ class HomeActivity : Activity() {
         }
 
         // template
-        col.addView(sectionHeader("Template KILAT", "Lihat semua") { bottomNav.select("templates", true) })
+        col.addView(sectionHeader("Template Fluxa", "Lihat semua") { bottomNav.select("templates", true) })
         val tRow = LinearLayout(this)
         tRow.orientation = LinearLayout.HORIZONTAL
         val tScroll = HorizontalScrollView(this)
@@ -594,7 +594,7 @@ class HomeActivity : Activity() {
         val nameCol = LinearLayout(this)
         nameCol.orientation = LinearLayout.VERTICAL
         nameCol.addView(kText("Kreator Kilat", 17f, KColors.Text, bold = true))
-        nameCol.addView(kText("KILAT Motion ${BuildConfig.VERSION_NAME}", 11f, KColors.Dim))
+        nameCol.addView(kText("Fluxa ${BuildConfig.VERSION_NAME}", 11f, KColors.Dim))
         val lpN = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpN.marginStart = dp(13f)
         head.addView(nameCol, lpN)
@@ -669,7 +669,7 @@ class HomeActivity : Activity() {
             i.putExtra(OnboardingActivity.EXTRA_REPLAY, true)
             startActivity(i)
         })
-        addSpaced(col, menuRow(KilatIcon.INFO, KColors.Muted, "Tentang KILAT Motion", "Versi ${BuildConfig.VERSION_NAME} - native, tanpa iklan") { showAbout() })
+        addSpaced(col, menuRow(KilatIcon.INFO, KColors.Muted, "Tentang Fluxa", "Versi ${BuildConfig.VERSION_NAME} - native, tanpa iklan") { showAbout() })
         addSpaced(col, menuRow(KilatIcon.TRASH, KColors.Rose, "Hapus Semua Project", "Kosongkan pustaka project di HP ini", danger = true) {
             KilatSheet.showConfirm(
                 this, "Hapus semua project?",
@@ -747,12 +747,12 @@ class HomeActivity : Activity() {
             - Pakai preset untuk gerakan siap pakai: Fade, Zoom, Bounce, Typing, Glitch
             - Project tersimpan otomatis; semua tersimpan lokal di HP kamu
         """.trimIndent()
-        KilatSheet.showMessage(this, "Panduan KILAT Motion", msg, icon = KilatIcon.BOOK)
+        KilatSheet.showMessage(this, "Panduan Fluxa", msg, icon = KilatIcon.BOOK)
     }
 
     private fun showAbout() {
         KilatSheet.showMessage(
-            this, "KILAT Motion",
+            this, "Fluxa",
             "Motion graphics editor native Android.\n\nVersi ${BuildConfig.VERSION_NAME}\nKotlin | Canvas | MediaCodec\nTanpa iklan, tanpa watermark, tanpa library eksternal.\nSeluruh tampilan dan ikon dibuat custom pakai Canvas.",
             icon = KilatIcon.BOLT
         )
