@@ -117,11 +117,35 @@ class EditorActivity : Activity() {
         updateUndoButtons()
     }
 
+    /** Salin audio bawaan template dari assets ke penyimpanan app, lalu pasang sebagai musik project. */
+    private fun attachTemplateMusic(templateId: String, project: Project) {
+        val asset = Templates.musicAssetFor(templateId) ?: return
+        try {
+            val out = java.io.File(filesDir, "template_music/${asset.substringAfterLast('/')}")
+            if (!out.exists()) {
+                out.parentFile?.mkdirs()
+                assets.open(asset).use { input -> out.outputStream().use { input.copyTo(it) } }
+            }
+            project.music = Music().apply {
+                path = out.absolutePath
+                name = "Sound template"
+                start = 0f
+                dur = project.duration
+                offset = 0f
+            }
+        } catch (e: java.io.FileNotFoundException) {
+            // asset belum ada: template tetap jalan tanpa musik
+        }
+    }
+
     /** Project ditentukan dari intent homescreen: buka / template / baru / terakhir. */
     private fun resolveProject(): Project {
         val templateId = intent.getStringExtra(EXTRA_TEMPLATE_ID)
         if (templateId != null) {
-            Templates.createFromTemplate(templateId)?.let { return it }
+            Templates.createFromTemplate(templateId)?.let { tp ->
+                attachTemplateMusic(templateId, tp)
+                return tp
+            }
         }
         val projectId = intent.getStringExtra(EXTRA_PROJECT_ID)
         if (projectId != null) {

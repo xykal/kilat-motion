@@ -168,8 +168,18 @@ object Templates {
         TemplateInfo(
             "jj_serem", "JJ Kece Serem", "Gelap merah, getar glitch & kedip hitam ala sound serem viral",
             0xFFD90429.toInt(), 1.7f
-        ) { jjSerem() }
+        ) { jjSerem() },
+        TemplateInfo(
+            "jj_reportase", "JJ Reportase", "Kotak judul putih slide masuk, kartu foto miring blur-in tiap hentakan, glitch tipis & kredit by : nama",
+            0xFF59A8FF.toInt(), 2.6f
+        ) { jjReportase() }
     )
+
+    /** Asset audio bawaan per template (di app/src/main/assets). Kalau file tidak ada, template tetap jalan tanpa musik. */
+    fun musicAssetFor(id: String): String? = when (id) {
+        "jj_reportase" -> "sound/reportase-a.m4a"
+        else -> null
+    }
 
     fun byId(id: String): TemplateInfo? = ALL.firstOrNull { it.id == id }
 
@@ -185,6 +195,117 @@ object Templates {
     // =====================================================================
 
     /** JJ Velocity: speed ramp (pelan -> menghentak), flip 3D, motion blur sesaat, kubus 3D berputar. */
+    /** JJ Reportase: gaya kartu berita viral. Ganti kartu "FOTO KAMU" dan teks judul/kredit dengan punyamu. */
+    fun jjReportase(): Project {
+        val p = Project()
+        p.name = "JJ Reportase"
+        p.duration = 10f
+        p.bg = 0xFF0A1424.toInt()
+        val beat = 0.5f // 120 BPM (estimasi dari audio referensi)
+
+        // glow latar berdenyut tiap 2 beat
+        val glow = Layer().apply {
+            kind = KIND_SHAPE; name = "Glow latar"; shape = "circle"
+            w = 1000f; h = 1000f; fill = 0xFF2A5C9A.toInt()
+            x = 540f; y = 900f; alpha = 0.55f; blend = "screen"; fxBlur = 60f
+            start = 0f; dur = 10f
+        }
+        var gt = 0f
+        while (gt < 10f) {
+            Anim.setKey(glow, "scale", gt, 1.12f, "easeOut")
+            Anim.setKey(glow, "scale", minOf(10f, gt + 0.2f), 1f, "easeOut")
+            gt += beat * 2f
+        }
+        p.layers.add(glow)
+
+        // kartu foto: slide naik, lalu tiap 2 beat hentak + miring bergantian + blur-in
+        val card = Layer().apply {
+            kind = KIND_SHAPE; name = "FOTO KAMU (ganti)"; shape = "rect"
+            w = 700f; h = 880f; radius = 40f; fill = 0xFF1E2A3F.toInt()
+            shapeStrokeW = 6f; shapeStrokeColor = 0xFFFFFFFF.toInt()
+            maskShape = "rrect"
+            x = 540f; y = 1000f; start = 0f; dur = 10f
+            shadowBlur = 40f; shadowDy = 24f
+        }
+        Anim.setKey(card, "y", 0f, 1500f, "easeOut")
+        Anim.setKey(card, "y", 0.6f, 1000f, "easeOut")
+        var bt = 0f
+        var flip = false
+        while (bt < 10f) {
+            Anim.setKey(card, "scale", bt, 1.08f, "easeOut")
+            Anim.setKey(card, "scale", minOf(10f, bt + 0.14f), 1f, "easeOut")
+            Anim.setKey(card, "rot", bt, if (flip) 2.5f else -2.5f, "easeOut")
+            Anim.setKey(card, "rot", minOf(10f, bt + 0.18f), 0f, "easeOut")
+            Anim.setKey(card, "fx.blur", bt, 18f, "easeOut")
+            Anim.setKey(card, "fx.blur", minOf(10f, bt + 0.16f), 0f, "easeOut")
+            flip = !flip
+            bt += beat * 2f
+        }
+        p.layers.add(card)
+
+        // kotak judul putih: slide masuk dari kiri, lalu berdenyut tiap beat
+        val headBox = Layer().apply {
+            kind = KIND_SHAPE; name = "Kotak judul"; shape = "rect"
+            w = 940f; h = 190f; radius = 18f; fill = 0xFFFFFFFF.toInt()
+            x = 540f; y = 300f; start = 0f; dur = 10f
+            shadowBlur = 20f; shadowDy = 8f
+        }
+        val headTxt = Layer().apply {
+            kind = KIND_TEXT; name = "Judul"; text = "PENAMPAKAN VIRAL"
+            fontKey = "sans_black"; textSize = 66f; bold = true; align = "center"
+            color = 0xFF0A0A0A.toInt()
+            x = 540f; y = 322f; start = 0f; dur = 10f
+        }
+        for (l in listOf(headBox, headTxt)) {
+            Anim.setKey(l, "x", 0f, -700f, "easeOut")
+            Anim.setKey(l, "x", 0.5f, 540f, "easeOut")
+        }
+        var pt = 0.5f
+        while (pt < 10f) {
+            Anim.setKey(headBox, "scale", pt, 1.04f, "easeOut")
+            Anim.setKey(headBox, "scale", minOf(10f, pt + 0.12f), 1f, "easeOut")
+            Anim.setKey(headTxt, "scale", pt, 1.04f, "easeOut")
+            Anim.setKey(headTxt, "scale", minOf(10f, pt + 0.12f), 1f, "easeOut")
+            pt += beat
+        }
+        p.layers.add(headBox)
+        p.layers.add(headTxt)
+
+        // glitch slice tipis, muncul tiap 2 beat dengan geser sebentar
+        var g = 1.0f
+        var idx = 0
+        while (g < 9.5f) {
+            val yy = if (idx % 2 == 0) 520f else 1480f
+            val sl = Layer().apply {
+                kind = KIND_SHAPE; name = "Glitch ${idx + 1}"; shape = "rect"
+                w = 1080f; h = 34f; fill = 0xFFFFFFFF.toInt()
+                x = 540f; y = yy; alpha = 0f; blend = "screen"; start = 0f; dur = 10f
+            }
+            Anim.setKey(sl, "alpha", 0f, 0f, "linear")
+            Anim.setKey(sl, "alpha", g - 0.03f, 0f, "linear")
+            Anim.setKey(sl, "alpha", g, 0.7f, "linear")
+            Anim.setKey(sl, "alpha", g + 0.06f, 0f, "linear")
+            Anim.setKey(sl, "x", g, if (idx % 2 == 0) 500f else 580f, "linear")
+            Anim.setKey(sl, "x", g + 0.06f, 540f, "linear")
+            p.layers.add(sl)
+            g += beat * 4f
+            idx++
+        }
+
+        // kredit bawah: fade in pelan
+        val credit = Layer().apply {
+            kind = KIND_TEXT; name = "Kredit"; text = "by : NAMA KAMU"
+            fontKey = "mono"; textSize = 34f; bold = false; align = "center"
+            color = 0xFFBFD0E6.toInt()
+            x = 540f; y = 1790f; start = 0f; dur = 10f
+        }
+        Anim.setKey(credit, "alpha", 0f, 0f, "linear")
+        Anim.setKey(credit, "alpha", 0.4f, 0f, "easeOut")
+        Anim.setKey(credit, "alpha", 1.0f, 1f, "easeOut")
+        p.layers.add(credit)
+        return p
+    }
+
     fun jjVelocity(): Project {
         val p = Project()
         p.name = "JJ Velocity"
