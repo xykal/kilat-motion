@@ -182,9 +182,9 @@ object Templates {
     fun jjKartuMiring(): Project = reportStyle("JJ Kartu Miring", 0xFF120A1E.toInt(), 0xFF6A2AB0.toInt(), 0.678f, 0.2f, "KABAR TERBARU")
 
     /** Gaya kartu berita viral. beat = detik per ketukan, ph = fase pukulan pertama. */
-    private fun reportStyle(name: String, bgColor: Int, blobColor: Int, beat: Float, ph: Float, headline: String): Project {
+    private fun reportStyle(projName: String, bgColor: Int, blobColor: Int, beat: Float, ph: Float, headline: String): Project {
         val p = Project()
-        p.name = name
+        p.name = projName
         p.duration = 10f
         p.bg = bgColor
 
