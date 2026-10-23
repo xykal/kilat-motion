@@ -1,6 +1,8 @@
 name: UI emulator test
 
 on:
+  push:
+    branches: [ 'feat/polish-**' ]
   workflow_dispatch:
 
 permissions:
