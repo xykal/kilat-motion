@@ -87,6 +87,8 @@ class KilatIconButton(
     init {
         isClickable = true
         isFocusable = true
+        // Dibacakan TalkBack. Tanpa ini tombol ikon tidak punya nama.
+        contentDescription = KilatIconLabels.of(icon)
         if (filled) background = roundedRect(KColors.CardHi, dpf(10f))
         val pad = dp(sizeDp * 0.24f)
         val lp = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -96,7 +98,10 @@ class KilatIconButton(
     }
 
     fun setTint(c: Int) { iconView.tintColor = c }
-    fun setIcon(i: KilatIcon) { iconView.icon = i }
+    fun setIcon(i: KilatIcon) {
+        iconView.icon = i
+        contentDescription = KilatIconLabels.of(i)   // mis. Sembunyikan <-> Tampilkan
+    }
 }
 
 // =====================================================================
@@ -418,4 +423,45 @@ fun View.findActivity(): android.app.Activity? {
         c = c.baseContext
     }
     return c as? android.app.Activity
+}
+
+/** Nama Indonesia untuk tiap ikon, dipakai sebagai contentDescription (TalkBack). */
+object KilatIconLabels {
+    fun of(icon: KilatIcon): String? = when (icon) {
+        KilatIcon.BACK -> "Kembali"
+        KilatIcon.CLOSE -> "Tutup"
+        KilatIcon.UNDO -> "Urungkan"
+        KilatIcon.REDO -> "Ulangi aksi"
+        KilatIcon.MORE -> "Menu lainnya"
+        KilatIcon.NEXT -> "Berikutnya"
+        KilatIcon.SKIP_START -> "Ke awal"
+        KilatIcon.MAGNET -> "Snap ke klip"
+        KilatIcon.LOOP -> "Putar berulang"
+        KilatIcon.PLAY -> "Putar"
+        KilatIcon.PAUSE -> "Jeda"
+        KilatIcon.RESET -> "Atur ulang"
+        KilatIcon.COPY -> "Duplikat"
+        KilatIcon.TRASH -> "Hapus"
+        KilatIcon.EYE -> "Tampilkan"
+        KilatIcon.EYE_OFF -> "Sembunyikan"
+        KilatIcon.LOCK -> "Kunci"
+        KilatIcon.UNLOCK -> "Buka kunci"
+        KilatIcon.SCISSORS -> "Potong"
+        KilatIcon.PLUS -> "Perbesar"
+        KilatIcon.MINUS -> "Perkecil"
+        KilatIcon.RATIO -> "Sesuaikan ke layar"
+        KilatIcon.BOOK -> "Panduan"
+        KilatIcon.SAVE -> "Simpan"
+        KilatIcon.SHARE -> "Bagikan"
+        KilatIcon.EXPORT -> "Ekspor"
+        KilatIcon.SETTINGS -> "Pengaturan"
+        KilatIcon.HOME -> "Beranda"
+        KilatIcon.LAYER_UP -> "Naikkan layer"
+        KilatIcon.LAYER_DOWN -> "Turunkan layer"
+        KilatIcon.CHEVRON_DOWN -> "Buka"
+        KilatIcon.CHEVRON_RIGHT -> "Lanjut"
+        KilatIcon.CHECK -> "Selesai"
+        KilatIcon.KEYFRAME -> "Keyframe"
+        else -> null
+    }
 }

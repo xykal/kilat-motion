@@ -199,18 +199,18 @@ class EditorActivity : Activity() {
         top.setPadding(dp(10f), dp(8f), dp(8f), dp(6f))
         top.setBackgroundColor(KColors.BgTop)
 
-        val backBtn = KilatIconButton(this, KilatIcon.BACK, KColors.Muted, filled = false, sizeDp = 34f)
+        val backBtn = KilatIconButton(this, KilatIcon.BACK, KColors.Muted, filled = false, sizeDp = 40f)
         backBtn.setOnClickListener { finish() }
-        top.addView(backBtn, LinearLayout.LayoutParams(dp(34f), dp(34f)))
+        top.addView(backBtn, LinearLayout.LayoutParams(dp(40f), dp(40f)))
 
-        undoBtn = KilatIconButton(this, KilatIcon.UNDO, KColors.Faint, filled = false, sizeDp = 34f)
+        undoBtn = KilatIconButton(this, KilatIcon.UNDO, KColors.Faint, filled = false, sizeDp = 40f)
         undoBtn.setOnClickListener { undo() }
-        val lpUndo = LinearLayout.LayoutParams(dp(34f), dp(34f))
+        val lpUndo = LinearLayout.LayoutParams(dp(40f), dp(40f))
         lpUndo.marginStart = dp(6f)
         top.addView(undoBtn, lpUndo)
-        redoBtn = KilatIconButton(this, KilatIcon.REDO, KColors.Faint, filled = false, sizeDp = 34f)
+        redoBtn = KilatIconButton(this, KilatIcon.REDO, KColors.Faint, filled = false, sizeDp = 40f)
         redoBtn.setOnClickListener { redo() }
-        top.addView(redoBtn, LinearLayout.LayoutParams(dp(34f), dp(34f)))
+        top.addView(redoBtn, LinearLayout.LayoutParams(dp(40f), dp(40f)))
 
         nameEdit = EditText(this)
         nameEdit.setText(project.name)
@@ -244,11 +244,11 @@ class EditorActivity : Activity() {
             background = kilatSolid(kdpf(17f))
             setOnClickListener { showExportDialog() }
         }
-        top.addView(exportBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34f)).apply { marginEnd = dp(6f) })
+        top.addView(exportBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(40f)).apply { marginEnd = dp(6f) })
 
-        val menuBtn = KilatIconButton(this, KilatIcon.MORE, KColors.Muted, filled = false, sizeDp = 34f)
+        val menuBtn = KilatIconButton(this, KilatIcon.MORE, KColors.Muted, filled = false, sizeDp = 40f)
         menuBtn.setOnClickListener { showMenu() }
-        top.addView(menuBtn, LinearLayout.LayoutParams(dp(34f), dp(34f)))
+        top.addView(menuBtn, LinearLayout.LayoutParams(dp(40f), dp(40f)))
 
         main.addView(top, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 

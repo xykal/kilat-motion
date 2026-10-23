@@ -81,9 +81,9 @@ class ExportPreviewActivity : Activity() {
         header.orientation = LinearLayout.HORIZONTAL
         header.gravity = Gravity.CENTER_VERTICAL
         header.setPadding(dp(12f), dp(40f), dp(12f), dp(10f))
-        val back = KilatIconButton(this, KilatIcon.CLOSE, KColors.Muted, filled = false, sizeDp = 38f)
+        val back = KilatIconButton(this, KilatIcon.CLOSE, KColors.Muted, filled = false, sizeDp = 44f)
         back.setOnClickListener { finish() }
-        header.addView(back, LinearLayout.LayoutParams(dp(38f), dp(38f)))
+        header.addView(back, LinearLayout.LayoutParams(dp(44f), dp(44f)))
         val titles = LinearLayout(this)
         titles.orientation = LinearLayout.VERTICAL
         titles.addView(kText("Preview Export", 16f, KColors.Text, bold = true))
