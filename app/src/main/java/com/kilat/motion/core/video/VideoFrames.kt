@@ -22,6 +22,7 @@ object VideoFrames {
     private val entries = LinkedHashMap<String, Entry>()
 
     /** Info dasar video (ukuran sudah memperhitungkan rotasi, durasi dalam detik). */
+    @Synchronized
     fun info(path: String): Info? {
         val r = MediaMetadataRetriever()
         return try {

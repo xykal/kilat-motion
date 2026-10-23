@@ -40,7 +40,26 @@ import kotlin.math.sqrt
 /** Efek yang ditimpa di atas konten (SRC_ATOP, hanya pada piksel konten). */
 private val OVERLAY_EFFECTS = EffectDraw.OVERLAY_TYPES
 
-object Renderer {
+class Renderer {
+
+    /**
+     * Instance bersama untuk thread UI (preview, thumbnail, inspector, layer preview).
+     * Hanya dipakai dari main thread. Export TIDAK boleh memakai instance ini: ia membuat Renderer() sendiri,
+     * karena scratch state di dalam class (Paint, Path, Matrix, cache) tidak aman dipakai dari dua thread.
+     */
+    companion object {
+        val ui: Renderer by lazy { Renderer() }
+
+        fun renderFrame(canvas: Canvas, project: Project, t: Float, withBackground: Boolean = true) =
+            ui.renderFrame(canvas, project, t, withBackground)
+
+        fun drawLayer(canvas: Canvas, layer: Layer, t: Float) = ui.drawLayer(canvas, layer, t)
+
+        fun filterFor(brightness: Float, contrast: Float, saturate: Float, hue: Float): ColorMatrixColorFilter =
+            ui.filterFor(brightness, contrast, saturate, hue)
+
+        fun invalidateBlurCache() = ui.invalidateBlurCache()
+    }
 
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -52,7 +71,8 @@ object Renderer {
     private val meshCache = HashMap<String, Obj3D.Mesh?>()
     private val path = Path()
     private val rectF = RectF()
-    private val blurCache = LinkedHashMap<String, Bitmap>()
+    // accessOrder=true: eviksi membuang entri yang paling lama tidak dipakai (LRU), bukan yang paling lama dibuat
+    private val blurCache = LinkedHashMap<String, Bitmap>(16, 0.75f, true)
     private val typefaceCache = HashMap<String, Typeface>()
     private val fxOverlay = Paint(Paint.ANTI_ALIAS_FLAG)
     private val fxLayerPaint = Paint()
