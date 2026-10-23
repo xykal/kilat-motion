@@ -13,6 +13,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.text.InputType
 import android.view.Gravity
@@ -36,6 +37,8 @@ import com.fluxa.motion.ui.components.FluxaDropdown
 import com.fluxa.motion.ui.components.FluxaIcon
 import com.fluxa.motion.ui.components.FluxaIconButton
 import com.fluxa.motion.ui.components.FluxaSlider
+import com.fluxa.motion.ui.components.FluxaVisualPicker
+import com.fluxa.motion.ui.components.PickerArt
 import com.fluxa.motion.ui.components.kEditText
 import kotlin.math.roundToInt
 import com.fluxa.motion.ui.components.SliderRange
@@ -172,6 +175,20 @@ class InspectorView(context: Context) : LinearLayout(context) {
         d.setItems(labels, selected)
         d.onSelected = { idx -> if (!binding) onChange(idx) }
         return d
+    }
+
+    /** Pilihan visual (tile bergambar, tanpa teks). Mengikuti aturan binding seperti dropdown. */
+    private fun visualPicker(
+        keys: List<String>,
+        selected: String,
+        desc: (String) -> String,
+        art: (Canvas, RectF, String) -> Unit,
+        onChange: (String) -> Unit
+    ): FluxaVisualPicker {
+        val p = FluxaVisualPicker(context)
+        p.setItems(keys, selected, desc, art)
+        p.onPick = { k -> if (!binding) onChange(k) }
+        return p
     }
 
     private fun swatchRow(selected: Int, onPick: (Int) -> Unit): LinearLayout {
@@ -422,11 +439,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
                 android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             )
             tile.addView(box, LayoutParams(dp(68f).toInt(), dp(46f).toInt()))
-            val lbl = labelTv(Anim.PRESET_LABELS[id] ?: id, 9f, cMuted)
-            lbl.gravity = Gravity.CENTER
-            val lpLbl = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-            lpLbl.topMargin = dp(4f).toInt()
-            tile.addView(lbl, lpLbl)
+            tile.contentDescription = Anim.PRESET_LABELS[id] ?: id
             val lp = LayoutParams(dp(68f).toInt(), LayoutParams.WRAP_CONTENT)
             lp.rightMargin = dp(7f).toInt()
             chipRow.addView(tile, lp)
@@ -440,8 +453,8 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpEase = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         lpEase.topMargin = dp(8f).toInt()
         easeRow.addView(labelTv("Easing baru", widthDp = 84f))
-        val easeDrop = dropdown(Anim.EASES.map { Anim.EASE_LABELS[it] ?: it }, Anim.EASES.indexOf(defaultEase), "Easing keyframe") { idx ->
-            defaultEase = Anim.EASES[idx]
+        val easeDrop = visualPicker(Anim.EASES, defaultEase, { Anim.EASE_LABELS[it] ?: it }, { c, r, k -> PickerArt.easing(c, r, k) }) { k ->
+            defaultEase = k
         }
         easeRow.addView(easeDrop, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         presetCard.addView(easeRow, lpEase)
@@ -521,8 +534,8 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpBlend = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         lpBlend.topMargin = dp(10f).toInt()
         blendRow.addView(labelTv("Blend", widthDp = 84f))
-        val blendDrop = dropdown(BLEND_MODES.map { BLEND_LABELS[it] ?: it }, BLEND_MODES.indexOf(l.blend), "Blend mode") { idx ->
-            l.blend = BLEND_MODES[idx]
+        val blendDrop = visualPicker(BLEND_MODES, l.blend, { BLEND_LABELS[it] ?: it }, { c, r, k -> PickerArt.blend(c, r, k) }) { k ->
+            l.blend = k
             listener?.onEdited(true)
         }
         blendRow.addView(blendDrop, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
@@ -580,8 +593,8 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpFont = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         lpFont.topMargin = dp(8f).toInt()
         fontRow.addView(labelTv("Font", widthDp = 50f))
-        val fontDrop = dropdown(FONT_KEYS.map { FONT_LABELS[it] ?: it }, FONT_KEYS.indexOf(l.fontKey), "Pilih font") { idx ->
-            l.fontKey = FONT_KEYS[idx]
+        val fontDrop = visualPicker(FONT_KEYS, l.fontKey, { FONT_LABELS[it] ?: it }, { c, r, k -> PickerArt.font(c, r, k) }) { k ->
+            l.fontKey = k
             listener?.onEdited(true)
         }
         fontRow.addView(fontDrop, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
@@ -679,8 +692,8 @@ class InspectorView(context: Context) : LinearLayout(context) {
         typeRow.orientation = HORIZONTAL
         typeRow.gravity = Gravity.CENTER_VERTICAL
         typeRow.addView(labelTv("Jenis", widthDp = 60f))
-        val sp = dropdown(SHAPE_TYPES.map { SHAPE_LABELS[it] ?: it }, SHAPE_TYPES.indexOf(l.shape), "Jenis bentuk") { idx ->
-            l.shape = SHAPE_TYPES[idx]
+        val sp = visualPicker(SHAPE_TYPES, l.shape, { SHAPE_LABELS[it] ?: it }, { c, r, k -> PickerArt.shape(c, r, k) }) { k ->
+            l.shape = k
             listener?.onEdited(true)
             rebind()
         }
@@ -824,11 +837,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
                 android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             )
             tile.addView(box, LayoutParams(dp(68f).toInt(), dp(46f).toInt()))
-            val lbl = labelTv("+ " + (EFFECT_LABELS[type] ?: type), 9f, cMuted)
-            lbl.gravity = Gravity.CENTER
-            val lpLbl = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-            lpLbl.topMargin = dp(4f).toInt()
-            tile.addView(lbl, lpLbl)
+            tile.contentDescription = "Tambah " + (EFFECT_LABELS[type] ?: type)
             tile.setOnClickListener {
                 l.effects.add(LayerEffect(type = type, amount = 0.5f, size = 0.5f, color = defaultEffectColor(type)))
                 listener?.onEdited(true)
@@ -858,7 +867,15 @@ class InspectorView(context: Context) : LinearLayout(context) {
             val head = LinearLayout(context)
             head.orientation = HORIZONTAL
             head.gravity = Gravity.CENTER_VERTICAL
-            head.addView(labelTv("${idx + 1}. ${EFFECT_LABELS[e.type] ?: e.type}", 12f, cText), LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+            head.addView(View(context), LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+            head.addView(
+                android.widget.ImageView(context).also {
+                    it.setImageBitmap(EffectPreview.effect(e.type))
+                    it.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+                    it.contentDescription = EFFECT_LABELS[e.type] ?: e.type
+                },
+                LayoutParams(dp(64f).toInt(), dp(40f).toInt())
+            )
             val sw = FluxaSwitch(context)
             sw.checked = e.enabled
             sw.onToggle = { v ->
@@ -1065,8 +1082,8 @@ class InspectorView(context: Context) : LinearLayout(context) {
         maskRow.orientation = HORIZONTAL
         maskRow.gravity = Gravity.CENTER_VERTICAL
         maskRow.addView(labelTv("Bentuk mask", widthDp = 84f))
-        val maskDrop = dropdown(maskLabels, maskKinds.indexOf(l.maskShape).coerceAtLeast(0), "Masking") { idx ->
-            l.maskShape = maskKinds[idx]
+        val maskDrop = visualPicker(maskKinds, l.maskShape, { maskLabels[maskKinds.indexOf(it).coerceAtLeast(0)] }, { c, r, k -> PickerArt.mask(c, r, k) }) { k ->
+            l.maskShape = k
             listener?.onEdited(true)
         }
         maskRow.addView(maskDrop, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
