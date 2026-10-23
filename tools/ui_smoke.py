@@ -165,14 +165,15 @@ def main():
     step("profil scroll", profil_scroll)
 
     def open_create():
-        tap_text("Beranda")
-        time.sleep(1.5)
-        # FAB di tengah bawah (tidak punya teks)
-        root = dump()
+        # FAB + di tengah bawah (tidak punya teks) membuka sheet Navigasi
         size = adb("shell", "wm", "size")
         m = re.search(r"(\d+)x(\d+)", size)
         w, h = (int(m.group(1)), int(m.group(2))) if m else (1080, 2400)
         tap(w // 2, h - 150)
+        time.sleep(1.5)
+        # pilih "Buat project baru" di sheet navigasi
+        if not tap_text("Buat project baru"):
+            raise RuntimeError("item 'Buat project baru' tidak ditemukan di sheet navigasi")
         time.sleep(1.5)
         snapshot("07-sheet-buat")
     step("create sheet", open_create)
@@ -181,14 +182,14 @@ def main():
         root = dump()
         texts = visible_texts(root)
         ratio = [t for t in texts if "(" in t and " x " in t]
-        if ratio:
-            tap_text(ratio[0], root)
-        else:
-            log("  [info] item rasio tidak ditemukan, coba item pertama di sheet")
-            m = re.search(r"(\d+)x(\d+)", adb("shell", "wm", "size"))
-            w, h = (int(m.group(1)), int(m.group(2))) if m else (1080, 2400)
-            tap(w // 2, int(h * 0.42))
+        if not ratio:
+            raise RuntimeError("item rasio tidak ditemukan di sheet buat project")
+        tap_text(ratio[0], root)
         time.sleep(4)
+        # validasi: harus benar-benar di editor (ada tombol Musik/Tambah atau timecode)
+        ed = visible_texts(dump())
+        if not any(t in ed for t in ("Musik", "Tambah")) and not any(" / " in t for t in ed):
+            raise RuntimeError("editor belum terbuka setelah pilih rasio")
         snapshot("08-editor")
     step("open editor", open_editor)
 
