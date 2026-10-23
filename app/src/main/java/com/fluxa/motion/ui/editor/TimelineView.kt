@@ -13,7 +13,9 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.text.TextUtils
 import android.view.MotionEvent
+import android.view.VelocityTracker
 import android.view.View
+import android.widget.OverScroller
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -52,6 +54,10 @@ class TimelineView(context: Context) : View(context) {
     var scrollSec: Float = 0f
         private set
     var onZoomChanged: ((Float) -> Unit)? = null
+
+    // inersia setelah geser bebas (fling)
+    private val scroller = OverScroller(context)
+    private var velocityTracker: VelocityTracker? = null
 
     private val density = resources.displayMetrics.density
     private fun dp(v: Float) = v * density
@@ -118,7 +124,35 @@ class TimelineView(context: Context) : View(context) {
     private fun clampScroll() {
         val p = project ?: return
         if (width <= 0) return
-        scrollSec = scrollSec.coerceIn(0f, max(0f, p.duration - visibleSec()))
+        // Geser bebas seperti CapCut: awal dan akhir timeline boleh sampai ke tengah layar.
+        val half = visibleSec() / 2f
+        scrollSec = scrollSec.coerceIn(-half, max(-half, p.duration - half))
+    }
+
+    override fun computeScroll() {
+        if (!scroller.computeScrollOffset()) return
+        val z = pxPerSec()
+        if (z > 0f) {
+            scrollSec = scroller.currX / z
+            clampScroll()
+        }
+        invalidate()
+        if (!scroller.isFinished) postInvalidateOnAnimation()
+    }
+
+    private fun startFling(event: MotionEvent) {
+        val vt = velocityTracker ?: return
+        val p = project ?: return
+        vt.addMovement(event)
+        vt.computeCurrentVelocity(1000)
+        val vx = vt.xVelocity
+        if (abs(vx) < dp(120f)) return
+        val z = pxPerSec()
+        val half = visibleSec() / 2f
+        val minX = (-half * z).toInt()
+        val maxX = (max(-half, p.duration - half) * z).toInt()
+        scroller.fling((scrollSec * z).toInt(), 0, (-vx).toInt(), 0, minX, maxX, 0, 0)
+        postInvalidateOnAnimation()
     }
 
     private fun ensurePlayheadVisible() {
@@ -139,7 +173,6 @@ class TimelineView(context: Context) : View(context) {
         zoom = newZoom.coerceIn(1f, 10f)
         scrollSec = focalT - (focalX - leftW) / pxPerSec()
         clampScroll()
-        if (zoom <= 1.01f) scrollSec = 0f
         invalidate()
         onZoomChanged?.invoke(zoom)
     }
@@ -201,6 +234,39 @@ class TimelineView(context: Context) : View(context) {
         else -> 0xFF8B7CFF.toInt()
     }
 
+    private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFF4F6FA.toInt()
+        style = Paint.Style.FILL
+    }
+    private val chevronPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF0A0B0F.toInt()
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    private val handlePath = Path()
+
+    /** Pil trim di tepi klip dengan panah keluar: ‹ di kiri, › di kanan. Tanpa teks. */
+    private fun drawTrimHandle(c: Canvas, edgeX: Float, top: Float, bottom: Float, isLeft: Boolean) {
+        val w = dp(10f)
+        val cy = (top + bottom) / 2f
+        val hh = min(bottom - top, dp(26f)) / 2f
+        val l = if (isLeft) edgeX else edgeX - w
+        val r = l + w
+        c.drawRoundRect(l, cy - hh, r, cy + hh, dp(4f), dp(4f), handlePaint)
+        val cx = (l + r) / 2f
+        val ca = dp(2.6f)
+        val dir = if (isLeft) -1f else 1f
+        val tipX = cx + dir * ca * 0.5f
+        val backX = cx - dir * ca * 0.5f
+        chevronPaint.strokeWidth = dp(1.6f)
+        handlePath.reset()
+        handlePath.moveTo(backX, cy - hh * 0.4f)
+        handlePath.lineTo(tipX, cy)
+        handlePath.lineTo(backX, cy + hh * 0.4f)
+        c.drawPath(handlePath, chevronPaint)
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val p = project ?: return
@@ -234,7 +300,7 @@ class TimelineView(context: Context) : View(context) {
         if (zoom > 1.01f && p.duration > 0f) {
             val usable = width - leftW
             val thumbW = max(dp(28f), usable * (visibleSec() / p.duration))
-            val thumbX = leftW + usable * (scrollSec / p.duration)
+            val thumbX = leftW + usable * (scrollSec.coerceIn(0f, p.duration) / p.duration)
             dotPaint.color = 0xFF2EE6C0.toInt()
             canvas.drawRoundRect(thumbX, rulerH - dp(3.4f), thumbX + thumbW, rulerH - dp(0.8f), dp(1.3f), dp(1.3f), dotPaint)
         }
@@ -278,12 +344,9 @@ class TimelineView(context: Context) : View(context) {
             val rr = dp(6f)
             canvas.drawRoundRect(x1, bt, max(x1 + dp(2f), x2), bb, rr, rr, barPaint)
             if (selected) {
-                // grip trim di ujung kanan bar terpilih
-                dotPaint.color = 0xFF2EE6C0.toInt()
-                val gy0 = bt + dp(4f)
-                val gy1 = bb - dp(4f)
-                canvas.drawRoundRect(x2 - dp(8f), gy0, x2 - dp(6.4f), gy1, dp(1f), dp(1f), dotPaint)
-                canvas.drawRoundRect(x2 - dp(4.6f), gy0, x2 - dp(3f), gy1, dp(1f), dp(1f), dotPaint)
+                // handle trim di kedua ujung klip terpilih: pil putih dengan panah
+                drawTrimHandle(canvas, x1, bt, bb, true)
+                drawTrimHandle(canvas, x2, bt, bb, false)
             }
 
             // diamonds keyframe
@@ -439,6 +502,9 @@ class TimelineView(context: Context) : View(context) {
                 downX = event.x
                 downY = event.y
                 dragging = true
+                scroller.forceFinished(true)
+                velocityTracker?.recycle()
+                velocityTracker = VelocityTracker.obtain().also { it.addMovement(event) }
 
                 if (event.y <= rulerH) {
                     dragMode = MODE_SEEK
@@ -528,7 +594,14 @@ class TimelineView(context: Context) : View(context) {
                     dragLayer = layer
                     origStart = layer.start
                     origDur = layer.dur
-                    dragMode = if (event.x > x2 - dp(20f)) MODE_TRIM else MODE_MOVE
+                    // ujung terdekat yang di-trim (kiri atau kanan), sisanya geser klip
+                    val dl = abs(event.x - x1)
+                    val dr = abs(event.x - x2)
+                    dragMode = when {
+                        dl <= dp(18f) && dl <= dr -> MODE_TRIM_START
+                        dr <= dp(18f) -> MODE_TRIM
+                        else -> MODE_MOVE
+                    }
                     invalidate()
                 } else {
                     selectedId = layer.id
@@ -541,7 +614,7 @@ class TimelineView(context: Context) : View(context) {
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
                 if (event.pointerCount >= 2) {
-                    if (dragMode == MODE_MOVE || dragMode == MODE_TRIM || dragMode == MODE_KEY) listener?.onTimesChanged(true)
+                    if (dragMode == MODE_MOVE || dragMode == MODE_TRIM || dragMode == MODE_TRIM_START || dragMode == MODE_KEY) listener?.onTimesChanged(true)
                     if (dragMode == MODE_MUSIC_MOVE || dragMode == MODE_MUSIC_TRIM) listener?.onMusicEdited(true)
                     pinchActive = true
                     pinchStartDist = max(1f, pointerDist(event))
@@ -559,6 +632,7 @@ class TimelineView(context: Context) : View(context) {
                 }
             }
             MotionEvent.ACTION_MOVE -> {
+                velocityTracker?.addMovement(event)
                 if (pinchActive) {
                     if (event.pointerCount >= 2 && pinchStartDist > 1f) {
                         setZoom(pinchStartZoom * pointerDist(event) / pinchStartDist, pointerMidX(event))
@@ -605,6 +679,18 @@ class TimelineView(context: Context) : View(context) {
                             invalidate()
                         }
                     }
+                    MODE_TRIM_START -> {
+                        val l = dragLayer ?: return true
+                        val dt = (event.x - downX) / z
+                        val origEnd = origStart + origDur
+                        var ns = snap(origStart + dt, l)
+                        ns = ns.coerceIn(0f, origEnd - 0.2f)
+                        val newStart = round(ns * 1000f) / 1000f
+                        l.start = newStart
+                        l.dur = round((origEnd - newStart) * 1000f) / 1000f
+                        listener?.onTimesChanged(false)
+                        invalidate()
+                    }
                     MODE_TRIM -> {
                         val l = dragLayer ?: return true
                         val dt = (event.x - downX) / z
@@ -637,11 +723,12 @@ class TimelineView(context: Context) : View(context) {
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 parent?.requestDisallowInterceptTouchEvent(false)
+                if (dragMode == MODE_PAN && panMoved && event.actionMasked == MotionEvent.ACTION_UP) startFling(event)
                 val tapLike = abs(event.x - downX) < dp(8f) && abs(event.y - downY) < dp(8f)
                 if (dragMode == MODE_PAN && !panMoved && event.actionMasked == MotionEvent.ACTION_UP) {
                     listener?.onSeek(tAt(downX))
                 }
-                if (dragMode == MODE_MOVE || dragMode == MODE_TRIM) listener?.onTimesChanged(true)
+                if (dragMode == MODE_MOVE || dragMode == MODE_TRIM || dragMode == MODE_TRIM_START) listener?.onTimesChanged(true)
                 if (dragMode == MODE_KEY && keyMoved) listener?.onTimesChanged(true)
                 if (dragMode == MODE_MUSIC_MOVE || dragMode == MODE_MUSIC_TRIM) {
                     if (musicTapCandidate && tapLike && event.actionMasked == MotionEvent.ACTION_UP) listener?.onMusicTap()
@@ -670,5 +757,6 @@ class TimelineView(context: Context) : View(context) {
         const val MODE_MUSIC_TRIM = 5
         const val MODE_PAN = 6
         const val MODE_KEY = 7
+        const val MODE_TRIM_START = 8
     }
 }
