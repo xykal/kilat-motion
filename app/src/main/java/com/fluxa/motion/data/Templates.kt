@@ -201,7 +201,8 @@ object Templates {
         p.name = "JJ Reportase"
         p.duration = 10f
         p.bg = 0xFF0A1424.toInt()
-        val beat = 0.5f // 120 BPM (estimasi dari audio referensi)
+        val beat = 0.4528f // ~132.5 BPM (estimasi dari audio referensi, sudah dicek ulang)
+        val ph = 0.39f     // fase pukulan pertama (detik)
 
         // glow latar berdenyut tiap 2 beat
         val glow = Layer().apply {
@@ -210,7 +211,8 @@ object Templates {
             x = 540f; y = 900f; alpha = 0.55f; blend = "screen"; fxBlur = 60f
             start = 0f; dur = 10f
         }
-        var gt = 0f
+        Anim.setKey(glow, "scale", 0f, 1f, "linear")
+        var gt = ph
         while (gt < 10f) {
             Anim.setKey(glow, "scale", gt, 1.12f, "easeOut")
             Anim.setKey(glow, "scale", minOf(10f, gt + 0.2f), 1f, "easeOut")
@@ -229,7 +231,10 @@ object Templates {
         }
         Anim.setKey(card, "y", 0f, 1500f, "easeOut")
         Anim.setKey(card, "y", 0.6f, 1000f, "easeOut")
-        var bt = 0f
+        Anim.setKey(card, "scale", 0f, 1f, "linear")
+        Anim.setKey(card, "rot", 0f, 0f, "linear")
+        Anim.setKey(card, "fx.blur", 0f, 0f, "linear")
+        var bt = ph
         var flip = false
         while (bt < 10f) {
             Anim.setKey(card, "scale", bt, 1.08f, "easeOut")
@@ -260,7 +265,7 @@ object Templates {
             Anim.setKey(l, "x", 0f, -700f, "easeOut")
             Anim.setKey(l, "x", 0.5f, 540f, "easeOut")
         }
-        var pt = 0.5f
+        var pt = ph
         while (pt < 10f) {
             Anim.setKey(headBox, "scale", pt, 1.04f, "easeOut")
             Anim.setKey(headBox, "scale", minOf(10f, pt + 0.12f), 1f, "easeOut")
@@ -272,7 +277,7 @@ object Templates {
         p.layers.add(headTxt)
 
         // glitch slice tipis, muncul tiap 2 beat dengan geser sebentar
-        var g = 1.0f
+        var g = ph + beat * 2f
         var idx = 0
         while (g < 9.5f) {
             val yy = if (idx % 2 == 0) 520f else 1480f
