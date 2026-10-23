@@ -17,7 +17,7 @@
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Kilat">
+        android:theme="@style/Theme.Fluxa">
 
         <activity
             android:name=".ui.launcher.LauncherActivity"

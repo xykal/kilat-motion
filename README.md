@@ -1,4 +1,4 @@
-# KILAT Motion — Android Native
+# FLUXA Motion — Android Native
 
 Motion graphics editor **native Android** (Kotlin), alur kerja ala **Alight Motion** + UI gelap ala **CapCut**.
 Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK dibuild otomatis via **GitHub Actions**.
@@ -10,7 +10,7 @@ Dibangun **tanpa library eksternal** — hanya Android SDK + Kotlin stdlib. APK 
 ## Baru di v1.9.0 — Fondasi Material Components (Fase UI 1 dari 4)
 
 - **Library UI dipakai**: Material Components 1.12 (Material3 dark) sebagai dasar tema. Palet
-  KILAT dipetakan ke atribut Material (warna primer, permukaan, kontrol, EditText, dan kursor),
+  FLUXA dipetakan ke atribut Material (warna primer, permukaan, kontrol, EditText, dan kursor),
   jadi widget default ikut tampil gelap-flat, bukan stock Android.
 - **Batasan lama dicabut**: sekarang AndroidX aktif (`android.useAndroidX=true`).
 - **R8 aktif di release** (minify + shrink resource). APK release turun dari ~10,4 MB
@@ -35,7 +35,7 @@ ikon dari library adalah langkah berikutnya.
 - **Sheet & toast tidak lagi ketimpa tombol navigasi HP**: tinggi navigasi sistem dihitung
   saat tampil.
 - **Logo baru**: ring lensa, bolt teal dengan bayangan gerak violet, timeline keyframe,
-  dan sparkle. Nama app tetap KILAT Motion.
+  dan sparkle. Nama app tetap FLUXA Motion.
 
 **Belum masuk versi ini:** migrasi UI ke library, akun Google, backend Cloudflare Worker,
 video layer, transisi, outline/node editing vektor, template baru, dan AI assistant.
@@ -45,7 +45,7 @@ video layer, transisi, outline/node editing vektor, template baru, dan AI assist
 ## Baru di v1.7.0 — Preview Export, Bentuk & Kurva Lebih Lengkap
 
 - **Preview hasil export**: setelah render, video langsung bisa diputar di layar preview,
-  di-scrub, dan di-pause. Pilihan: **Simpan** ke Movies/KilatMotion, **Bagikan**, atau **Buang**.
+  di-scrub, dan di-pause. Pilihan: **Simpan** ke Movies/FluxaMotion, **Bagikan**, atau **Buang**.
   Render yang belum disimpan tidak menumpuk di cache.
 - **Bentuk baru**: Diamond, Heksagon, Pentagon, Hati, Panah, Silang (total 11 bentuk termasuk
   Kotak, Lingkaran, Segitiga, Bintang, dan Segi Banyak).
@@ -80,7 +80,7 @@ icon/UI redesign penuh, login Google + share preset (Cloudflare Worker), AI assi
 
 ## Baru di v1.5.0 — Color Picker Sendiri, Efek Bergambar, Layer Terkunci
 
-- **Color picker custom penuh** (`KilatColorPicker`): bidang saturasi/value HSV
+- **Color picker custom penuh** (`FluxaColorPicker`): bidang saturasi/value HSV
   yang bisa diseret, bilah hue pelangi, bilah alpha checkerboard, input hex +
   readout RGB, dan 16 palet cepat. Muncul dari tile **+** di semua baris warna
   Inspector dan dari tombol **Warna Custom** di Pengaturan Project. Semua warna
@@ -89,7 +89,7 @@ icon/UI redesign penuh, login Google + share preset (Cloudflare Worker), AI assi
   dan 7 filter (Normal/Vivid/Hangat/Dingin/Mono/Sepia/Pudar) ditampilkan sebagai
   **thumbnail foto contoh yang benar-benar difilter** oleh `Renderer.filterFor`,
   bukan sekadar teks.
-- **Toggle custom** (`KilatSwitch`): saklar ON/OFF solid ala CapCut menggantikan
+- **Toggle custom** (`FluxaSwitch`): saklar ON/OFF solid ala CapCut menggantikan
   chip teks untuk Balik Mask dan garis Tertutup vektor.
 - **Kunci layer**: tombol gembok di header timeline (ikon LOCK/UNLOCK baru,
   total 55 ikon). Layer terkunci tidak bisa diseret di kanvas, digeser/ditrim
@@ -210,10 +210,10 @@ icon/UI redesign penuh, login Google + share preset (Cloudflare Worker), AI assi
 - **Homescreen + Bottom Navigation custom**: tab **Beranda | Project | Template | Profil** dengan tombol **Buat** (FAB gradient) mengambang di tengah.
   - Beranda: sapaan, kartu hero Buat Project + chip rasio, kartu "Lanjutkan" project terakhir, deretan template, ubin Mulai Cepat.
   - Project: pustaka project lokal (thumbnail asli dirender dari isi project, hapus per project).
-  - Template: 5 template siap edit — Intro KILAT, Intro Bold, Quote Minimal 1:1, Promo Pop, Lower Third 16:9.
+  - Template: 5 template siap edit — Intro FLUXA, Intro Bold, Quote Minimal 1:1, Promo Pop, Lower Third 16:9.
   - Profil: statistik, panduan, ulangi onboarding, tentang, hapus semua project.
 - **Nol emoji, nol ikon bawaan**: 40 ikon digambar manual satu-satu pakai Canvas (`Icons.kt`) — tiap ikon bergaya beda (filled, outline rounded, duotone).
-- **Nol komponen UI bawaan yang terlihat**: dialog diganti bottom sheet `KilatSheet`, dropdown `KilatDropdown`, slider `KilatSlider`, toast `KilatToast`, tombol `KilatButton`, progress `KilatProgressBar`, tombol keyframe wajik Canvas. (Keyboard sistem tetap dipakai untuk mengetik — itu memang ranah OS.)
+- **Nol komponen UI bawaan yang terlihat**: dialog diganti bottom sheet `FluxaSheet`, dropdown `FluxaDropdown`, slider `FluxaSlider`, toast `FluxaToast`, tombol `FluxaButton`, progress `FluxaProgressBar`, tombol keyframe wajik Canvas. (Keyboard sistem tetap dipakai untuk mengetik — itu memang ranah OS.)
 - **Struktur kode dirombak rapi** (lihat pohon folder di bawah), editor ditulis ulang bersih, penyimpanan naik kelas jadi pustaka multi-project (`ProjectLibrary`).
 
 ---
@@ -243,8 +243,8 @@ icon/UI redesign penuh, login Google + share preset (Cloudflare Worker), AI assi
 - **Audio ikut ter-mux ke MP4** saat export (MediaExtractor + MediaMuxer, tanpa FFmpeg)
 
 **Output & project**
-- **Export MP4 (H.264)** via MediaCodec + MediaMuxer → galeri `Movies/KilatMotion` (720p/1080p, auto-fallback)
-- **Export frame PNG** → `Pictures/KilatMotion`
+- **Export MP4 (H.264)** via MediaCodec + MediaMuxer → galeri `Movies/FluxaMotion` (720p/1080p, auto-fallback)
+- **Export frame PNG** → `Pictures/FluxaMotion`
 - Autosave + load project JSON di internal storage, demo project bawaan
 
 ---
@@ -254,7 +254,7 @@ icon/UI redesign penuh, login Google + share preset (Cloudflare Worker), AI assi
 ## Arsitektur & Struktur Folder
 
 ```
-app/src/main/java/com/kilat/motion/
+app/src/main/java/com/fluxa/motion/
 |-- core/
 |   |-- model/Model.kt            -> Project, Layer, Keyframe, Music, konstanta
 |   |-- animation/Anim.kt         -> easing + cubic bezier, evaluasi keyframe, 9 preset
@@ -267,12 +267,12 @@ app/src/main/java/com/kilat/motion/
 |   |-- Templates.kt              -> demo internal + 6 template JJ + daftar rasio kanvas
 |   `-- Prefs.kt                  -> status onboarding
 `-- ui/
-    |-- theme/KilatTheme.kt       -> warna, radius, tipografi, efek tekan
+    |-- theme/FluxaTheme.kt       -> warna, radius, tipografi, efek tekan
     |-- components/
     |   |-- Icons.kt              -> 53 ikon Canvas manual (IconPainter + IconView)
-    |   |-- KilatViews.kt         -> Button, IconButton, Slider, Dropdown, Chip, Progress, KeyframeButton
-    |   |-- KilatSheet.kt         -> bottom sheet (list/pesan/konfirmasi/progress)
-    |   |-- KilatToast.kt         -> toast in-app custom
+    |   |-- FluxaViews.kt         -> Button, IconButton, Slider, Dropdown, Chip, Progress, KeyframeButton
+    |   |-- FluxaSheet.kt         -> bottom sheet (list/pesan/konfirmasi/progress)
+    |   |-- FluxaToast.kt         -> toast in-app custom
     |   |-- BottomNav.kt          -> navigasi bawah homescreen + FAB Buat
     |   `-- Thumbnails.kt         -> render thumbnail project/template
     |-- launcher/LauncherActivity.kt   -> splash -> onboarding / homescreen
@@ -282,7 +282,7 @@ app/src/main/java/com/kilat/motion/
 ```
 
 Prinsip: `core` tidak tahu UI, `data` tidak tahu tampilan, `ui` memakai keduanya.
-Tes JVM meniru struktur yang sama di `app/src/test/java/com/kilat/motion/`.
+Tes JVM meniru struktur yang sama di `app/src/test/java/com/fluxa/motion/`.
 
 ## Download APK
 

@@ -1,0 +1,437 @@
+package com.fluxa.motion.core.animation
+
+import com.fluxa.motion.core.model.*
+
+import kotlin.math.abs
+import kotlin.math.min
+import kotlin.math.max
+import kotlin.math.round
+
+object Anim {
+
+    val EASES = listOf("easeOut", "easeIn", "easeInOut", "linear", "back", "bounce", "custom")
+    val EASE_LABELS = mapOf(
+        "easeOut" to "Ease Out", "easeIn" to "Ease In", "easeInOut" to "Ease In-Out",
+        "linear" to "Linear", "back" to "Back", "bounce" to "Bounce", "custom" to "Kurva Bezier"
+    )
+
+    fun ease(name: String, p0: Float): Float {
+        val p = p0.coerceIn(0f, 1f)
+        return when (name) {
+            "linear" -> p
+            "easeIn" -> p * p * p
+            "easeInOut" -> if (p < 0.5f) 4f * p * p * p else 1f - Math.pow((-2f * p + 2f).toDouble(), 3.0).toFloat() / 2f
+            "back" -> {
+                val c1 = 1.70158f
+                val c3 = c1 + 1f
+                1f + c3 * Math.pow((p - 1f).toDouble(), 3.0).toFloat() + c1 * Math.pow((p - 1f).toDouble(), 2.0).toFloat()
+            }
+            "bounce" -> {
+                val n = 7.5625f
+                val d = 2.75f
+                var x = p
+                if (x < 1f / d) n * x * x
+                else if (x < 2f / d) { x -= 1.5f / d; n * x * x + 0.75f }
+                else if (x < 2.5f / d) { x -= 2.25f / d; n * x * x + 0.9375f }
+                else { x -= 2.625f / d; n * x * x + 0.984375f }
+            }
+            else -> 1f - Math.pow((1f - p).toDouble(), 3.0).toFloat() // easeOut
+        }
+    }
+
+    /** Cubic-bezier easing (seperti editor kurva di AM): titik kontrol (x1,y1) (x2,y2). */
+    fun cubicBezier(p0: Float, x1: Float, y1: Float, x2: Float, y2: Float): Float {
+        val p = p0.coerceIn(0f, 1f)
+        if (p <= 0f) return 0f
+        if (p >= 1f) return 1f
+        fun bx(u: Float): Float {
+            val v = 1f - u
+            return 3f * v * v * u * x1 + 3f * v * u * u * x2 + u * u * u
+        }
+        fun by(u: Float): Float {
+            val v = 1f - u
+            return 3f * v * v * u * y1 + 3f * v * u * u * y2 + u * u * u
+        }
+        var lo = 0f
+        var hi = 1f
+        var u = p
+        repeat(10) {
+            u = (lo + hi) / 2f
+            if (bx(u) < p) lo = u else hi = u
+        }
+        return by(u)
+    }
+
+    fun evalKeys(keys: List<Keyframe>, t: Float, bez: FloatArray? = null): Float? {
+        if (keys.isEmpty()) return null
+        if (t <= keys[0].t) return keys[0].v
+        val last = keys[keys.size - 1]
+        if (t >= last.t) return last.v
+        var a = keys[0]
+        var b = keys[0]
+        for (i in 0 until keys.size - 1) {
+            if (t >= keys[i].t && t <= keys[i + 1].t) {
+                a = keys[i]
+                b = keys[i + 1]
+                break
+            }
+        }
+        if (b.t <= a.t) return b.v
+        var p = (t - a.t) / (b.t - a.t)
+        p = if (a.ease == "custom" && bez != null && bez.size == 4) {
+            cubicBezier(p, bez[0], bez[1], bez[2], bez[3])
+        } else {
+            ease(a.ease, p)
+        }
+        return a.v + (b.v - a.v) * p
+    }
+
+    fun value(layer: Layer, key: String, t: Float): Float {
+        val ch = layer.channels[key]
+        if (ch == null || ch.keys.isEmpty()) return layer.getStatic(key)
+        return evalKeys(ch.keys, t, floatArrayOf(layer.bezX1, layer.bezY1, layer.bezX2, layer.bezY2)) ?: layer.getStatic(key)
+    }
+
+    fun evalLayer(layer: Layer, t: Float): HashMap<String, Float> {
+        val m = HashMap<String, Float>(24)
+        for (k in PROP_KEYS) m[k] = value(layer, k, t)
+        layer.ev = m
+        return m
+    }
+
+    fun channelOf(layer: Layer, key: String): Channel =
+        layer.channels.getOrPut(key) { Channel() }
+
+    fun setKey(layer: Layer, key: String, t: Float, v: Float, easeName: String = "easeOut") {
+        val time = round(t * 1000f) / 1000f
+        val ch = channelOf(layer, key)
+        val existing = ch.keys.firstOrNull { abs(it.t - time) < 0.02f }
+        if (existing != null) {
+            existing.v = v
+            existing.ease = easeName
+        } else {
+            ch.keys.add(Keyframe(time, v, easeName))
+            ch.keys.sortBy { it.t }
+        }
+    }
+
+    fun removeKey(layer: Layer, key: String, t: Float) {
+        val ch = layer.channels[key] ?: return
+        ch.keys.removeAll { abs(it.t - t) < 0.03f }
+        if (ch.keys.isEmpty()) layer.channels.remove(key)
+    }
+
+    fun keyAt(layer: Layer, key: String, t: Float): Keyframe? {
+        val ch = layer.channels[key] ?: return null
+        return ch.keys.firstOrNull { abs(it.t - t) < 0.03f }
+    }
+
+    fun allKeyTimes(layer: Layer): List<Float> {
+        val set = LinkedHashSet<Float>()
+        for (ch in layer.channels.values) for (k in ch.keys) set.add(round(k.t * 1000f) / 1000f)
+        val list = ArrayList(set)
+        list.sort()
+        return list
+    }
+
+    data class KeyCopy(val v: Float, val ease: String)
+
+    /** Salin semua keyframe tepat di waktu [t] (untuk tempel di waktu lain). */
+    fun copyKeysAt(layer: Layer, t: Float): Map<String, KeyCopy> {
+        val out = LinkedHashMap<String, KeyCopy>()
+        for ((key, ch) in layer.channels) {
+            val k = ch.keys.firstOrNull { abs(it.t - t) < 0.03f } ?: continue
+            out[key] = KeyCopy(k.v, k.ease)
+        }
+        return out
+    }
+
+    /** Tempel hasil salinan keyframe ke waktu [t]. */
+    fun pasteKeysAt(layer: Layer, clip: Map<String, KeyCopy>, t: Float) {
+        for ((key, c) in clip) setKey(layer, key, t, c.v, c.ease)
+    }
+
+    fun hasKeys(layer: Layer): Boolean = layer.channels.values.any { it.keys.isNotEmpty() }
+
+    /** Geser SEMUA keyframe layer sejauh [delta] detik (dipakai saat klip dipindah di timeline). */
+    fun shiftKeyframes(layer: Layer, delta: Float, duration: Float) {
+        if (abs(delta) < 0.0005f) return
+        for (ch in layer.channels.values) {
+            for (k in ch.keys) {
+                k.t = (round((k.t + delta) * 1000f) / 1000f).coerceIn(0f, duration)
+            }
+            ch.keys.sortBy { it.t }
+            var i = ch.keys.size - 2
+            while (i >= 0) {
+                if (abs(ch.keys[i].t - ch.keys[i + 1].t) < 0.02f) ch.keys.removeAt(i)
+                i--
+            }
+        }
+    }
+
+    /** Pindahkan grup keyframe (semua channel) dari [fromT] ke [toT]; kembali waktu final. */
+    fun moveKeyframeGroup(layer: Layer, fromT: Float, toT: Float): Float {
+        val target = (round(toT * 1000f) / 1000f).coerceIn(layer.start, layer.start + layer.dur)
+        if (abs(target - fromT) < 0.001f) return fromT
+        for (ch in layer.channels.values) {
+            ch.keys.removeAll { abs(it.t - target) < 0.02f && abs(it.t - fromT) >= 0.03f }
+            for (k in ch.keys) {
+                if (abs(k.t - fromT) < 0.03f) k.t = target
+            }
+            ch.keys.sortBy { it.t }
+        }
+        return target
+    }
+
+    /** Hapus semua keyframe (semua channel) tepat di waktu [t]; kembali jumlah terhapus. */
+    fun removeKeysAtTime(layer: Layer, t: Float): Int {
+        var n = 0
+        val it = layer.channels.entries.iterator()
+        while (it.hasNext()) {
+            val e = it.next()
+            val before = e.value.keys.size
+            e.value.keys.removeAll { k -> abs(k.t - t) < 0.03f }
+            n += before - e.value.keys.size
+            if (e.value.keys.isEmpty()) it.remove()
+        }
+        return n
+    }
+
+    fun clearAll(layer: Layer) {
+        layer.channels.clear()
+    }
+
+    /**
+     * Pisah layer jadi dua tepat di waktu [t] (detik, koordinat project).
+     * Layer asal dipotong berakhir di t; kembalinya layer kedua (mulai di t)
+     * atau null kalau t di luar rentang layer. Keyframe di titik pisah
+     * disisipkan di kedua sisi supaya nilai animasi tidak melompat.
+     */
+    fun splitAt(layer: Layer, t: Float): Layer? {
+        val end = layer.start + layer.dur
+        if (t <= layer.start + 0.05f || t >= end - 0.05f) return null
+        val second = layer.duplicate()
+        second.name = layer.name
+        second.x = layer.x
+        second.y = layer.y
+        // kunci nilai saat ini di titik pisah pada kedua layer
+        for ((key, ch) in layer.channels) {
+            if (ch.keys.isEmpty()) continue
+            val v = value(layer, key, t)
+            setKey(layer, key, t, v)
+            setKey(second, key, t, v)
+        }
+        val eps = 0.004f
+        for (ch in layer.channels.values) ch.keys.retainAll { it.t <= t + eps }
+        for (ch in second.channels.values) ch.keys.retainAll { it.t >= t - eps }
+        second.start = t
+        second.dur = end - t
+        layer.dur = t - layer.start
+        return second
+    }
+
+    // ---------------- preset ----------------
+    val PRESETS = listOf(
+        "fade", "slideUp", "slideDown", "slideLeft", "zoom", "zoomOut", "popIn", "spin", "rotateIn",
+        "flipX", "bounce", "blurIn", "shake", "wobble", "pulse", "flash", "fadeOut",
+        "typing", "kenBurns", "glitch", "jedag"
+    )
+    val PRESET_LABELS = mapOf(
+        "fade" to "Fade", "slideUp" to "Slide Up", "slideDown" to "Slide Down", "slideLeft" to "Slide Kiri",
+        "zoom" to "Zoom Pop", "zoomOut" to "Zoom Out", "popIn" to "Pop In", "spin" to "Spin In",
+        "rotateIn" to "Rotate In", "flipX" to "Flip", "bounce" to "Bounce In", "blurIn" to "Blur In",
+        "shake" to "Shake", "wobble" to "Wobble", "pulse" to "Pulse", "flash" to "Flash",
+        "fadeOut" to "Fade Out", "typing" to "Typing", "kenBurns" to "Ken Burns", "glitch" to "Glitch",
+        "jedag" to "JJ Zoom"
+    )
+
+    /** Terapkan preset di sekitar playhead (kecuali kenBurns di seluruh durasi layer). */
+    fun applyPreset(layer: Layer, preset: String, playhead: Float, projectDuration: Float): Boolean {
+        val start = layer.start
+        val end = layer.start + layer.dur
+        var a = playhead.coerceIn(start, max(start, end - 0.25f))
+        var b = min(end, a + 0.7f)
+        if (b - a < 0.22f) b = min(end, a + 0.22f)
+
+        fun reset(vararg keys: String) {
+            for (k in keys) layer.channels.remove(k)
+        }
+
+        when (preset) {
+            "fade" -> {
+                reset("alpha")
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", b, layer.alpha, "easeOut")
+            }
+            "slideUp" -> {
+                reset("alpha", "y")
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", b, layer.alpha, "easeOut")
+                setKey(layer, "y", a, layer.y + 180f, "easeOut")
+                setKey(layer, "y", b, layer.y, "easeOut")
+            }
+            "zoom" -> {
+                reset("scale", "alpha")
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", b, layer.alpha, "easeOut")
+                setKey(layer, "scale", a, 0.2f, "back")
+                setKey(layer, "scale", b, layer.scale, "easeOut")
+            }
+            "spin" -> {
+                reset("rot", "scale", "alpha")
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", b, layer.alpha, "easeOut")
+                setKey(layer, "rot", a, layer.rot - 260f, "easeOut")
+                setKey(layer, "rot", b, layer.rot, "easeOut")
+                setKey(layer, "scale", a, 0.15f, "easeOut")
+                setKey(layer, "scale", b, layer.scale, "easeOut")
+            }
+            "bounce" -> {
+                reset("y", "alpha", "scale")
+                val bb = min(end, a + max(0.6f, min(1f, layer.dur * 0.55f)))
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", min(bb, a + 0.18f), layer.alpha, "linear")
+                setKey(layer, "y", a, layer.y + 260f, "back")
+                setKey(layer, "y", bb, layer.y, "easeOut")
+                setKey(layer, "scale", a, 0.82f, "easeOut")
+                setKey(layer, "scale", bb, layer.scale, "easeOut")
+            }
+            "typing" -> {
+                if (layer.kind != KIND_TEXT) return false
+                reset("typing")
+                val bb = min(end, a + max(0.8f, min(2.2f, layer.dur * 0.7f)))
+                setKey(layer, "typing", a, 0f, "linear")
+                setKey(layer, "typing", bb, 1f, "linear")
+            }
+            "kenBurns" -> {
+                if (layer.kind != KIND_IMAGE) return false
+                reset("scale")
+                setKey(layer, "scale", start, layer.scale, "easeInOut")
+                setKey(layer, "scale", end, layer.scale * 1.22f, "linear")
+            }
+            "glitch" -> {
+                reset("x", "alpha")
+                val step = 0.045f
+                setKey(layer, "x", a, layer.x, "linear")
+                for (i in 1..6) {
+                    val jitter = (if (i % 2 == 1) 1 else -1) * (30f - i * 4f)
+                    setKey(layer, "x", round((a + step * i) * 1000f) / 1000f, layer.x + jitter, "linear")
+                }
+                setKey(layer, "x", round((a + step * 7) * 1000f) / 1000f, layer.x, "easeOut")
+                setKey(layer, "alpha", a, 1f, "linear")
+                setKey(layer, "alpha", round((a + 0.06f) * 1000f) / 1000f, 0.35f, "linear")
+                setKey(layer, "alpha", round((a + 0.14f) * 1000f) / 1000f, 1f, "linear")
+                setKey(layer, "alpha", round((a + 0.2f) * 1000f) / 1000f, 0.6f, "linear")
+                setKey(layer, "alpha", round((a + 0.3f) * 1000f) / 1000f, layer.alpha, "easeOut")
+            }
+            "jedag" -> {
+                // Jedag Jedug ala AM/TikTok: zoom menghentak 128% lalu balik cepat + goyang kecil meluruh.
+                reset("scale", "x")
+                fun ms(v: Float) = (round(v * 1000f) / 1000f).coerceIn(start, end)
+                setKey(layer, "scale", ms(a - 0.03f), layer.scale, "linear")
+                setKey(layer, "scale", ms(a), layer.scale * 1.28f, "easeOut")
+                setKey(layer, "scale", ms(a + 0.12f), layer.scale, "easeOut")
+                setKey(layer, "x", ms(a), layer.x + 14f, "linear")
+                setKey(layer, "x", ms(a + 0.05f), layer.x - 10f, "linear")
+                setKey(layer, "x", ms(a + 0.11f), layer.x + 5f, "linear")
+                setKey(layer, "x", ms(a + 0.2f), layer.x, "easeOut")
+            }
+            "slideLeft" -> {
+                reset("alpha", "x")
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", b, layer.alpha, "easeOut")
+                setKey(layer, "x", a, layer.x + 260f, "easeOut")
+                setKey(layer, "x", b, layer.x, "easeOut")
+            }
+            "slideDown" -> {
+                reset("alpha", "y")
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", b, layer.alpha, "easeOut")
+                setKey(layer, "y", a, layer.y - 200f, "easeOut")
+                setKey(layer, "y", b, layer.y, "easeOut")
+            }
+            "zoomOut" -> {
+                reset("scale", "alpha")
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", min(b, a + 0.15f), layer.alpha, "linear")
+                setKey(layer, "scale", a, layer.scale * 1.35f, "easeOut")
+                setKey(layer, "scale", b, layer.scale, "easeOut")
+            }
+            "popIn" -> {
+                reset("scale", "alpha")
+                setKey(layer, "alpha", a, 0f, "linear")
+                setKey(layer, "alpha", min(b, a + 0.08f), layer.alpha, "linear")
+                setKey(layer, "scale", a, 0.05f, "easeOut")
+                setKey(layer, "scale", min(b, a + 0.22f), layer.scale * 1.12f, "easeOut")
+                setKey(layer, "scale", b, layer.scale, "easeOut")
+            }
+            "rotateIn" -> {
+                reset("rot", "scale", "alpha")
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", min(b, a + 0.2f), layer.alpha, "linear")
+                setKey(layer, "rot", a, layer.rot - 120f, "back")
+                setKey(layer, "rot", b, layer.rot, "easeOut")
+                setKey(layer, "scale", a, layer.scale * 0.4f, "back")
+                setKey(layer, "scale", b, layer.scale, "easeOut")
+            }
+            "flipX" -> {
+                reset("rotX", "alpha")
+                setKey(layer, "alpha", a, 0f, "linear")
+                setKey(layer, "alpha", min(b, a + 0.12f), layer.alpha, "linear")
+                setKey(layer, "rotX", a, 80f, "easeOut")
+                setKey(layer, "rotX", b, layer.rotX, "easeOut")
+            }
+            "blurIn" -> {
+                reset("fx.blur", "alpha")
+                setKey(layer, "alpha", a, 0f, "easeOut")
+                setKey(layer, "alpha", min(b, a + 0.25f), layer.alpha, "linear")
+                setKey(layer, "fx.blur", a, 22f, "easeOut")
+                setKey(layer, "fx.blur", b, layer.fxBlur, "easeOut")
+            }
+            "shake" -> {
+                // Goyang horizontal yang meluruh: amplitudo turun 8 langkah.
+                reset("x", "y")
+                setKey(layer, "x", a, layer.x, "linear")
+                for (i in 1..8) {
+                    val amp = 22f * (1f - i / 9f) * (if (i % 2 == 1) 1f else -1f)
+                    setKey(layer, "x", round((a + 0.035f * i) * 1000f) / 1000f, layer.x + amp, "linear")
+                }
+                setKey(layer, "x", round((a + 0.035f * 9) * 1000f) / 1000f, layer.x, "easeOut")
+            }
+            "wobble" -> {
+                reset("rot")
+                setKey(layer, "rot", a, layer.rot, "linear")
+                val swings = listOf(10f, -7f, 4f, -2f)
+                for ((i, sw) in swings.withIndex()) {
+                    setKey(layer, "rot", round((a + 0.09f * (i + 1)) * 1000f) / 1000f, layer.rot + sw, "easeOut")
+                }
+                setKey(layer, "rot", round((a + 0.09f * 5) * 1000f) / 1000f, layer.rot, "easeOut")
+            }
+            "pulse" -> {
+                // Denyut 3 kali, tiap 0.25 detik (ketukan).
+                reset("scale")
+                setKey(layer, "scale", a, layer.scale, "linear")
+                for (i in 0 until 3) {
+                    val tu = round((a + 0.25f * i + 0.1f) * 1000f) / 1000f
+                    val td = round((a + 0.25f * i + 0.25f) * 1000f) / 1000f
+                    setKey(layer, "scale", tu, layer.scale * 1.08f, "easeOut")
+                    setKey(layer, "scale", td, layer.scale, "easeOut")
+                }
+            }
+            "flash" -> {
+                // Kilatan terang lalu kembali ke kecerahan normal.
+                reset("fx.brightness")
+                setKey(layer, "fx.brightness", a, 240f, "easeOut")
+                setKey(layer, "fx.brightness", b, layer.fxBright, "easeOut")
+            }
+            "fadeOut" -> {
+                reset("alpha")
+                val fo = max(start, end - 0.5f)
+                setKey(layer, "alpha", fo, layer.alpha, "linear")
+                setKey(layer, "alpha", end, 0f, "easeOut")
+            }
+            else -> return false
+        }
+        return true
+    }
+}

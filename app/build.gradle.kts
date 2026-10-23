@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.kilat.motion"
+    namespace = "com.fluxa.motion"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.kilat.motion"
+        applicationId = "com.fluxa.motion"
         minSdk = 29
         targetSdk = 34
         versionCode = 24
@@ -27,7 +27,7 @@ android {
         }
     }
 
-    // Native kecil untuk timestamp export (libkilat_timing.so). Tanpa .so, export pakai jalur real-time.
+    // Native kecil untuk timestamp export (libfluxa_timing.so). Tanpa .so, export pakai jalur real-time.
     ndkVersion = "26.1.10909125"
     externalNativeBuild {
         cmake {
@@ -45,10 +45,11 @@ android {
     }
 
     signingConfigs {
-        create("kilat") {
+        create("fluxa") {
             if (kilatKeystore != null) {
                 storeFile = File(kilatKeystore)
                 storePassword = System.getenv("KILAT_STORE_PASSWORD")
+                // alias ini nama entri di dalam keystore rilis yang sudah ada: JANGAN diganti
                 keyAlias = System.getenv("KILAT_KEY_ALIAS") ?: "kilat"
                 keyPassword = System.getenv("KILAT_KEY_PASSWORD")
             }
@@ -58,14 +59,14 @@ android {
     buildTypes {
         debug {
             // debug juga ditandatangani kunci tetap agar SHA-1-nya sama dengan release
-            if (kilatKeystore != null) signingConfig = signingConfigs.getByName("kilat")
+            if (kilatKeystore != null) signingConfig = signingConfigs.getByName("fluxa")
         }
         release {
             // R8 aktif: Material/AndroidX ikut masuk, tanpa shrink APK release jadi ~10 MB
             isMinifyEnabled = true
             isShrinkResources = true
             // supaya APK release bisa langsung di-install (sideload) tanpa keystore sendiri
-            signingConfig = signingConfigs.getByName(if (kilatKeystore != null) "kilat" else "debug")
+            signingConfig = signingConfigs.getByName(if (kilatKeystore != null) "fluxa" else "debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -94,7 +95,7 @@ android {
 
 dependencies {
     // UI: Material Components (Material3) untuk tema dasar, widget default, dan kontrol sistem.
-    // Komponen editor tetap custom (Canvas/View) agar tampilan flat KILAT konsisten.
+    // Komponen editor tetap custom (Canvas/View) agar tampilan flat FLUXA konsisten.
     implementation("com.google.android.material:material:1.12.0")
     // login Google native lewat Credential Manager (tanpa browser)
     implementation("androidx.credentials:credentials:1.3.0")

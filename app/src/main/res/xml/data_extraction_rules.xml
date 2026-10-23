@@ -2,11 +2,11 @@
 <!-- Android 12+. Rahasia (API key AI, token login Google) tidak ikut backup cloud maupun transfer perangkat. -->
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="sharedpref" path="kilat_ai.xml" />
-        <exclude domain="sharedpref" path="kilat_auth.xml" />
+        <exclude domain="sharedpref" path="fluxa_ai.xml" />
+        <exclude domain="sharedpref" path="fluxa_auth.xml" />
     </cloud-backup>
     <device-transfer>
-        <exclude domain="sharedpref" path="kilat_ai.xml" />
-        <exclude domain="sharedpref" path="kilat_auth.xml" />
+        <exclude domain="sharedpref" path="fluxa_ai.xml" />
+        <exclude domain="sharedpref" path="fluxa_auth.xml" />
     </device-transfer>
 </data-extraction-rules>
