@@ -580,21 +580,32 @@ class HomeActivity : Activity() {
     private fun buildProfilePage(): View {
         val col = LinearLayout(this)
         col.orientation = LinearLayout.VERTICAL
+        val session = GoogleAuth.session(this)
+        val displayName = session?.name?.takeIf { it.isNotBlank() } ?: "Kreator Fluxa"
 
         val head = LinearLayout(this)
         head.orientation = LinearLayout.HORIZONTAL
         head.gravity = Gravity.CENTER_VERTICAL
         val avatar = FrameLayout(this)
         avatar.background = fluxaSolidOval()
-        val av = IconView(this, FluxaIcon.USER, 0xFF05131F.toInt())
-        val ap = dp(16f)
-        av.setPadding(ap, ap, ap, ap)
-        avatar.addView(av, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        if (session != null) {
+            // akun login: inisial nama sebagai avatar
+            val initial = kText(displayName.first().uppercase(), 24f, 0xFF05131F.toInt(), bold = true)
+            initial.gravity = Gravity.CENTER
+            avatar.addView(initial, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        } else {
+            val av = IconView(this, FluxaIcon.USER, 0xFF05131F.toInt())
+            val ap = dp(16f)
+            av.setPadding(ap, ap, ap, ap)
+            avatar.addView(av, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        }
         head.addView(avatar, LinearLayout.LayoutParams(dp(62f), dp(62f)))
         val nameCol = LinearLayout(this)
         nameCol.orientation = LinearLayout.VERTICAL
-        nameCol.addView(kText("Kreator Fluxa", 17f, FluxaColors.Text, bold = true))
-        nameCol.addView(kText("Fluxa ${BuildConfig.VERSION_NAME}", 11f, FluxaColors.Dim))
+        nameCol.addView(kText(displayName, 17f, FluxaColors.Text, bold = true))
+        val sub = if (session != null && session.email.isNotEmpty()) "${session.email} - Fluxa ${BuildConfig.VERSION_NAME}"
+            else "Fluxa ${BuildConfig.VERSION_NAME}"
+        nameCol.addView(kText(sub, 11f, FluxaColors.Dim))
         val lpN = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpN.marginStart = dp(13f)
         head.addView(nameCol, lpN)
@@ -643,7 +654,6 @@ class HomeActivity : Activity() {
 
         // akun, share, dan AI
         col.addView(sectionHeader("Akun & cloud"))
-        val session = GoogleAuth.session(this)
         if (session != null) {
             col.addView(menuRow(FluxaIcon.USER, FluxaColors.Accent, "Login sebagai", session.email.ifEmpty { session.name }) {
                 CloudSettings.confirmLogout(this) { showPage("profile") }
