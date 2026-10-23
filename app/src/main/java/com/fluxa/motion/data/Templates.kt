@@ -275,10 +275,11 @@ object Templates {
             x = 540f; y = 960f; alpha = 0f; start = 0f; dur = 7f
         }
         // tiap hentakan: naik cepat ke 0.45 lalu kembali 0 (kedip pendek). Keyframe 0 di awal
-        // wajib, kalau tidak nilai keyframe pertama berlaku sejak t=0.
+        // wajib, kalau tidak nilai keyframe pertama berlaku sejak t=0. Jarak antar keyframe
+        // minimal 0.03 dtk, karena setKey menggabungkan keyframe yang lebih dekat dari 0.02 dtk.
         Anim.setKey(flash, "alpha", 0f, 0f, "linear")
         for (ft in floatArrayOf(1.05f, 3.4f, 5.6f)) {
-            Anim.setKey(flash, "alpha", ft - 0.02f, 0f, "linear")
+            Anim.setKey(flash, "alpha", ft - 0.03f, 0f, "linear")
             Anim.setKey(flash, "alpha", ft, 0.45f, "easeOut")
             Anim.setKey(flash, "alpha", ft + 0.09f, 0f, "easeOut")
         }
