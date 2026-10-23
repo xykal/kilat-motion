@@ -1,4 +1,4 @@
-// KILAT Motion - share preset backend (Cloudflare Worker + KV)
+// Fluxa Motion - share preset backend (Cloudflare Worker + KV)
 // Binding KV : PRESETS
 // Var        : GOOGLE_CLIENT_IDS (daftar client ID Google yang boleh menulis, dipisah koma)
 //

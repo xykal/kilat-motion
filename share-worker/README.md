@@ -1,6 +1,6 @@
-# kilat-share (Cloudflare Worker)
+# fluxa-share (Cloudflare Worker)
 
-Backend share project KILAT Motion. Data disimpan di KV (`PRESETS`).
+Backend share project Fluxa Motion. Domain: https://share.xyverse.my.id (worker `fluxa-share`). Data disimpan di KV (`PRESETS`).
 
 - `POST /presets` butuh header `Authorization: Bearer <Google id_token>`. Audience token harus ada di var `GOOGLE_CLIENT_IDS`.
 - `GET /presets/:id` publik, tanpa login.
