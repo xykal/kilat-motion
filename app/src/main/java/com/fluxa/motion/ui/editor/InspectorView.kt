@@ -29,6 +29,7 @@ import com.fluxa.motion.core.render.Renderer
 import com.fluxa.motion.ui.components.IconView
 import com.fluxa.motion.ui.components.FluxaTabBar
 import com.fluxa.motion.ui.components.KeyframeButton
+import com.fluxa.motion.ui.components.RulerSlider
 import com.fluxa.motion.ui.components.FluxaColorPicker
 import com.fluxa.motion.ui.components.FluxaSwitch
 import com.fluxa.motion.ui.components.FluxaButton
@@ -261,6 +262,9 @@ class InspectorView(context: Context) : LinearLayout(context) {
         syncValues()
     }
 
+    private val rulerOf = HashMap<Any, RulerSlider>()
+    private var pendingRuler: RulerSlider? = null
+
     private fun syncValues() {
         val l = cur ?: return
         binding = true
@@ -271,6 +275,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
                 val prog = ((v - r.min) / r.step).roundToInt().coerceIn(0, r.seek.max)
                 r.seek.progress = prog
             }
+            rulerOf[r]?.let { if (!it.dragging) it.value = v }
             val hasKf = Anim.keyAt(l, r.key, curPlayhead) != null
             val any = l.channels[r.key]?.keys?.isNotEmpty() == true
             r.keyBtn.mode = if (hasKf) 2 else if (any) 1 else 0
@@ -281,7 +286,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
     private fun rebind() {
         binding = true
         removeAllViews()
-        rows.clear()
+        rows.clear(); rulerOf.clear()
         val l = cur
         val p = proj
         if (l == null || p == null) {
@@ -1411,28 +1416,30 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val valTv = labelTv("", 11f, cText, 40f)
         val keyBtn = KeyframeButton(context)
 
-        // slider diganti kontrol −/+ dan nilai yang bisa diketik (tanpa batas min/max)
+        // penggaris geser (tanpa batas): menggantikan slider & tombol −/+
         seek.visibility = View.GONE
         row.addView(seek, LayoutParams(0, 0))
-        val minusBtn = FluxaIconButton(context, FluxaIcon.MINUS, cText, filled = true, sizeDp = 30f)
-        val plusBtn = FluxaIconButton(context, FluxaIcon.PLUS, cText, filled = true, sizeDp = 30f)
+        val ruler = RulerSlider(context)
+        ruler.step = step * 5f
+        ruler.value = Anim.value(l, key, curPlayhead)
+        row.addView(ruler, LayoutParams(0, dp(34f).toInt(), 1f))
         valTv.gravity = Gravity.CENTER
-        row.addView(minusBtn, LayoutParams(dp(30f).toInt(), dp(30f).toInt()))
-        row.addView(valTv, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-        row.addView(plusBtn, LayoutParams(dp(30f).toInt(), dp(30f).toInt()))
+        row.addView(valTv, LayoutParams(dp(58f).toInt(), LayoutParams.WRAP_CONTENT))
         row.addView(keyBtn, LayoutParams(dp(30f).toInt(), dp(30f).toInt()))
-        fun nudge(d: Float) {
-            val nv = Anim.value(l, key, curPlayhead) + d
-            applyValue(l, key, nv)
-            valTv.text = if (isInt) nv.roundToInt().toString() else Format.dec(nv, 2)
-            listener?.onEdited(true)
-            syncValues()
+        ruler.onChange = { v, commit ->
+            if (!binding) {
+                applyValue(l, key, v)
+                valTv.text = if (isInt) v.roundToInt().toString() else Format.dec(v, 2)
+                listener?.onEdited(commit)
+                if (commit) syncValues()
+            }
         }
-        minusBtn.setOnClickListener { nudge(-step * 5f) }
-        plusBtn.setOnClickListener { nudge(step * 5f) }
+        pendingRuler = ruler
 
         val ref = RowRef(key, seek, valTv, keyBtn, minV, step, isInt, l)
         rows.add(ref)
+        pendingRuler?.let { rulerOf[ref] = it }
+        pendingRuler = null
 
         seek.onProgress = { progress ->
             if (!binding) {

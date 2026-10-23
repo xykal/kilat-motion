@@ -117,7 +117,8 @@ class HomeActivity : Activity() {
 
         bottomNav = FluxaBottomNav(this)
         bottomNav.onTabSelected = { id -> showPage(id) }
-        bottomNav.onCreateClicked = { showCreateSheet() }
+        bottomNav.onCreateClicked = { showNavSheet() }
+        bottomNav.setCompact(true)
         root.addView(bottomNav, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
         setContentView(root)
@@ -288,12 +289,12 @@ class HomeActivity : Activity() {
         // lanjutkan project terakhir
         val latest = ProjectLibrary.latest(this)
         if (latest != null) {
-            col.addView(sectionHeader("Lanjutkan", "Semua project") { bottomNav.select("projects", true) })
+            col.addView(sectionHeader("Lanjutkan", "Semua project") { showPage("projects") })
             col.addView(projectCard(latest))
         }
 
         // template
-        col.addView(sectionHeader("Template Fluxa", "Lihat semua") { bottomNav.select("templates", true) })
+        col.addView(sectionHeader("Template Fluxa", "Lihat semua") { showPage("templates") })
         val tRow = LinearLayout(this)
         tRow.orientation = LinearLayout.HORIZONTAL
         val tScroll = HorizontalScrollView(this)
@@ -326,7 +327,7 @@ class HomeActivity : Activity() {
         val lpGrid2 = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lpGrid2.topMargin = dp(10f)
         grid2.addView(quickTile(FluxaIcon.LAYERS, FluxaColors.Violet, "Jelajahi Template", "${Templates.ALL.size} template siap edit") {
-            bottomNav.select("templates", true)
+            showPage("templates")
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         val g4 = quickTile(FluxaIcon.BOOK, FluxaColors.Sky, "Panduan", "Belajar keyframe cepat") { showGuide() }
         val lpG4 = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
@@ -704,6 +705,26 @@ class HomeActivity : Activity() {
     // =====================================================================
     // aksi global
     // =====================================================================
+    /** Navigasi lewat sheet tombol +, menggantikan bottom nav. */
+    private fun showNavSheet() {
+        val items = listOf(
+            FluxaSheet.Item("Beranda", "Halaman utama dan template cepat", FluxaIcon.HOME, FluxaColors.Accent),
+            FluxaSheet.Item("Project", "Semua project tersimpan", FluxaIcon.FOLDER, FluxaColors.Violet),
+            FluxaSheet.Item("Template", "Template siap edit", FluxaIcon.LAYERS, FluxaColors.Amber),
+            FluxaSheet.Item("Profil", "Akun, cloud, dan pengaturan", FluxaIcon.USER, FluxaColors.Rose),
+            FluxaSheet.Item("Buat project baru", "Mulai dari kanvas kosong", FluxaIcon.PLUS, FluxaColors.Accent)
+        )
+        FluxaSheet.showList(this, "Navigasi", items) { i ->
+            when (i) {
+                0 -> showPage("home")
+                1 -> showPage("projects")
+                2 -> showPage("templates")
+                3 -> showPage("profile")
+                else -> showCreateSheet()
+            }
+        }
+    }
+
     private fun showCreateSheet() {
         val tints = listOf(FluxaColors.Accent, FluxaColors.Sky, FluxaColors.Violet, FluxaColors.Amber, FluxaColors.Rose)
         val items = Templates.RATIOS.mapIndexed { i, r ->

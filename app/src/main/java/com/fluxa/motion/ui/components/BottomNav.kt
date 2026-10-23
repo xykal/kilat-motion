@@ -32,6 +32,13 @@ class FluxaBottomNav(context: Context) : FrameLayout(context) {
     var selectedId: String = ""
         private set
 
+    private var barView: View? = null
+
+    /** Mode compact: bar tab disembunyikan, hanya tombol + di bawah tengah (navigasi lewat sheet). */
+    fun setCompact(on: Boolean) {
+        barView?.visibility = if (on) View.GONE else View.VISIBLE
+    }
+
     init {
         val bar = LinearLayout(context)
         bar.orientation = LinearLayout.HORIZONTAL
@@ -41,6 +48,7 @@ class FluxaBottomNav(context: Context) : FrameLayout(context) {
         val lpBar = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM)
         lpBar.topMargin = dp(24f)
         addView(bar, lpBar)
+        barView = bar
 
         val tabs = listOf(
             Tab("home", "Beranda", FluxaIcon.HOME),
