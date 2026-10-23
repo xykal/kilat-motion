@@ -87,14 +87,19 @@ jobs:
           KILAT_EXPECTED_SHA1: 10b3bfec6ce707b1e46a2f0aebfc2b1b2326dd85
         run: |
           set -e
-          python3 tools/verify_apk_signer.py app/build/outputs/apk/release/app-release.apk "$KILAT_EXPECTED_SHA1"
-          python3 tools/verify_apk_signer.py app/build/outputs/apk/debug/app-debug.apk "$KILAT_EXPECTED_SHA1"
+          shopt -s nullglob
+          files=(app/build/outputs/apk/release/*.apk app/build/outputs/apk/debug/*.apk)
+          if [ ${#files[@]} -eq 0 ]; then echo "::error::Tidak ada APK untuk diverifikasi"; exit 1; fi
+          for f in "${files[@]}"; do
+            echo "Verifikasi $f"
+            python3 tools/verify_apk_signer.py "$f" "$KILAT_EXPECTED_SHA1"
+          done
 
       - name: Upload APK Debug
         uses: actions/upload-artifact@v4
         with:
           name: kilat-motion-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
       - name: Upload APK Release
@@ -110,7 +115,7 @@ jobs:
         with:
           files: |
             app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/*.apk
           generate_release_notes: true
 
       - name: Ringkasan build

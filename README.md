@@ -305,8 +305,8 @@ Butuh **JDK 17** + **Android SDK (platform 34, build-tools 34.0.0)**.
 ```
 
 APK ada di:
-- `app/build/outputs/apk/debug/app-debug.apk`
-- `app/build/outputs/apk/release/app-release.apk`
+- `app/build/outputs/apk/debug/app-debug-<abi>.apk` (per arsitektur: arm64-v8a, armeabi-v7a, x86_64)
+- `app/build/outputs/apk/release/app-release-<abi>.apk` (per arsitektur). Untuk HP modern pilih `arm64-v8a`.
 
 ### GitHub Actions (otomatis)
 Workflow: `.github/workflows/android.yml`

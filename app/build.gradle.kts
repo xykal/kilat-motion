@@ -22,8 +22,19 @@ android {
             ?: System.getenv("GOOGLE_WEB_CLIENT_ID") ?: ""
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$gWebClientId\"")
 
-        ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        // Buang resource bahasa dari library (Material/AndroidX) yang tidak dipakai app.
+        // Tanpa ini resources.arsc membengkak. Default (Indonesia) tetap ikut.
+        resourceConfigurations += listOf("en", "in", "id")
+    }
+
+    // Satu APK per arsitektur (arm64-v8a untuk HP modern, armeabi-v7a untuk HP lama, x86_64 untuk emulator).
+    // Tidak ada APK universal agar file yang diunduh lebih kecil. Pilih yang sesuai HP.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = false
         }
     }
 
