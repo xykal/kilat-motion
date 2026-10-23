@@ -223,6 +223,10 @@ def main():
         for t in thumb[:6]:
             log("    " + t)
         # stack trace pertama sesudah baris thumbnail
+        diag = [l for l in lines if "FluxaDiag" in l]
+        log(f"  diagnosis layer: {len(diag)}")
+        for d in diag:
+            log("    " + d)
         for i, l in enumerate(lines):
             if "FluxaThumb" in l:
                 for x in lines[i:i + 12]:
