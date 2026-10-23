@@ -239,9 +239,19 @@ class TimelineView(context: Context) : View(context) {
         return if (idx in p.layers.indices) p.layers[idx] else null
     }
 
+    // scroll vertikal area layer (baris bisa lebih banyak dari tinggi layar)
+    private var vScroll = 0f
+    private var lastPanY = 0f
+
+    private fun maxVScroll(): Float {
+        val p = project ?: return 0f
+        val content = p.layers.size * rowHeight()
+        return max(0f, content - (height - rulerH - musicLaneH()))
+    }
+
     private fun rowAtY(y: Float): Int {
         val rh = rowHeight()
-        return ((y - rulerH) / rh).toInt()
+        return ((y - rulerH + vScroll) / rh).toInt()
     }
 
     private fun c2EE6C0(): Int = 0xFF2EE6C0.toInt()
@@ -349,14 +359,17 @@ class TimelineView(context: Context) : View(context) {
             canvas.drawRoundRect(thumbX, rulerH - dp(3.4f), thumbX + thumbW, rulerH - dp(0.8f), dp(1.3f), dp(1.3f), dotPaint)
         }
 
-        // rows
+        // rows (dipotong di area layer agar tidak menimpa ruler & lane musik)
         splitRect = null
         splitLayer = null
+        vScroll = vScroll.coerceIn(0f, maxVScroll())
+        canvas.save()
+        canvas.clipRect(0f, rulerH, width.toFloat(), height - musicLaneH())
         val rh = rowHeight()
         var row = 0
         while (row < p.layers.size) {
             val layer = layerAtRow(row) ?: break
-            val top = rulerH + row * rh
+            val top = rulerH + row * rh - vScroll
             if (top > height) break
             canvas.drawLine(0f, top + rh, width.toFloat(), top + rh, linePaint)
 
@@ -429,6 +442,7 @@ class TimelineView(context: Context) : View(context) {
             canvas.restore()
             row++
         }
+        canvas.restore()
 
         // ---- lane musik ----
         val music = p.music
@@ -564,6 +578,7 @@ class TimelineView(context: Context) : View(context) {
                 parent?.requestDisallowInterceptTouchEvent(true)
                 downX = event.x
                 downY = event.y
+                lastPanY = event.y
                 splitRect?.let { sr ->
                     if (sr.contains(event.x, event.y)) {
                         splitLayer?.let { listener?.onSplit(it) }
@@ -715,13 +730,19 @@ class TimelineView(context: Context) : View(context) {
                 when (dragMode) {
                     MODE_PAN -> {
                         val dx = event.x - lastPanX
-                        if (abs(event.x - downX) > dp(6f)) panMoved = true
+                        if (abs(event.x - downX) > dp(6f) || abs(event.y - downY) > dp(6f)) panMoved = true
                         if (panMoved) {
                             scrollSec -= dx / z
                             clampScroll()
                             invalidate()
                         }
                         lastPanX = event.x
+                        // geser vertikal daftar layer
+                        if (panMoved) {
+                            vScroll = (vScroll - (event.y - lastPanY)).coerceIn(0f, maxVScroll())
+                            invalidate()
+                        }
+                        lastPanY = event.y
                     }
                     MODE_SEEK -> listener?.onSeek(snapSeek(tAt(event.x)))
                     MODE_MOVE -> {
