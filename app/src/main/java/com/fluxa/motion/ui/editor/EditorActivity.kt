@@ -443,6 +443,11 @@ class EditorActivity : Activity() {
                 autosave()
             }
 
+            override fun onSplit(layer: Layer) {
+                splitLayerAtPlayhead(layer)
+                timeline.invalidate()
+            }
+
             override fun onMusicTap() {
                 if (project.music != null) showMusicDialog()
             }
@@ -1147,7 +1152,6 @@ class EditorActivity : Activity() {
         val inTxt = markIn?.let { Format.time(it) } ?: "belum"
         val outTxt = markOut?.let { Format.time(it) } ?: "belum"
         val items = listOf(
-            FluxaSheet.Item("Potong di playhead", "Pisah klip jadi dua bagian", FluxaIcon.SCISSORS, FluxaColors.Accent),
             FluxaSheet.Item("Buang kiri playhead", "Hapus bagian klip di kiri playhead", FluxaIcon.SKIP_START, FluxaColors.Sky),
             FluxaSheet.Item("Buang kanan playhead", "Hapus bagian klip di kanan playhead", FluxaIcon.NEXT, FluxaColors.Sky),
             FluxaSheet.Item("Tandai In di playhead", "In sekarang: $inTxt", FluxaIcon.LAYER_UP, FluxaColors.Amber),
@@ -1157,19 +1161,18 @@ class EditorActivity : Activity() {
         )
         FluxaSheet.showList(this, "Potong & trim", items) { which ->
             when (which) {
-                0 -> selectedLayerOrToastMember()?.let { splitLayerAtPlayhead(it) }
-                1 -> selectedLayerOrToastMember()?.let { trimLeftAt(it) }
-                2 -> selectedLayerOrToastMember()?.let { trimRightAt(it) }
-                3 -> {
+                0 -> selectedLayerOrToastMember()?.let { trimLeftAt(it) }
+                1 -> selectedLayerOrToastMember()?.let { trimRightAt(it) }
+                2 -> {
                     markIn = playhead
                     toast("In di ${Format.time(playhead)}", FluxaIcon.LAYER_UP)
                 }
-                4 -> {
+                3 -> {
                     markOut = playhead
                     toast("Out di ${Format.time(playhead)}", FluxaIcon.LAYER_DOWN)
                 }
-                5 -> selectedLayerOrToastMember()?.let { cutInOutFrom(it) }
-                6 -> fitDurationToClips()
+                4 -> selectedLayerOrToastMember()?.let { cutInOutFrom(it) }
+                5 -> fitDurationToClips()
             }
         }
     }

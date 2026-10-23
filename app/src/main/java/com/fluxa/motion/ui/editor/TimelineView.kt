@@ -31,6 +31,7 @@ class TimelineView(context: Context) : View(context) {
         fun onTimesChanged(commit: Boolean)
         fun onVisibilityToggle(id: String)
         fun onMusicTap()
+        fun onSplit(layer: Layer)
         fun onMusicEdited(commit: Boolean)
     }
 
@@ -62,7 +63,7 @@ class TimelineView(context: Context) : View(context) {
     private val density = resources.displayMetrics.density
     private fun dp(v: Float) = v * density
 
-    private val leftW = dp(96f)
+    private val leftW = dp(120f)
     private val rulerH = dp(26f)
 
     private val bgPaint = Paint().apply { color = 0xFF0D0F15.toInt() }
@@ -267,6 +268,28 @@ class TimelineView(context: Context) : View(context) {
     }
     private val handlePath = Path()
 
+    /** Handle tiga garis melayang di ujung kanan klip terpilih (tarik untuk trim kanan). */
+    private fun drawGrip(c: Canvas, edgeX: Float, top: Float, bottom: Float) {
+        val w = dp(14f)
+        val h = min(bottom - top, dp(28f))
+        val cy = (top + bottom) / 2f
+        val l = edgeX - w / 2f
+        val r = l + w
+        gripShadow.color = 0x66000000
+        c.drawRoundRect(l, cy - h / 2f + dp(1.5f), r, cy + h / 2f + dp(1.5f), dp(5f), dp(5f), gripShadow)
+        c.drawRoundRect(l, cy - h / 2f, r, cy + h / 2f, dp(5f), dp(5f), handlePaint)
+        val lw = dp(6f)
+        val gap = dp(3.2f)
+        for (i in -1..1) {
+            val y = cy + i * gap
+            c.drawLine(edgeX - lw / 2f, y, edgeX + lw / 2f, y, chevronPaint)
+        }
+    }
+
+    private val gripShadow = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var splitRect: android.graphics.RectF? = null
+    private var splitLayer: Layer? = null
+
     /** Pil trim di tepi klip dengan panah keluar: ‹ di kiri, › di kanan. Tanpa teks. */
     private fun drawTrimHandle(c: Canvas, edgeX: Float, top: Float, bottom: Float, isLeft: Boolean) {
         val w = dp(10f)
@@ -327,6 +350,8 @@ class TimelineView(context: Context) : View(context) {
         }
 
         // rows
+        splitRect = null
+        splitLayer = null
         val rh = rowHeight()
         var row = 0
         while (row < p.layers.size) {
@@ -338,8 +363,12 @@ class TimelineView(context: Context) : View(context) {
             // nama layer
             val nameY = top + rh / 2f + dp(3.6f)
             namePaint.alpha = if (layer.hidden) 90 else 255
-            val label = TextUtils.ellipsize(layer.name, android.text.TextPaint(namePaint), leftW - dp(30f), TextUtils.TruncateAt.END).toString()
-            canvas.drawText(label, dp(8f), nameY, namePaint)
+            val label = TextUtils.ellipsize(layer.name, android.text.TextPaint(namePaint), leftW - dp(70f), TextUtils.TruncateAt.END).toString()
+            // preview kecil klip (warna sesuai jenis) di kolom kiri
+            val tileC = kindColor(layer.kind)
+            barPaint.color = if (layer.hidden) solidMix(tileC, 0.6f) else tileC
+            canvas.drawRoundRect(dp(8f), top + rh / 2f - dp(12f), dp(32f), top + rh / 2f + dp(12f), dp(5f), dp(5f), barPaint)
+            canvas.drawText(label, dp(40f), nameY, namePaint)
             // dot visibility / ikon kunci
             if (layer.locked) {
                 com.fluxa.motion.ui.components.IconPainter.draw(
@@ -367,7 +396,18 @@ class TimelineView(context: Context) : View(context) {
             if (selected) {
                 // handle trim di kedua ujung klip terpilih: pil putih dengan panah
                 drawTrimHandle(canvas, x1, bt, bb, true)
-                drawTrimHandle(canvas, x2, bt, bb, false)
+                drawGrip(canvas, x2, bt, bb)
+                // gunting inline di tepi atas playhead (potong klip tanpa sheet)
+                val px = timeToX(playhead)
+                if (px > x1 + dp(6f) && px < x2 - dp(6f) && px > leftW + dp(10f)) {
+                    val sr = android.graphics.RectF(px - dp(11f), bt - dp(11f), px + dp(11f), bt + dp(11f))
+                    splitRect = sr
+                    splitLayer = layer
+                    gripShadow.color = 0x66000000
+                    canvas.drawCircle(px, bt, dp(11f), gripShadow)
+                    canvas.drawCircle(px, bt, dp(10f), handlePaint)
+                    IconPainter.draw(canvas, FluxaIcon.SCISSORS, px - dp(7f), bt - dp(7f), dp(14f), 0xFF0A0C11.toInt())
+                }
             }
 
             // diamonds keyframe
@@ -424,6 +464,8 @@ class TimelineView(context: Context) : View(context) {
                     bx += dp(2.6f)
                 }
             }
+            drawTrimHandle(canvas, x1, bt, bb, true)
+            drawTrimHandle(canvas, x2, bt, bb, false)
             canvas.restore()
             // label musik di kolom kiri
             namePaint.alpha = 255
@@ -522,6 +564,15 @@ class TimelineView(context: Context) : View(context) {
                 parent?.requestDisallowInterceptTouchEvent(true)
                 downX = event.x
                 downY = event.y
+                splitRect?.let { sr ->
+                    if (sr.contains(event.x, event.y)) {
+                        splitLayer?.let { listener?.onSplit(it) }
+                        splitRect = null
+                        dragMode = MODE_NONE
+                        dragging = false
+                        return true
+                    }
+                }
                 dragging = true
                 scroller.forceFinished(true)
                 velocityTracker?.recycle()
@@ -716,7 +767,7 @@ class TimelineView(context: Context) : View(context) {
                         val l = dragLayer ?: return true
                         val dt = (event.x - downX) / z
                         var end = snap(origStart + origDur + dt, l)
-                        end = end.coerceIn(origStart + 0.2f, p.duration)
+                        end = end.coerceIn(origStart + 0.2f, 3600f)
                         l.dur = round((end - origStart) * 1000f) / 1000f
                         listener?.onTimesChanged(false)
                         invalidate()
