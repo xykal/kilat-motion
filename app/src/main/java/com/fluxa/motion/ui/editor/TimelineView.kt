@@ -179,6 +179,27 @@ class TimelineView(context: Context) : View(context) {
 
     fun zoomBy(factor: Float) = setZoom(zoom * factor)
 
+    /**
+     * Zoom timeline supaya rentang keyframe [layer] (kunci pertama sampai terakhir) memenuhi
+     * area trek, dengan jeda di kiri dan kanan. Mengembalikan false jika layer belum punya keyframe.
+     */
+    fun zoomToKeys(layer: Layer): Boolean {
+        if (project == null || width <= 0) return false
+        val keys = Anim.allKeyTimes(layer)
+        if (keys.isEmpty()) return false
+        val a = keys.first()
+        val b = keys.last()
+        val span = max(0.3f, b - a)
+        val visible = span * 1.3f
+        val usable = width - leftW
+        val target = (usable / (basePxPerSec() * visible)).coerceIn(1f, 10f)
+        setZoom(target)
+        scrollSec = (a + b) / 2f - (usable / 2f) / pxPerSec()
+        clampScroll()
+        invalidate()
+        return true
+    }
+
     fun zoomFit() {
         zoom = 1f
         scrollSec = 0f
