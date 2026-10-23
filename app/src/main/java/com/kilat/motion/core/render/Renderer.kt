@@ -179,9 +179,18 @@ class Renderer(
         if (w <= 0 || h <= 0) return
         val base = Matrix()
         canvas.getMatrix(base)
-        val work = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val work = if (reuseWork) {
+            workCache?.takeIf { !it.isRecycled && it.width == w && it.height == h }
+                ?: Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).also {
+                    workCache?.recycle()
+                    workCache = it
+                }
+        } else {
+            Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        }
         val wc = Canvas(work)
-        wc.drawColor(project.bg)
+        // SRC: menimpa seluruh bitmap, penting karena bitmap bisa dipakai ulang dan latar bisa semi-transparan
+        wc.drawColor(project.bg, PorterDuff.Mode.SRC)
         wc.setMatrix(base)
         val prevBack = backdrop
         val prevBase = baseMatrix
@@ -200,7 +209,7 @@ class Renderer(
         canvas.setMatrix(null)
         canvas.drawBitmap(work, 0f, 0f, null)
         canvas.restore()
-        work.recycle()
+        if (!reuseWork) work.recycle()
     }
 
     fun drawLayer(canvas: Canvas, layer: Layer, t: Float) {
@@ -443,6 +452,13 @@ class Renderer(
 
     /** Bitmap frame yang sedang disusun (mode kaca) dan matriks dasar project di dalamnya. */
     private var backdrop: Bitmap? = null
+    /**
+     * true = pakai ulang satu bitmap kerja (mode kaca) antar frame. Aman HANYA kalau canvas tujuan
+     * software (export: Surface.lockCanvas), karena drawBitmap menyalin piksel saat itu juga.
+     * Preview (HWUI) tetap false.
+     */
+    var reuseWork = false
+    private var workCache: Bitmap? = null
     private var baseMatrix: Matrix? = null
     private val glassTintPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val glassBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG)

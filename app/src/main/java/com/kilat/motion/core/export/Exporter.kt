@@ -178,7 +178,7 @@ object Exporter {
             }
             // instance sendiri: tidak berbagi scratch state & cache dengan UI thread
             // scratch state sendiri; frame video diambil di resolusi output, bukan 960px preview
-            val renderer = Renderer(frames, max(outW, outH))
+            val renderer = Renderer(frames, max(outW, outH)).apply { reuseWork = true }
 
             tmp = File(context.cacheDir, "kilat_export_${System.currentTimeMillis()}.mp4")
             if (tmp.exists()) tmp.delete()
