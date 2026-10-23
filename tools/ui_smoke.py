@@ -210,6 +210,23 @@ def main():
         snapshot("11-template-velocity")
     step("template velocity", template_velocity)
 
+    def dismiss_anr():
+        # dialog "... isn't responding" dari launcher emulator menutupi layar; pilih Wait
+        if tap_text("Wait", exact=True):
+            time.sleep(2)
+
+    def template_reportase():
+        dismiss_anr()
+        tap_text("Template")
+        time.sleep(1.5)
+        for _ in range(8):
+            if tap_text("JJ Reportase", exact=True):
+                break
+            swipe_up()
+        time.sleep(4)
+        snapshot("12-template-reportase")
+    step("template reportase", template_reportase)
+
     def health():
         alive = adb("shell", "pidof", PKG).strip()
         log(f"  pid: {alive or 'MATI'}")
