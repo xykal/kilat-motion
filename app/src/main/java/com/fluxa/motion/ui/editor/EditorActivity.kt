@@ -342,8 +342,10 @@ class EditorActivity : Activity() {
         transport.gravity = Gravity.CENTER_VERTICAL
         transport.setPadding(dp(14f), dp(4f), dp(14f), dp(6f))
 
-        timecode = kText("00:00.00 / 00:00.00", 10f, FluxaColors.Text, bold = true, font = "monospace")
-        timecode.maxLines = 1
+        // dua baris: posisi di atas, durasi di bawah (kolom kiri sempit karena tombol transport)
+        timecode = kText("00:00.00\n/ 00:00.00", 10f, FluxaColors.Text, bold = true, font = "monospace")
+        timecode.maxLines = 2
+        timecode.setLineSpacing(0f, 0.95f)
         timecode.gravity = Gravity.CENTER_VERTICAL or Gravity.START
         transport.addView(timecode, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
 
@@ -752,7 +754,7 @@ class EditorActivity : Activity() {
     }
 
     private fun updateTimecode() {
-        timecode.text = "${Format.time(playhead)} / ${Format.time(project.duration)}"
+        timecode.text = "${Format.time(playhead)}\n/ ${Format.time(project.duration)}"
     }
 
     private fun updateTimelineHeader() {
