@@ -52,8 +52,19 @@ class FluxaBottomNav(context: Context) : FrameLayout(context) {
         val order = listOf(tabs[0], tabs[1], null, tabs[2], tabs[3])
         for (tab in order) {
             if (tab == null) {
-                val spacer = View(context)
-                bar.addView(spacer, LinearLayout.LayoutParams(0, dp(52f), 1f))
+                // slot tengah: ruang kosong seukuran pil tab + label "Buat" di baris yang sama dengan label tab lain.
+                // FAB digambar mengambang di atas slot ini.
+                val slot = LinearLayout(context)
+                slot.orientation = LinearLayout.VERTICAL
+                slot.gravity = Gravity.CENTER
+                slot.setPadding(dp(4f), dp(4f), dp(4f), dp(2f))
+                slot.addView(View(context), LinearLayout.LayoutParams(dp(52f), dp(30f)))
+                val slotLabel = context.kText("Buat", 9.5f, FluxaColors.Faint, bold = true)
+                slotLabel.gravity = Gravity.CENTER
+                val lpSl = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                lpSl.topMargin = dp(2f)
+                slot.addView(slotLabel, lpSl)
+                bar.addView(slot, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
                 continue
             }
             val item = LinearLayout(context)
@@ -94,12 +105,6 @@ class FluxaBottomNav(context: Context) : FrameLayout(context) {
         val lpFab = LayoutParams(dp(58f), dp(58f), Gravity.TOP or Gravity.CENTER_HORIZONTAL)
         lpFab.topMargin = dp(2f)
         addView(fab, lpFab)
-
-        val fabLabel = context.kText("Buat", 9.5f, FluxaColors.Faint, bold = true)
-        fabLabel.gravity = Gravity.CENTER
-        val lpFl = LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
-        lpFl.bottomMargin = dp(12f)
-        addView(fabLabel, lpFl)
 
         select("home", notify = false)
     }

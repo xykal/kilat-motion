@@ -90,7 +90,8 @@ class FluxaIconButton(
         // Dibacakan TalkBack. Tanpa ini tombol ikon tidak punya nama.
         contentDescription = FluxaIconLabels.of(icon)
         if (filled) background = roundedRect(FluxaColors.CardHi, dpf(10f))
-        val pad = dp(sizeDp * 0.24f)
+        // padding dikecilkan: IconView sudah punya iconInset 8%, jadi total tidak terlalu kecil
+        val pad = dp(sizeDp * 0.14f)
         val lp = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         iconView.setPadding(pad, pad, pad, pad)
         addView(iconView, lp)
