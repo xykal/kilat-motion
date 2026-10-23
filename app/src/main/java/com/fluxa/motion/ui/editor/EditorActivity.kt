@@ -281,6 +281,22 @@ class EditorActivity : Activity() {
         }
         previewWrap.addView(preview, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
+        // chip zoom preview: muncul saat kanvas di-zoom, ketuk untuk kembali 100%
+        val zoomChip = kText("", 9.5f, FluxaColors.Muted, bold = true, font = "monospace")
+        zoomChip.setPadding(dp(8f), dp(4f), dp(8f), dp(4f))
+        zoomChip.background = roundedRect(0xFF171B27.toInt(), kdpf(6f))
+        zoomChip.visibility = View.GONE
+        zoomChip.setOnClickListener { preview.resetCanvasZoom() }
+        val lpZoomChip = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpZoomChip.gravity = Gravity.TOP or Gravity.END
+        lpZoomChip.rightMargin = dp(10f)
+        lpZoomChip.topMargin = dp(8f)
+        previewWrap.addView(zoomChip, lpZoomChip)
+        preview.onZoomChanged = { z ->
+            zoomChip.text = "${(z * 100).toInt()}%  ·  Reset"
+            zoomChip.visibility = if (z > 1.001f) View.VISIBLE else View.GONE
+        }
+
         badge = kText("", 9.5f, FluxaColors.Dim, bold = true)
         badge.setPadding(dp(8f), dp(4f), dp(8f), dp(4f))
         badge.background = roundedRect(0xFF171B27.toInt(), kdpf(6f))
@@ -443,6 +459,12 @@ class EditorActivity : Activity() {
 
         val spacer = View(this)
         tlHead.addView(spacer, LinearLayout.LayoutParams(dp(6f), dp(31f)))
+        // zoom per layer: timeline di-zoom ke rentang keyframe layer terpilih
+        quickBtn(FluxaIcon.KEYFRAME) {
+            selectedLayerOrToast()?.let { l ->
+                if (!timeline.zoomToKeys(l)) toast("Layer ini belum punya keyframe", FluxaIcon.INFO)
+            }
+        }
         quickBtn(FluxaIcon.MINUS) { timeline.zoomBy(0.8f) }
         zoomPct = kText("100%", 10f, FluxaColors.Muted, bold = true, font = "monospace")
         zoomPct.gravity = Gravity.CENTER
@@ -1994,7 +2016,9 @@ class EditorActivity : Activity() {
             TIPS
             - Posisikan playhead, ubah nilai, lalu ketuk wajik untuk bikin keyframe di titik itu
             - Wajik terisi penuh artinya ada keyframe tepat di playhead; ketuk lagi untuk hapus
-            - Belum ada pinch zoom, pakai handle pojok untuk resize
+            - Zoom preview: cubit dua jari (maks 6x), geser pakai dua jari atau satu jari di area kosong saat zoom; ketuk chip di pojok untuk kembali 100%
+            - Fokus keyframe: pilih layer, lalu ketuk ikon wajik di header timeline untuk zoom ke rentang keyframe layer itu
+            - Resize layer: pakai handle pojok
             - Efek Blur pada gambar memakai downscale supaya ringan
             - Preview terasa berat? turunkan Glow atau kurangi jumlah layer
         """.trimIndent()

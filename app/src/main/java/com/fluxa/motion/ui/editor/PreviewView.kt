@@ -18,6 +18,7 @@ import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.round
 import kotlin.math.sin
@@ -60,6 +61,13 @@ class PreviewView(context: Context) : View(context) {
     private var viewScale = 1f
     private var offX = 0f
     private var offY = 0f
+
+    /** Zoom kanvas preview: 1x = pas di layar, maks 6x. Geser lewat pan (dalam pixel view). */
+    var canvasZoom = 1f
+        private set
+    private var panX = 0f
+    private var panY = 0f
+    var onZoomChanged: ((Float) -> Unit)? = null
 
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -108,10 +116,55 @@ class PreviewView(context: Context) : View(context) {
         val w = width.toFloat()
         val h = height.toFloat()
         if (w <= 0f || h <= 0f) return
-        viewScale = min(w / p.width, h / p.height)
-        offX = (w - p.width * viewScale) / 2f
-        offY = (h - p.height * viewScale) / 2f
+        viewScale = min(w / p.width, h / p.height) * canvasZoom
+        offX = (w - p.width * viewScale) / 2f + panX
+        offY = (h - p.height * viewScale) / 2f + panY
     }
+
+    /** Batas geser supaya kanvas tidak lepas dari layar. */
+    private fun clampPan(p: Project, s: Float) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        val cw = p.width * s
+        val ch = p.height * s
+        val mx = if (cw > w) (cw - w) / 2f else 0f
+        val my = if (ch > h) (ch - h) / 2f else 0f
+        panX = panX.coerceIn(-mx, mx)
+        panY = panY.coerceIn(-my, my)
+    }
+
+    /** Zoom 1x-6x dengan titik (midX, midY) tetap di bawah jari. */
+    private fun applyCamera(midX: Float, midY: Float, dist: Float) {
+        val p = project ?: return
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return
+        val z = (camZoom0 * dist / camDist0).coerceIn(1f, MAX_ZOOM)
+        val s = min(w / p.width, h / p.height) * z
+        canvasZoom = z
+        panX = midX - camFocusX * s - (w - p.width * s) / 2f
+        panY = midY - camFocusY * s - (h - p.height * s) / 2f
+        if (z <= 1.001f) { canvasZoom = 1f; panX = 0f; panY = 0f }
+        clampPan(p, s)
+        updateMapping()
+        invalidate()
+        onZoomChanged?.invoke(canvasZoom)
+    }
+
+    /** Kembali ke 1x (pas di layar). */
+    fun resetCanvasZoom() {
+        canvasZoom = 1f
+        panX = 0f
+        panY = 0f
+        invalidate()
+        onZoomChanged?.invoke(1f)
+    }
+
+    private fun pointerDist(e: MotionEvent): Float =
+        hypot(e.getX(0) - e.getX(1), e.getY(0) - e.getY(1))
+
+    private fun pointerMidX(e: MotionEvent): Float = (e.getX(0) + e.getX(1)) / 2f
+    private fun pointerMidY(e: MotionEvent): Float = (e.getY(0) + e.getY(1)) / 2f
 
     fun toProject(x: Float, y: Float): Pair<Float, Float> =
         Pair((x - offX) / viewScale, (y - offY) / viewScale)
@@ -196,6 +249,12 @@ class PreviewView(context: Context) : View(context) {
     private var startDist = 1f
     private var startAngle = 0f
     private var moved = false
+    private var lastX = 0f
+    private var lastY = 0f
+    private var camZoom0 = 1f
+    private var camDist0 = 1f
+    private var camFocusX = 0f
+    private var camFocusY = 0f
 
     private fun layerContentSize(l: Layer): Pair<Float, Float> = Pair(l.contentW(), l.contentH())
 
@@ -334,10 +393,53 @@ class PreviewView(context: Context) : View(context) {
                         listener?.onSelect(null)
                         invalidate()
                     }
-                    mode = MODE_NONE
+                    // area kosong saat zoom: geser kanvas
+                    mode = if (canvasZoom > 1f) MODE_PAN else MODE_NONE
+                    lastX = event.x
+                    lastY = event.y
+                }
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                if (event.pointerCount == 2) {
+                    // dua jari: hentikan geser layer, lanjut ke zoom kanvas
+                    if (moved && active != null) listener?.onEdited(true)
+                    active = null
+                    updateMapping()
+                    val mx = pointerMidX(event)
+                    val my = pointerMidY(event)
+                    camFocusX = (mx - offX) / viewScale
+                    camFocusY = (my - offY) / viewScale
+                    camZoom0 = canvasZoom
+                    camDist0 = max(10f, pointerDist(event))
+                    mode = MODE_CAM
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                }
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                if (mode == MODE_CAM) {
+                    // sisa satu jari: lanjut geser kanvas dari posisi jari itu
+                    val remain = if (event.actionIndex == 0) 1 else 0
+                    lastX = event.getX(remain)
+                    lastY = event.getY(remain)
+                    mode = MODE_PAN
                 }
             }
             MotionEvent.ACTION_MOVE -> {
+                if (mode == MODE_CAM && event.pointerCount >= 2) {
+                    applyCamera(pointerMidX(event), pointerMidY(event), max(10f, pointerDist(event)))
+                    return true
+                }
+                if (mode == MODE_PAN) {
+                    val pp = project ?: return true
+                    panX += event.x - lastX
+                    panY += event.y - lastY
+                    lastX = event.x
+                    lastY = event.y
+                    clampPan(pp, viewScale)
+                    updateMapping()
+                    invalidate()
+                    return true
+                }
                 val l = active ?: return true
                 val (px, py) = toProject(event.x, event.y)
                 if (hypot(px - startX, py - startY) > 0.6f) { moved = true; dragMoved = true }
@@ -388,5 +490,8 @@ class PreviewView(context: Context) : View(context) {
         const val MODE_MOVE = 1
         const val MODE_SCALE = 2
         const val MODE_ROTATE = 3
+        const val MODE_PAN = 4
+        const val MODE_CAM = 5
+        const val MAX_ZOOM = 6f
     }
 }
