@@ -172,7 +172,8 @@ object Exporter {
             } else {
                 (outW.toLong() * outH * frameRate * 0.10).toLong().coerceIn(4_000_000L, 80_000_000L).toInt()
             }
-            Renderer.invalidateBlurCache()
+            // instance sendiri: tidak berbagi scratch state & cache dengan UI thread
+            val renderer = Renderer()
 
             tmp = File(context.cacheDir, "kilat_export_${System.currentTimeMillis()}.mp4")
             if (tmp.exists()) tmp.delete()
@@ -257,7 +258,7 @@ object Exporter {
                     canvas.drawColor(project.bg)
                     canvas.save()
                     canvas.scale(scaleX, scaleY)
-                    Renderer.renderFrame(canvas, project, t, false)
+                    renderer.renderFrame(canvas, project, t, false)
                     canvas.restore()
                     if (native && !NativeTiming.setPresentationNs(surface, frame * frameNs)) {
                         throw IllegalStateException("timestamp native gagal")
@@ -389,7 +390,7 @@ object Exporter {
         return try {
             val bmp = Bitmap.createBitmap(project.width, project.height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bmp)
-            Renderer.renderFrame(canvas, project, t, true)
+            Renderer().renderFrame(canvas, project, t, true)
             val values = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, "KILAT_frame_${stamp()}.png")
                 put(MediaStore.Images.Media.MIME_TYPE, "image/png")
