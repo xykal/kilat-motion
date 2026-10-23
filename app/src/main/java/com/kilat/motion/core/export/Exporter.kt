@@ -32,7 +32,7 @@ import kotlin.math.roundToInt
  */
 object Exporter {
 
-    data class VideoResult(val uri: Uri?, val file: File?, val error: String?)
+    data class VideoResult(val uri: Uri?, val file: File?, val error: String?, val stats: String? = null)
 
     private class MuxState {
         var muxer: MediaMuxer? = null
@@ -150,8 +150,9 @@ object Exporter {
         var codec: MediaCodec? = null
         var muxer: MediaMuxer? = null
         var tmp: File? = null
-        // sumber frame video sendiri untuk export (tidak berbagi cache/bitmap dengan UI)
-        val frames = VideoFrames()
+        // decode sekuensial untuk frame video (SequentialVideoReader); fallback otomatis per file
+        val frames = VideoFrames(sequential = true)
+        val tStart = SystemClock.elapsedRealtime()
         try {
             val aspect = project.width.toFloat() / project.height.toFloat()
             var outW: Int
@@ -301,9 +302,11 @@ object Exporter {
             }
             muxer = null
 
+            val secs = (SystemClock.elapsedRealtime() - tStart) / 1000.0
+            val stats = "Render ${"%.1f".format(secs)} dtk · decode ${frames.statsLine()}"
             frames.clear()
             // render selesai ke cache; penyimpanan ke galeri dilakukan setelah user review di preview
-            return VideoResult(null, tmp, null)
+            return VideoResult(null, tmp, null, stats)
         } catch (e: Throwable) {
             frames.clear()
             try {

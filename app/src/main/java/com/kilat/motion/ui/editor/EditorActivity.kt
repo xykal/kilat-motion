@@ -1613,6 +1613,8 @@ class EditorActivity : Activity() {
                         icon = KilatIcon.INFO
                     )
                 } else {
+                    // ringkasan waktu render (dan fallback decoder) supaya bisa dibandingkan di HP
+                    res.stats?.let { android.widget.Toast.makeText(this, it, android.widget.Toast.LENGTH_LONG).show() }
                     val resLabel = when {
                         longSide >= 3840 -> "4K"
                         longSide >= 1920 -> "1080p"

@@ -9,21 +9,31 @@ import com.kilat.motion.core.render.EffectMath
  * Hasil frame di-cache per file (satu frame terakhir per file), dan waktu dibulatkan ke fps
  * supaya render yang sama tidak mengulang decode.
  *
+ * [sequential] = true (export): frame di-decode berurutan lewat [SequentialVideoReader].
+ * Kalau decoder gagal, file itu otomatis beralih ke MediaMetadataRetriever.
+ * false (UI/preview): selalu MediaMetadataRetriever.
+ *
  * Satu instance dipakai satu thread: [ui] untuk UI, dan export membuat instance sendiri.
- * Bitmap hasil cache TIDAK di-recycle saat diganti, karena pemanggil mungkin masih menggambarnya
- * (GC yang membersihkannya). Hanya bitmap mentah dari decoder yang di-recycle, karena belum dibagikan.
+ * Bitmap hasil cache TIDAK di-recycle saat diganti, karena pemanggil mungkin masih menggambarnya.
  */
-class VideoFrames {
+class VideoFrames(private val sequential: Boolean = false) {
 
     data class Info(val width: Int, val height: Int, val durationSec: Float)
 
-    private class Entry(val retriever: MediaMetadataRetriever) {
+    private class Entry(val path: String, val retriever: MediaMetadataRetriever, val rotation: Int) {
         var lastIndex = -1
         var lastMax = -1
         var lastFrame: Bitmap? = null
+        var seq: SequentialVideoReader? = null
+        var seqFailed = false
     }
 
     private val entries = LinkedHashMap<String, Entry>()
+
+    // statistik untuk export (ms per frame)
+    private var decodeNs = 0L
+    private var frameCalls = 0
+    private var seqFallbacks = 0
 
     /** Info dasar video (ukuran sudah memperhitungkan rotasi, durasi dalam detik). */
     @Synchronized
@@ -55,24 +65,59 @@ class VideoFrames {
         val cached = e.lastFrame
         // cache hanya dipakai kalau waktu DAN resolusi sama (export butuh resolusi lebih tinggi dari preview)
         if (idx == e.lastIndex && maxLong == e.lastMax && cached != null && !cached.isRecycled) return cached
+        val t0 = System.nanoTime()
+        val frame = (if (sequential && !e.seqFailed) fromSequential(e, idx, maxLong) else null)
+            ?: fromRetriever(e, idx, maxLong)
+            ?: return cached
+        decodeNs += System.nanoTime() - t0
+        frameCalls++
+        e.lastFrame = frame
+        e.lastIndex = idx
+        e.lastMax = maxLong
+        return frame
+    }
+
+    private fun fromSequential(e: Entry, idx: Int, maxLong: Int): Bitmap? {
+        return try {
+            val r = e.seq ?: SequentialVideoReader(e.path, e.rotation).also { e.seq = it }
+            r.frameAt(idx * 1_000_000L / 30L, HALF_FRAME_US, maxLong)
+        } catch (ex: Throwable) {
+            // decoder gagal di perangkat ini: sisa file ini lewat MediaMetadataRetriever
+            e.seqFailed = true
+            seqFallbacks++
+            try { e.seq?.close() } catch (x: Exception) {}
+            e.seq = null
+            null
+        }
+    }
+
+    private fun fromRetriever(e: Entry, idx: Int, maxLong: Int): Bitmap? {
         val us = idx * 1_000_000L / 30L
         val raw = try {
             e.retriever.getFrameAtTime(us, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
         } catch (ex: Throwable) {
             null
-        } ?: return cached
+        } ?: return null
         val scaled = downscale(raw, maxLong)
-        if (scaled !== raw) raw.recycle()   // raw mentah dari decoder, belum dibagikan
-        e.lastFrame = scaled
-        e.lastIndex = idx
-        e.lastMax = maxLong
+        if (scaled !== raw) raw.recycle()   // raw baru dari decoder, belum dibagikan
         return scaled
     }
 
-    /** Lepas semua retriever dan buang frame cache. Bitmap dibiarkan untuk GC. */
+    /** Ringkasan untuk ditampilkan setelah export: jumlah frame, rata-rata ms per frame, dan fallback. */
+    @Synchronized
+    fun statsLine(): String {
+        if (frameCalls == 0) return "0 frame"
+        val avg = decodeNs / 1_000_000.0 / frameCalls
+        val fb = if (seqFallbacks > 0) ", $seqFallbacks file pindah ke decoder cadangan" else ""
+        return "$frameCalls frame, rata-rata %.1f ms/frame$fb".format(avg)
+    }
+
+    /** Lepas semua retriever dan decoder, buang frame cache. Bitmap dibiarkan untuk GC. */
     @Synchronized
     fun clear() {
         for (e in entries.values) {
+            try { e.seq?.close() } catch (ex: Exception) {}
+            e.seq = null
             try { e.retriever.release() } catch (ex: Exception) {}
         }
         entries.clear()
@@ -86,10 +131,12 @@ class VideoFrames {
             if (entries.size >= MAX_ENTRIES) {
                 val oldestKey = entries.keys.first()
                 entries.remove(oldestKey)?.let { old ->
+                    try { old.seq?.close() } catch (ex: Exception) {}
                     try { old.retriever.release() } catch (ex: Exception) {}
                 }
             }
-            Entry(r).also { entries[path] = it }
+            val rot = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+            Entry(path, r, rot).also { entries[path] = it }
         } catch (e: Throwable) {
             try { r.release() } catch (ex: Exception) {}
             null
@@ -108,6 +155,7 @@ class VideoFrames {
 
     companion object {
         private const val MAX_ENTRIES = 3
+        private const val HALF_FRAME_US = 16_666L
 
         /** Instance untuk UI (preview, inspector, editor). Hanya dipakai dari main thread. */
         val ui: VideoFrames by lazy { VideoFrames() }
