@@ -6,19 +6,23 @@ import com.kilat.motion.core.render.EffectMath
 
 /**
  * Ambil frame dari file video untuk layer video. Tanpa playback audio.
- * Hasil frame di-cache per file (satu frame terakhir), dan waktu dibulatkan ke fps
+ * Hasil frame di-cache per file (satu frame terakhir per file), dan waktu dibulatkan ke fps
  * supaya render yang sama tidak mengulang decode.
+ *
+ * Satu instance dipakai satu thread: [ui] untuk UI, dan export membuat instance sendiri.
+ * Bitmap hasil cache TIDAK di-recycle saat diganti, karena pemanggil mungkin masih menggambarnya
+ * (GC yang membersihkannya). Hanya bitmap mentah dari decoder yang di-recycle, karena belum dibagikan.
  */
-object VideoFrames {
+class VideoFrames {
 
     data class Info(val width: Int, val height: Int, val durationSec: Float)
 
     private class Entry(val retriever: MediaMetadataRetriever) {
         var lastIndex = -1
+        var lastMax = -1
         var lastFrame: Bitmap? = null
     }
 
-    private const val MAX_ENTRIES = 3
     private val entries = LinkedHashMap<String, Entry>()
 
     /** Info dasar video (ukuran sudah memperhitungkan rotasi, durasi dalam detik). */
@@ -40,13 +44,17 @@ object VideoFrames {
         }
     }
 
-    /** Frame pada waktu [sec] (detik dari awal video). Null kalau gagal. */
+    /**
+     * Frame pada waktu [sec] (detik dari awal video), sisi panjang dibatasi [maxLong].
+     * Null kalau gagal.
+     */
     @Synchronized
     fun frameAt(path: String, sec: Float, maxLong: Int = 960): Bitmap? {
         val idx = EffectMath.videoFrameIndex(sec, 30f, Int.MAX_VALUE)
         val e = entryFor(path) ?: return null
         val cached = e.lastFrame
-        if (idx == e.lastIndex && cached != null && !cached.isRecycled) return cached
+        // cache hanya dipakai kalau waktu DAN resolusi sama (export butuh resolusi lebih tinggi dari preview)
+        if (idx == e.lastIndex && maxLong == e.lastMax && cached != null && !cached.isRecycled) return cached
         val us = idx * 1_000_000L / 30L
         val raw = try {
             e.retriever.getFrameAtTime(us, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
@@ -54,17 +62,14 @@ object VideoFrames {
             null
         } ?: return cached
         val scaled = downscale(raw, maxLong)
-        if (scaled !== raw) raw.recycle()
-        e.lastFrame?.takeIf { !it.isRecycled }?.recycle()
+        if (scaled !== raw) raw.recycle()   // raw mentah dari decoder, belum dibagikan
         e.lastFrame = scaled
         e.lastIndex = idx
+        e.lastMax = maxLong
         return scaled
     }
 
-    /**
-     * Lepas semua retriever dan buang frame cache. Bitmap tidak di-recycle di sini karena
-     * pemanggil mungkin masih memakainya; GC yang membersihkannya.
-     */
+    /** Lepas semua retriever dan buang frame cache. Bitmap dibiarkan untuk GC. */
     @Synchronized
     fun clear() {
         for (e in entries.values) {
@@ -82,7 +87,6 @@ object VideoFrames {
                 val oldestKey = entries.keys.first()
                 entries.remove(oldestKey)?.let { old ->
                     try { old.retriever.release() } catch (ex: Exception) {}
-                    old.lastFrame?.takeIf { !it.isRecycled }?.recycle()
                 }
             }
             Entry(r).also { entries[path] = it }
@@ -100,5 +104,18 @@ object VideoFrames {
         } catch (e: Throwable) {
             src
         }
+    }
+
+    companion object {
+        private const val MAX_ENTRIES = 3
+
+        /** Instance untuk UI (preview, inspector, editor). Hanya dipakai dari main thread. */
+        val ui: VideoFrames by lazy { VideoFrames() }
+
+        fun info(path: String): Info? = ui.info(path)
+
+        fun frameAt(path: String, sec: Float, maxLong: Int = 960): Bitmap? = ui.frameAt(path, sec, maxLong)
+
+        fun clear() = ui.clear()
     }
 }

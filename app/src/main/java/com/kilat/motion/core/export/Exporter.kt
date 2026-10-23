@@ -2,6 +2,7 @@ package com.kilat.motion.core.export
 
 import com.kilat.motion.core.model.*
 import com.kilat.motion.core.render.Renderer
+import com.kilat.motion.core.video.VideoFrames
 
 import android.content.ContentValues
 import android.content.Context
@@ -149,6 +150,8 @@ object Exporter {
         var codec: MediaCodec? = null
         var muxer: MediaMuxer? = null
         var tmp: File? = null
+        // sumber frame video sendiri untuk export (tidak berbagi cache/bitmap dengan UI)
+        val frames = VideoFrames()
         try {
             val aspect = project.width.toFloat() / project.height.toFloat()
             var outW: Int
@@ -173,7 +176,8 @@ object Exporter {
                 (outW.toLong() * outH * frameRate * 0.10).toLong().coerceIn(4_000_000L, 80_000_000L).toInt()
             }
             // instance sendiri: tidak berbagi scratch state & cache dengan UI thread
-            val renderer = Renderer()
+            // scratch state sendiri; frame video diambil di resolusi output, bukan 960px preview
+            val renderer = Renderer(frames, max(outW, outH))
 
             tmp = File(context.cacheDir, "kilat_export_${System.currentTimeMillis()}.mp4")
             if (tmp.exists()) tmp.delete()
@@ -297,9 +301,11 @@ object Exporter {
             }
             muxer = null
 
+            frames.clear()
             // render selesai ke cache; penyimpanan ke galeri dilakukan setelah user review di preview
             return VideoResult(null, tmp, null)
         } catch (e: Throwable) {
+            frames.clear()
             try {
                 codec?.release()
             } catch (t: Throwable) {
@@ -390,7 +396,9 @@ object Exporter {
         return try {
             val bmp = Bitmap.createBitmap(project.width, project.height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bmp)
-            Renderer().renderFrame(canvas, project, t, true)
+            val frames = VideoFrames()
+            Renderer(frames, max(project.width, project.height)).renderFrame(canvas, project, t, true)
+            frames.clear()
             val values = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, "KILAT_frame_${stamp()}.png")
                 put(MediaStore.Images.Media.MIME_TYPE, "image/png")

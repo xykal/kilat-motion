@@ -40,7 +40,12 @@ import kotlin.math.sqrt
 /** Efek yang ditimpa di atas konten (SRC_ATOP, hanya pada piksel konten). */
 private val OVERLAY_EFFECTS = EffectDraw.OVERLAY_TYPES
 
-class Renderer {
+class Renderer(
+    /** Sumber frame video. UI memakai VideoFrames.ui; export memberi instance sendiri. */
+    val frames: VideoFrames = VideoFrames.ui,
+    /** Sisi panjang maksimum frame video. Preview 960; export menyesuaikan ukuran output. */
+    var videoMaxLong: Int = 960,
+) {
 
     /**
      * Instance bersama untuk thread UI (preview, thumbnail, inspector, layer preview).
@@ -449,7 +454,7 @@ class Renderer {
         layer.lastW = w
         layer.lastH = h
         rectF.set(-w / 2f, -h / 2f, w / 2f, h / 2f)
-        val frame = VideoFrames.frameAt(layer.imgPath, max(0f, curT - layer.start))
+        val frame = frames.frameAt(layer.imgPath, max(0f, curT - layer.start), videoMaxLong)
         if (frame == null) {
             fp.style = Paint.Style.FILL
             fp.color = 0xFF1B2230.toInt()
