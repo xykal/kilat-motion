@@ -723,6 +723,12 @@ class InspectorView(context: Context) : LinearLayout(context) {
         }
         fillRow.addView(fillPicker, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         c.addView(fillRow, lpFill)
+        if (l.fillMode == "color") {
+            val sw = swatchRow(l.fill) { col -> l.fill = col }
+            val lpSw = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+            lpSw.topMargin = dp(6f).toInt()
+            c.addView(sw, lpSw)
+        }
 
         fun dimRow(label: String, value: Float, maxVal: Int, onChange: (Float) -> Unit) {
             val row = LinearLayout(context)
@@ -753,14 +759,6 @@ class InspectorView(context: Context) : LinearLayout(context) {
             dimRow("Jumlah sisi", l.shapeSides.toFloat(), 12) { l.shapeSides = it.toInt().coerceIn(3, 12) }
         }
 
-        val fillLbl = labelTv("Isi", widthDp = 84f)
-        val lpFill = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-        lpFill.topMargin = dp(10f).toInt()
-        c.addView(fillLbl, lpFill)
-        val sw = swatchRow(l.fill) { col -> l.fill = col }
-        val lpSw = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-        lpSw.topMargin = dp(6f).toInt()
-        c.addView(sw, lpSw)
         parent.addView(c)
     }
 
