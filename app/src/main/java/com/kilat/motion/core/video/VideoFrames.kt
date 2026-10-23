@@ -42,7 +42,6 @@ object VideoFrames {
 
     /** Frame pada waktu [sec] (detik dari awal video). Null kalau gagal. */
     @Synchronized
-    @Synchronized
     fun frameAt(path: String, sec: Float, maxLong: Int = 960): Bitmap? {
         val idx = EffectMath.videoFrameIndex(sec, 30f, Int.MAX_VALUE)
         val e = entryFor(path) ?: return null
@@ -66,7 +65,6 @@ object VideoFrames {
      * Lepas semua retriever dan buang frame cache. Bitmap tidak di-recycle di sini karena
      * pemanggil mungkin masih memakainya; GC yang membersihkannya.
      */
-    @Synchronized
     @Synchronized
     fun clear() {
         for (e in entries.values) {
