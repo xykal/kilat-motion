@@ -102,16 +102,7 @@ class Renderer(
         }
     }
 
-    private fun blendXfer(mode: String): PorterDuffXfermode? = when (mode) {
-        "screen" -> PorterDuffXfermode(PorterDuff.Mode.SCREEN)
-        "multiply" -> PorterDuffXfermode(PorterDuff.Mode.MULTIPLY)
-        "overlay" -> PorterDuffXfermode(PorterDuff.Mode.OVERLAY)
-        "lighten" -> PorterDuffXfermode(PorterDuff.Mode.LIGHTEN)
-        "darken" -> PorterDuffXfermode(PorterDuff.Mode.DARKEN)
-        "colorDodge" -> PorterDuffXfermode(PorterDuff.Mode.ADD)
-        "softLight" -> PorterDuffXfermode(PorterDuff.Mode.SCREEN)
-        else -> null
-    }
+    private fun blendXfer(mode: String): PorterDuffXfermode? = BlendFx.xfer(mode)
 
     /** Filter warna publik (dipakai thumbnail preset filter di Inspector). */
     fun filterFor(brightness: Float, contrast: Float, saturate: Float, hue: Float): ColorMatrixColorFilter {
@@ -666,79 +657,7 @@ class Renderer(
         val h = max(1f, layer.h)
         layer.lastW = w
         layer.lastH = h
-        path.reset()
-        when (layer.shape) {
-            "circle" -> {
-                rectF.set(-w / 2f, -h / 2f, w / 2f, h / 2f)
-                path.addOval(rectF, Path.Direction.CW)
-            }
-            "triangle" -> {
-                path.moveTo(0f, -h / 2f)
-                path.lineTo(w / 2f, h / 2f)
-                path.lineTo(-w / 2f, h / 2f)
-                path.close()
-            }
-            "star" -> {
-                val outer = min(w, h) / 2f
-                val inner = outer / 2.3f
-                for (i in 0 until 10) {
-                    val r = if (i % 2 == 0) outer else inner
-                    val ang = -Math.PI / 2 + i * Math.PI / 5
-                    val px = (Math.cos(ang) * r).toFloat()
-                    val py = (Math.sin(ang) * r).toFloat()
-                    if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
-                }
-                path.close()
-            }
-            "diamond" -> {
-                path.moveTo(0f, -h / 2f); path.lineTo(w / 2f, 0f); path.lineTo(0f, h / 2f); path.lineTo(-w / 2f, 0f); path.close()
-            }
-            "hexagon", "pentagon" -> {
-                val sides = if (layer.shape == "hexagon") 6 else 5
-                for (i in 0 until sides) {
-                    val ang = -Math.PI / 2 + i * 2 * Math.PI / sides
-                    val px = (Math.cos(ang) * w / 2f).toFloat()
-                    val py = (Math.sin(ang) * h / 2f).toFloat()
-                    if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
-                }
-                path.close()
-            }
-            "heart" -> {
-                val hw = w / 2f; val hh = h / 2f
-                path.moveTo(0f, hh * 0.9f)
-                path.cubicTo(-hw * 1.3f, hh * 0.1f, -hw * 0.9f, -hh * 1.0f, 0f, -hh * 0.35f)
-                path.cubicTo(hw * 0.9f, -hh * 1.0f, hw * 1.3f, hh * 0.1f, 0f, hh * 0.9f)
-                path.close()
-            }
-            "arrow" -> {
-                val hw = w / 2f; val hh = h / 2f; val sh = hh * 0.5f
-                path.moveTo(-hw, -sh); path.lineTo(0f, -sh); path.lineTo(0f, -hh); path.lineTo(hw, 0f)
-                path.lineTo(0f, hh); path.lineTo(0f, sh); path.lineTo(-hw, sh); path.close()
-            }
-            "cross" -> {
-                val bx = w * 0.17f; val by = h * 0.17f
-                val hw = w / 2f; val hh = h / 2f
-                path.moveTo(-bx, -hh); path.lineTo(bx, -hh); path.lineTo(bx, -by); path.lineTo(hw, -by)
-                path.lineTo(hw, by); path.lineTo(bx, by); path.lineTo(bx, hh); path.lineTo(-bx, hh)
-                path.lineTo(-bx, by); path.lineTo(-hw, by); path.lineTo(-hw, -by); path.lineTo(-bx, -by); path.close()
-            }
-            "polygon" -> {
-                val sides = layer.shapeSides.coerceIn(3, 24)
-                for (i in 0 until sides) {
-                    val ang = -Math.PI / 2 + i * 2 * Math.PI / sides
-                    val px = (Math.cos(ang) * w / 2f).toFloat()
-                    val py = (Math.sin(ang) * h / 2f).toFloat()
-                    if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
-                }
-                path.close()
-            }
-            else -> {
-                rectF.set(-w / 2f, -h / 2f, w / 2f, h / 2f)
-                val r = min(layer.radius, min(w, h) / 2f)
-                if (r > 0.5f) path.addRoundRect(rectF, r, r, Path.Direction.CW)
-                else path.addRect(rectF, Path.Direction.CW)
-            }
-        }
+        ShapeGeom.build(layer.shape, w, h, layer.shapeSides, layer.radius, path)
         if (isGlow) {
             fp.style = Paint.Style.FILL
             fp.color = Color.WHITE
