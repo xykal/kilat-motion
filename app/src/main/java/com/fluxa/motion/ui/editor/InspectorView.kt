@@ -48,6 +48,8 @@ class InspectorView(context: Context) : LinearLayout(context) {
     interface Listener {
         fun onEdited(commit: Boolean)
         fun onRequestImage(layer: Layer)
+        /** Minta media untuk isi shape. mode: "image" atau "video". */
+        fun onRequestFill(layer: Layer, mode: String)
         fun onDelete(layer: Layer)
         fun onDuplicate(layer: Layer)
         fun onApplyPreset(layer: Layer, preset: String)
@@ -699,6 +701,28 @@ class InspectorView(context: Context) : LinearLayout(context) {
         }
         typeRow.addView(sp, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         c.addView(typeRow)
+
+        val fillRow = LinearLayout(context)
+        fillRow.orientation = HORIZONTAL
+        fillRow.gravity = Gravity.CENTER_VERTICAL
+        val lpFill = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpFill.topMargin = dp(8f).toInt()
+        fillRow.addView(labelTv("Isi", widthDp = 60f))
+        val fillPicker = visualPicker(
+            listOf("color", "image", "video"), l.fillMode,
+            { k -> when (k) { "image" -> "Isi gambar"; "video" -> "Isi video"; else -> "Warna" } },
+            { cv, r, k -> PickerArt.fillKind(cv, r, k, l.fill) }
+        ) { k ->
+            if (k == "color") {
+                l.fillMode = "color"
+                listener?.onEdited(true)
+                rebind()
+            } else {
+                listener?.onRequestFill(l, k)
+            }
+        }
+        fillRow.addView(fillPicker, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        c.addView(fillRow, lpFill)
 
         fun dimRow(label: String, value: Float, maxVal: Int, onChange: (Float) -> Unit) {
             val row = LinearLayout(context)

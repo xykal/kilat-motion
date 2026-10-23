@@ -111,6 +111,24 @@ object PickerArt {
         paint.typeface = Typeface.DEFAULT
     }
 
+    /** Tile isi shape: warna (lingkaran warna layer), gambar, atau video (ikon). */
+    fun fillKind(c: Canvas, r: RectF, kind: String, color: Int) {
+        val s = min(r.width(), r.height()) * 0.7f
+        val x = r.centerX() - s / 2f
+        val y = r.centerY() - s / 2f
+        when (kind) {
+            "image" -> IconPainter.draw(c, FluxaIcon.IMAGE, x, y, s, INK)
+            "video" -> IconPainter.draw(c, FluxaIcon.FILM, x, y, s, INK)
+            else -> {
+                paint.style = Paint.Style.FILL
+                paint.shader = null
+                paint.xfermode = null
+                paint.color = color
+                c.drawCircle(r.centerX(), r.centerY(), s / 2f, paint)
+            }
+        }
+    }
+
     private fun fillPath(c: Canvas, r: RectF) {
         c.save()
         c.translate(r.centerX(), r.centerY())

@@ -665,8 +665,20 @@ class Renderer(
             return
         }
         fp.style = Paint.Style.FILL
+        // isi media (gambar atau frame video) di dalam bentuk, dengan cover-crop di kotak bentuk
+        if (!isGlow && layer.fillMode != "color") {
+            val bmp = fillBitmapFor(layer)
+            if (bmp != null && bmp.width > 0 && bmp.height > 0) {
+                val s = max(w / bmp.width, h / bmp.height)
+                val m = Matrix()
+                m.setScale(s, s)
+                m.postTranslate(-bmp.width * s / 2f, -bmp.height * s / 2f)
+                fp.shader = BitmapShader(bmp, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply { setLocalMatrix(m) }
+            }
+        }
         fp.color = layer.fill
         canvas.drawPath(path, fp)
+        fp.shader = null
         if (layer.shapeStrokeW > 0.5f) {
             sp.style = Paint.Style.STROKE
             sp.strokeWidth = layer.shapeStrokeW
@@ -674,6 +686,10 @@ class Renderer(
             canvas.drawPath(path, sp)
         }
     }
+
+    private fun fillBitmapFor(layer: Layer): Bitmap? =
+        if (layer.fillMode == "video") frames.frameAt(layer.fillPath, max(0f, curT - layer.start), videoMaxLong)
+        else layer.ensureFillBitmap()
 
     // ---------------- IMAGE ----------------
     private fun drawImageLayer(canvas: Canvas, layer: Layer, fx: HashMap<String, Float>, fp: Paint) {
