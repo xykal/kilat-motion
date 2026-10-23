@@ -182,7 +182,7 @@ object Templates {
     fun jjKartuMiring(): Project = reportStyle("JJ Kartu Miring", 0xFF120A1E.toInt(), 0xFF6A2AB0.toInt(), 0.678f, 0.2f, "KABAR TERBARU")
 
     /** Gaya kartu berita viral. beat = detik per ketukan, ph = fase pukulan pertama. */
-    private fun reportStyle(name: String, bgColor: Int, glowColor: Int, beat: Float, ph: Float, headline: String): Project {
+    private fun reportStyle(name: String, bgColor: Int, blobColor: Int, beat: Float, ph: Float, headline: String): Project {
         val p = Project()
         p.name = name
         p.duration = 10f
@@ -191,7 +191,7 @@ object Templates {
         // glow latar berdenyut tiap 2 beat
         val glow = Layer().apply {
             kind = KIND_SHAPE; name = "Glow latar"; shape = "circle"
-            w = 1000f; h = 1000f; fill = glowColor
+            w = 1000f; h = 1000f; fill = blobColor
             x = 540f; y = 900f; alpha = 0.55f; blend = "screen"; fxBlur = 60f
             start = 0f; dur = 10f
         }
