@@ -153,6 +153,16 @@ class Renderer(
     }
 
     /** Gambar seluruh project pada waktu t. Canvas dianggap sudah di-scale ke ukuran project. */
+    /**
+     * Ganti warna Paint tanpa menghapus alpha yang sudah disetel (opacity layer).
+     * Paint.color = X menimpa alpha dengan alpha warna X, sehingga opacity layer hilang.
+     */
+    private fun Paint.rgbKeepAlpha(c: Int) {
+        val a = this.alpha
+        this.color = c
+        this.alpha = (Color.alpha(c) * a + 127) / 255
+    }
+
     fun renderFrame(canvas: Canvas, project: Project, t: Float, withBackground: Boolean = true) {
         val needsBackdrop = project.layers.any { !it.hidden && it.fxGlass > 0.5f }
         if (!needsBackdrop) {
@@ -464,9 +474,9 @@ class Renderer(
         val frame = frames.frameAt(layer.imgPath, max(0f, curT - layer.start), videoMaxLong)
         if (frame == null) {
             fp.style = Paint.Style.FILL
-            fp.color = 0xFF1B2230.toInt()
+            fp.rgbKeepAlpha(0xFF1B2230.toInt())
             canvas.drawRoundRect(rectF, 24f, 24f, fp)
-            fp.color = 0xFF5B6B85.toInt()
+            fp.rgbKeepAlpha(0xFF5B6B85.toInt())
             fp.textSize = min(w, h) * 0.12f
             fp.textAlign = Paint.Align.CENTER
             canvas.drawText("VIDEO", 0f, 0f, fp)
@@ -576,10 +586,10 @@ class Renderer(
         sp.letterSpacing = layer.letterSpacing
         sp.strokeWidth = max(0f, layer.strokeW)
         if (isGlow) {
-            fp.color = Color.WHITE // ditint oleh colorFilter SRC_IN pada pass siluet
+            fp.rgbKeepAlpha(Color.WHITE) // ditint oleh colorFilter SRC_IN pada pass siluet
         } else {
-            fp.color = layer.color
-            sp.color = layer.strokeColor
+            fp.rgbKeepAlpha(layer.color)
+            sp.rgbKeepAlpha(layer.strokeColor)
         }
 
         val lines = layer.text.split("\n")
@@ -644,7 +654,7 @@ class Renderer(
             }
             if (System.currentTimeMillis() / 420 % 2 == 0L) {
                 val cp = Paint(Paint.ANTI_ALIAS_FLAG)
-                cp.color = layer.color
+                cp.rgbKeepAlpha(layer.color)
                 cp.alpha = fp.alpha
                 canvas.drawRect(cx + size * 0.04f, baseline + ascent, cx + size * 0.04f + size * 0.07f, baseline + descent, cp)
             }
@@ -660,7 +670,7 @@ class Renderer(
         ShapeGeom.build(layer.shape, w, h, layer.shapeSides, layer.radius, path)
         if (isGlow) {
             fp.style = Paint.Style.FILL
-            fp.color = Color.WHITE
+            fp.rgbKeepAlpha(Color.WHITE)
             canvas.drawPath(path, fp)
             return
         }
@@ -676,13 +686,13 @@ class Renderer(
                 fp.shader = BitmapShader(bmp, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply { setLocalMatrix(m) }
             }
         }
-        fp.color = layer.fill
+        fp.rgbKeepAlpha(layer.fill)
         canvas.drawPath(path, fp)
         fp.shader = null
         if (layer.shapeStrokeW > 0.5f) {
             sp.style = Paint.Style.STROKE
             sp.strokeWidth = layer.shapeStrokeW
-            sp.color = layer.shapeStrokeColor
+            sp.rgbKeepAlpha(layer.shapeStrokeColor)
             canvas.drawPath(path, sp)
         }
     }
@@ -700,10 +710,10 @@ class Renderer(
         val bmp = layer.ensureBitmap()
         if (bmp == null) {
             fp.style = Paint.Style.FILL
-            fp.color = 0xFF1B2230.toInt()
+            fp.rgbKeepAlpha(0xFF1B2230.toInt())
             rectF.set(-w / 2f, -h / 2f, w / 2f, h / 2f)
             canvas.drawRoundRect(rectF, 24f, 24f, fp)
-            fp.color = 0xFF5B6B85.toInt()
+            fp.rgbKeepAlpha(0xFF5B6B85.toInt())
             fp.textSize = min(w, h) * 0.12f
             fp.textAlign = Paint.Align.CENTER
             canvas.drawText("GAMBAR", 0f, 0f, fp)
@@ -858,14 +868,14 @@ class Renderer(
         val pth = vectorPathOf(layer)
         if (layer.vecClosed) {
             fp.style = Paint.Style.FILL
-            fp.color = if (isGlow) Color.WHITE else layer.fill
+            fp.rgbKeepAlpha(if (isGlow) Color.WHITE else layer.fill)
             canvas.drawPath(pth, fp)
         }
         sp.style = Paint.Style.STROKE
         sp.strokeCap = Paint.Cap.ROUND
         sp.strokeJoin = Paint.Join.ROUND
         sp.strokeWidth = max(0.5f, layer.vecStrokeW)
-        sp.color = if (isGlow) Color.WHITE else layer.color
+        sp.rgbKeepAlpha(if (isGlow) Color.WHITE else layer.color)
         canvas.drawPath(pth, sp)
     }
 
@@ -899,14 +909,14 @@ class Renderer(
         canvas.translate(-(layer.svgVbX + layer.svgVbW / 2f) * sc, -(layer.svgVbY + layer.svgVbH / 2f) * sc)
         canvas.scale(sc, sc)
         fp.style = Paint.Style.FILL
-        fp.color = if (isGlow) Color.WHITE else layer.fill
+        fp.rgbKeepAlpha(if (isGlow) Color.WHITE else layer.fill)
         canvas.drawPath(src, fp)
         if (layer.shapeStrokeW > 0.5f && !isGlow) {
             sp.style = Paint.Style.STROKE
             sp.strokeCap = Paint.Cap.ROUND
             sp.strokeJoin = Paint.Join.ROUND
             sp.strokeWidth = layer.shapeStrokeW / max(0.01f, sc)
-            sp.color = layer.shapeStrokeColor
+            sp.rgbKeepAlpha(layer.shapeStrokeColor)
             canvas.drawPath(src, sp)
         }
         canvas.restore()
@@ -1005,7 +1015,7 @@ class Renderer(
             path.moveTo(xs[a], ys[a])
             for (k in 1 until face.size) path.lineTo(xs[face[k]], ys[face[k]])
             path.close()
-            fp.color = if (isGlow) Color.WHITE else shadeColor(layer.fill, shade)
+            fp.rgbKeepAlpha(if (isGlow) Color.WHITE else shadeColor(layer.fill, shade))
             canvas.drawPath(path, fp)
         }
     }
