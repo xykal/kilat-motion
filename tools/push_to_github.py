@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Push KILAT Motion ke GitHub + (opsional) buat repo otomatis.
+Push FLUXA Motion ke GitHub + (opsional) buat repo otomatis.
 
 Pakai token FINE-GRAINED dengan scope minimal:
   - Contents: Read and write
@@ -61,7 +61,7 @@ def main() -> int:
     ap.add_argument("--repo", default="kilat-motion", help="nama repo (default: kilat-motion)")
     ap.add_argument("--private", action="store_true", help="buat repo private")
     ap.add_argument("--skip-create", action="store_true", help="jangan buat repo (sudah ada)")
-    ap.add_argument("--desc", default="⚡ KILAT Motion — motion graphics editor native Android (Kotlin, Canvas, MediaCodec). Tanpa library eksternal.")
+    ap.add_argument("--desc", default="⚡ FLUXA Motion — motion graphics editor native Android (Kotlin, Canvas, MediaCodec). Tanpa library eksternal.")
     args = ap.parse_args()
 
     token = os.environ.get("GITHUB_TOKEN", "").strip()

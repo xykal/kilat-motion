@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "KilatMotion"
+rootProject.name = "FluxaMotion"
 include(":app")

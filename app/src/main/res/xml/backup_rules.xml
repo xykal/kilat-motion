@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Android 6-11 (backup penuh). Rahasia tidak ikut backup. -->
 <full-backup-content>
-    <exclude domain="sharedpref" path="kilat_ai.xml" />
-    <exclude domain="sharedpref" path="kilat_auth.xml" />
+    <exclude domain="sharedpref" path="fluxa_ai.xml" />
+    <exclude domain="sharedpref" path="fluxa_auth.xml" />
 </full-backup-content>
