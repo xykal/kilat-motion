@@ -229,11 +229,11 @@ class EditorActivity : Activity() {
         backBtn.setOnClickListener { finish() }
         top.addView(backBtn, LinearLayout.LayoutParams(dp(40f), dp(40f)))
 
-        undoBtn = FluxaIconButton(this, FluxaIcon.UNDO, FluxaColors.Faint, filled = false, sizeDp = 40f)
+        undoBtn = FluxaIconButton(this, FluxaIcon.UNDO, FluxaColors.Faint, filled = false, sizeDp = 32f)
         undoBtn.setOnClickListener { undo() }
         val lpUndo = LinearLayout.LayoutParams(dp(40f), dp(40f))
         lpUndo.marginStart = dp(6f)
-        redoBtn = FluxaIconButton(this, FluxaIcon.REDO, FluxaColors.Faint, filled = false, sizeDp = 40f)
+        redoBtn = FluxaIconButton(this, FluxaIcon.REDO, FluxaColors.Faint, filled = false, sizeDp = 32f)
         redoBtn.setOnClickListener { redo() }
         // undo/redo dipasang di transport bar, di samping tombol play
 
@@ -342,12 +342,13 @@ class EditorActivity : Activity() {
         transport.gravity = Gravity.CENTER_VERTICAL
         transport.setPadding(dp(14f), dp(4f), dp(14f), dp(6f))
 
-        timecode = kText("00:00.00 / 00:00.00", 11.5f, FluxaColors.Text, bold = true, font = "monospace")
+        timecode = kText("00:00.00 / 00:00.00", 10f, FluxaColors.Text, bold = true, font = "monospace")
+        timecode.maxLines = 1
         timecode.gravity = Gravity.CENTER_VERTICAL or Gravity.START
         transport.addView(timecode, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
 
-        transport.addView(undoBtn, LinearLayout.LayoutParams(dp(38f), dp(38f)))
-        transport.addView(redoBtn, LinearLayout.LayoutParams(dp(38f), dp(38f)))
+        transport.addView(undoBtn, LinearLayout.LayoutParams(dp(32f), dp(32f)))
+        transport.addView(redoBtn, LinearLayout.LayoutParams(dp(32f), dp(32f)))
 
         val playWrap = FrameLayout(this)
         playWrap.background = ovalBg(0xFFFFFFFF.toInt())
@@ -363,13 +364,13 @@ class EditorActivity : Activity() {
         val right = LinearLayout(this)
         right.orientation = LinearLayout.HORIZONTAL
         right.gravity = Gravity.CENTER_VERTICAL or Gravity.END
-        val frameBack = FluxaIconButton(this, FluxaIcon.BACK, FluxaColors.Muted, filled = false, sizeDp = 34f)
+        val frameBack = FluxaIconButton(this, FluxaIcon.BACK, FluxaColors.Muted, filled = false, sizeDp = 30f)
         frameBack.setOnClickListener { stepFrame(-1) }
-        right.addView(frameBack, LinearLayout.LayoutParams(dp(34f), dp(34f)))
-        val frameNext = FluxaIconButton(this, FluxaIcon.NEXT, FluxaColors.Muted, filled = false, sizeDp = 34f)
+        right.addView(frameBack, LinearLayout.LayoutParams(dp(30f), dp(30f)))
+        val frameNext = FluxaIconButton(this, FluxaIcon.NEXT, FluxaColors.Muted, filled = false, sizeDp = 30f)
         frameNext.setOnClickListener { stepFrame(1) }
-        right.addView(frameNext, LinearLayout.LayoutParams(dp(34f), dp(34f)))
-        val skipBtn = FluxaIconButton(this, FluxaIcon.SKIP_START, FluxaColors.Muted, filled = false, sizeDp = 36f)
+        right.addView(frameNext, LinearLayout.LayoutParams(dp(30f), dp(30f)))
+        val skipBtn = FluxaIconButton(this, FluxaIcon.SKIP_START, FluxaColors.Muted, filled = false, sizeDp = 32f)
         skipBtn.setOnClickListener {
             setPlayhead(0f)
             if (playing) {
