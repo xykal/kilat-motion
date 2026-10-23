@@ -350,8 +350,20 @@ class EditorActivity : Activity() {
         transport.addView(undoBtn, LinearLayout.LayoutParams(dp(32f), dp(32f)))
         transport.addView(redoBtn, LinearLayout.LayoutParams(dp(32f), dp(32f)))
 
+        val prevKeyBtn = FluxaIconButton(this, FluxaIcon.BACK, FluxaColors.Accent, filled = false, sizeDp = 32f)
+        prevKeyBtn.contentDescription = "Keyframe sebelumnya"
+        prevKeyBtn.setOnClickListener { jumpKeyframe(-1) }
+        transport.addView(prevKeyBtn, LinearLayout.LayoutParams(dp(32f), dp(32f)))
+
         val playWrap = FrameLayout(this)
-        playWrap.background = ovalBg(0xFFFFFFFF.toInt())
+        // tombol play: gradien putih ke mint dengan cincin aksen
+        val playBg = android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+            intArrayOf(0xFFFFFFFF.toInt(), 0xFFBFF5E0.toInt())
+        )
+        playBg.shape = android.graphics.drawable.GradientDrawable.OVAL
+        playBg.setStroke(dp(2f), 0x8832E6C0.toInt())
+        playWrap.background = playBg
         playWrap.isClickable = true
         playIcon = IconView(this, FluxaIcon.PLAY, FluxaColors.Bg)
         val pp = dp(12f)
@@ -360,16 +372,18 @@ class EditorActivity : Activity() {
         playWrap.pressEffect(0.92f)
         playWrap.setOnClickListener { togglePlay() }
         transport.addView(playWrap, LinearLayout.LayoutParams(dp(50f), dp(50f)))
+        val nextKeyBtn = FluxaIconButton(this, FluxaIcon.NEXT, FluxaColors.Accent, filled = false, sizeDp = 32f)
+        nextKeyBtn.contentDescription = "Keyframe berikutnya"
+        nextKeyBtn.setOnClickListener { jumpKeyframe(1) }
+        transport.addView(nextKeyBtn, LinearLayout.LayoutParams(dp(32f), dp(32f)))
 
         val right = LinearLayout(this)
         right.orientation = LinearLayout.HORIZONTAL
         right.gravity = Gravity.CENTER_VERTICAL or Gravity.END
         val frameBack = FluxaIconButton(this, FluxaIcon.BACK, FluxaColors.Muted, filled = false, sizeDp = 30f)
         frameBack.setOnClickListener { stepFrame(-1) }
-        right.addView(frameBack, LinearLayout.LayoutParams(dp(30f), dp(30f)))
         val frameNext = FluxaIconButton(this, FluxaIcon.NEXT, FluxaColors.Muted, filled = false, sizeDp = 30f)
         frameNext.setOnClickListener { stepFrame(1) }
-        right.addView(frameNext, LinearLayout.LayoutParams(dp(30f), dp(30f)))
         val skipBtn = FluxaIconButton(this, FluxaIcon.SKIP_START, FluxaColors.Muted, filled = false, sizeDp = 32f)
         skipBtn.setOnClickListener {
             setPlayhead(0f)
@@ -378,7 +392,6 @@ class EditorActivity : Activity() {
                 playT0 = System.nanoTime()
             }
         }
-        right.addView(skipBtn, LinearLayout.LayoutParams(dp(36f), dp(36f)))
         magnetBtn = FluxaIconButton(this, FluxaIcon.MAGNET, FluxaColors.Accent, filled = false, sizeDp = 36f)
         magnetBtn.setOnClickListener {
             preview.snapEnabled = !preview.snapEnabled
@@ -1189,6 +1202,20 @@ class EditorActivity : Activity() {
     }
 
     // =====================================================================
+    /** Lompat ke keyframe terdekat (semua layer) sebelum/sesudah playhead. */
+    private fun jumpKeyframe(dir: Int) {
+        val times = ArrayList<Float>()
+        for (l in project.layers) times.addAll(Anim.allKeyTimes(l))
+        val eps = 0.005f
+        val target = if (dir < 0) times.filter { it < playhead - eps }.maxOrNull()
+        else times.filter { it > playhead + eps }.minOrNull()
+        if (target == null) {
+            toast(if (dir < 0) "Tidak ada keyframe sebelumnya" else "Tidak ada keyframe berikutnya", FluxaIcon.KEYFRAME)
+            return
+        }
+        setPlayhead(target.coerceIn(0f, project.duration))
+    }
+
     // undo / redo
     // =====================================================================
     private fun pushHistory() {
