@@ -219,7 +219,7 @@ def main():
         for c in crashes[:10]:
             log("    " + c)
         thumb = [l for l in lines if "FluxaThumb" in l]
-        log(f"  log thumbnail gagal: {len(thumb)}")
+        log(f"  log thumbnail (gagal + kecerahan): {len(thumb)}")
         for t in thumb[:6]:
             log("    " + t)
         # stack trace pertama sesudah baris thumbnail

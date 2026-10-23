@@ -24,6 +24,15 @@ object Thumbnails {
             val canvas = Canvas(bmp)
             canvas.scale(w.toFloat() / project.width, w.toFloat() / project.width)
             Renderer.renderFrame(canvas, project, time.coerceIn(0f, project.duration), true)
+            // diagnosis: rata-rata kecerahan sampel piksel (0..255)
+            var sum = 0L
+            var n = 0
+            for (yy in 0 until bmp.height step 16) for (xx in 0 until bmp.width step 16) {
+                val c = bmp.getPixel(xx, yy)
+                sum += ((c shr 16) and 255) + ((c shr 8) and 255) + (c and 255)
+                n++
+            }
+            Log.i("FluxaThumb", "${project.name} t=$time kecerahan=${if (n > 0) sum / (3 * n) else -1}")
             bmp
         } catch (e: Throwable) {
             Log.e("FluxaThumb", "render thumbnail gagal: ${project.name}", e)

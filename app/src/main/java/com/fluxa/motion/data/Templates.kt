@@ -274,11 +274,13 @@ object Templates {
             w = 1080f; h = 1920f; fill = 0xFFFFFFFF.toInt()
             x = 540f; y = 960f; alpha = 0f; start = 0f; dur = 7f
         }
-        // keyframe awal 0: tanpa ini nilai pertama (0.45) berlaku sejak t=0 dan canvas putih
+        // tiap hentakan: naik cepat ke 0.45 lalu kembali 0 (kedip pendek). Keyframe 0 di awal
+        // wajib, kalau tidak nilai keyframe pertama berlaku sejak t=0.
         Anim.setKey(flash, "alpha", 0f, 0f, "linear")
         for (ft in floatArrayOf(1.05f, 3.4f, 5.6f)) {
-            Anim.setKey(flash, "alpha", ft, 0.45f, "linear")
-            Anim.setKey(flash, "alpha", ft + 0.09f, 0f, "linear")
+            Anim.setKey(flash, "alpha", ft - 0.02f, 0f, "linear")
+            Anim.setKey(flash, "alpha", ft, 0.45f, "easeOut")
+            Anim.setKey(flash, "alpha", ft + 0.09f, 0f, "easeOut")
         }
         p.layers.add(flash)
 
