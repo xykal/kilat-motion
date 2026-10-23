@@ -4,15 +4,18 @@ import com.fluxa.motion.core.audio.AudioUtil
 import com.fluxa.motion.core.audio.BeatDetector
 import com.fluxa.motion.core.model.Layer
 import com.fluxa.motion.ui.components.FluxaIcon
+import kotlin.math.max
 import kotlin.math.min
 
-/** Keyframe yang mengikuti ketukan lagu: setiap beat dapat pulsa pada satu properti. */
+/** Keyframe yang mengikuti ketukan lagu: setiap ketukan memberi pulsa pada satu properti. */
 object BeatKeys {
 
-    enum class Style(val key: String, val label: String, val desc: String, val base: Float, val peak: Float, val icon: FluxaIcon) {
-        ZOOM("scale", "Zoom pulse", "Membesar tiap ketukan lalu kembali", 1f, 1.12f, FluxaIcon.SPARK),
-        SWING("rot", "Goyang rotasi", "Miring bergantian kiri dan kanan tiap ketukan", 0f, 4f, FluxaIcon.LOOP),
-        DIP("alpha", "Kedip", "Redup sebentar di tiap ketukan", 1f, 0.45f, FluxaIcon.EYE_OFF)
+    enum class Style(val key: String, val label: String, val desc: String, val icon: FluxaIcon) {
+        ZOOM("scale", "Zoom pulse", "Membesar tiap ketukan lalu kembali", FluxaIcon.SPARK),
+        SWING("rot", "Goyang rotasi", "Miring bergantian kiri dan kanan tiap ketukan", FluxaIcon.LOOP),
+        DIP("alpha", "Kedip", "Redup sebentar di tiap ketukan", FluxaIcon.EYE_OFF),
+        BOUNCE("y", "Lompat", "Naik sedikit di tiap ketukan", FluxaIcon.BOLT),
+        SHAKE("x", "Getar", "Bergeser kiri kanan di tiap ketukan", FluxaIcon.TRANSFORM)
     }
 
     /** Lama satu pulsa: naik cepat, lalu meluruh kembali ke nilai dasar. */
@@ -46,20 +49,41 @@ object BeatKeys {
             .filter { it >= 0f && it <= projectDuration }
     }
 
+    /** Nilai dasar properti dari layer, supaya pulsa berangkat dari posisi/ukuran yang sudah diatur. */
+    private fun baseOf(layer: Layer, key: String): Float = when (key) {
+        "scale" -> layer.scale
+        "rot" -> layer.rot
+        "alpha" -> layer.alpha
+        "y" -> layer.y
+        "x" -> layer.x
+        else -> 0f
+    }
+
     /**
-     * Pasang pulsa di setiap ketukan yang ada di dalam layer. Keyframe di waktu yang sama
-     * akan ditimpa. Mengembalikan jumlah ketukan yang dipakai.
+     * Pasang pulsa di ketukan yang ada di dalam layer.
+     * [every]: pakai setiap N ketukan (1 = semua). [intensity]: 1 = standar, 0..3.
+     * Keyframe di waktu yang sama akan ditimpa. Mengembalikan jumlah pulsa yang dipasang.
      */
-    fun apply(layer: Layer, beats: List<Float>, style: Style): Int {
+    fun apply(layer: Layer, beats: List<Float>, style: Style, every: Int = 1, intensity: Float = 1f): Int {
+        val end = layer.start + layer.dur
+        val k = intensity.coerceIn(0f, 3f)
+        val step = max(1, every)
+        val inRange = beats.filter { it >= layer.start && it <= end - ATTACK }
         var used = 0
         var dir = 1f
-        val end = layer.start + layer.dur
-        for (b in beats) {
-            if (b < layer.start || b > end - ATTACK) continue
-            val peak = if (style == Style.SWING) style.peak * dir else style.peak
-            Anim.setKey(layer, style.key, b, style.base, "linear")
+        val base = baseOf(layer, style.key)
+        for ((i, b) in inRange.withIndex()) {
+            if (i % step != 0) continue
+            val peak = when (style) {
+                Style.ZOOM -> base * (1f + 0.12f * k)
+                Style.SWING -> base + 4f * k * dir
+                Style.DIP -> max(0.05f, base * (1f - 0.55f * k))
+                Style.BOUNCE -> base - 60f * k
+                Style.SHAKE -> base + 16f * k * dir
+            }
+            Anim.setKey(layer, style.key, b, base, "linear")
             Anim.setKey(layer, style.key, b + ATTACK, peak, "easeOut")
-            Anim.setKey(layer, style.key, min(b + DECAY, end), style.base, "easeOut")
+            Anim.setKey(layer, style.key, min(b + DECAY, end), base, "easeOut")
             used++
             dir = -dir
         }

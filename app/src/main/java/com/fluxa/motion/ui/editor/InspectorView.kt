@@ -3,6 +3,8 @@ package com.fluxa.motion.ui.editor
 import com.fluxa.motion.core.render.EffectPreview
 import com.fluxa.motion.core.model.*
 import com.fluxa.motion.core.animation.Anim
+import com.fluxa.motion.core.animation.AutoPattern
+import com.fluxa.motion.core.animation.BeatKeys
 
 import android.app.Activity
 import android.app.AlertDialog
@@ -58,6 +60,8 @@ class InspectorView(context: Context) : LinearLayout(context) {
         fun onSplit(layer: Layer)
         /** dir: +1 = maju (digambar lebih atas), -1 = mundur. */
         fun onReorder(layer: Layer, dir: Int)
+        /** Pasang keyframe otomatis. key: "t:<POLA>" atau "b:<GAYA>". rate: indeks rapat 0..3. */
+        fun onAutoKeys(layer: Layer, key: String, intensity: Float, rate: Int)
     }
 
     var listener: Listener? = null
@@ -67,6 +71,9 @@ class InspectorView(context: Context) : LinearLayout(context) {
     private var curPlayhead: Float = 0f
     private var binding = false
     private var defaultEase = "easeOut"
+    private var autoKey = "t:ZOOM_IN"
+    private var autoIntensity = 1f
+    private var autoRate = 2
     private var activeCat = "Konten"
     private var keyClipboard: Map<String, Anim.KeyCopy> = emptyMap()
     private var filterSample: Bitmap? = null
@@ -461,6 +468,7 @@ class InspectorView(context: Context) : LinearLayout(context) {
         easeRow.addView(easeDrop, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         presetCard.addView(easeRow, lpEase)
         animCat.addView(presetCard)
+        buildAutoKeyCard(l, animCat)
         buildCurveCard(l, animCat)
 
         // ---- transform ----
@@ -1149,6 +1157,65 @@ class InspectorView(context: Context) : LinearLayout(context) {
     }
 
     // ---------------- kurva easing ----------------
+    private fun autoKeyLabel(key: String): String = when (key) {
+        "t:ZOOM_IN" -> "Zoom masuk"
+        "t:ZOOM_OUT" -> "Zoom keluar"
+        "t:SHAKE" -> "Getar"
+        "t:FLOAT" -> "Melayang"
+        "t:SPIN" -> "Putar"
+        "t:FADE" -> "Kedip berulang"
+        "b:ZOOM" -> "Zoom di ketukan"
+        "b:SWING" -> "Goyang di ketukan"
+        "b:DIP" -> "Kedip di ketukan"
+        "b:BOUNCE" -> "Lompat di ketukan"
+        "b:SHAKE" -> "Getar di ketukan"
+        else -> key
+    }
+
+    /** Keyframe otomatis: pola waktu dan pulsa ketukan, dengan intensitas dan rapat. */
+    private fun buildAutoKeyCard(l: Layer, parent: LinearLayout) {
+        val c = card()
+        c.addView(header("Keyframe otomatis"))
+        val keys = AutoPattern.Kind.values().map { "t:${it.name}" } + BeatKeys.Style.values().map { "b:${it.name}" }
+        val picker = visualPicker(keys, autoKey, { autoKeyLabel(it) }, { cv, r, k -> PickerArt.autoKey(cv, r, k) }) { k ->
+            autoKey = k
+        }
+        val lpPick = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpPick.topMargin = dp(6f).toInt()
+        c.addView(picker, lpPick)
+
+        fun sliderRow(label: String, max: Int, value: Int, onChange: (Int) -> Unit) {
+            val row = LinearLayout(context)
+            row.orientation = HORIZONTAL
+            row.gravity = Gravity.CENTER_VERTICAL
+            val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            lp.topMargin = dp(8f).toInt()
+            row.addView(labelTv(label, widthDp = 84f))
+            val seek = FluxaSlider(context)
+            seek.max = max
+            seek.progress = value.coerceIn(0, max)
+            seek.onProgress = { p -> onChange(p) }
+            row.addView(seek, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+            c.addView(row, lp)
+        }
+        sliderRow("Intensitas", 200, (autoIntensity * 100).toInt()) { autoIntensity = it / 100f }
+        sliderRow("Rapat", 3, autoRate) { autoRate = it }
+
+        val actRow = LinearLayout(context)
+        actRow.orientation = HORIZONTAL
+        actRow.gravity = Gravity.CENTER_VERTICAL
+        actRow.addView(View(context), LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        val go = miniIconBtn(FluxaIcon.SPARK, 0xFF0A0B0F.toInt()) {
+            listener?.onAutoKeys(l, autoKey, autoIntensity, autoRate)
+        }
+        go.contentDescription = "Pasang keyframe otomatis"
+        actRow.addView(go)
+        val lpAct = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpAct.topMargin = dp(10f).toInt()
+        c.addView(actRow, lpAct)
+        parent.addView(c)
+    }
+
     private fun buildCurveCard(l: Layer, parent: LinearLayout) {
         val c = card()
         c.addView(header("Kurva Gerakan (Grafik)"))

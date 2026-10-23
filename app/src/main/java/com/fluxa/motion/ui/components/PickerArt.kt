@@ -10,7 +10,9 @@ import android.graphics.Typeface
 import com.fluxa.motion.core.animation.Anim
 import com.fluxa.motion.core.render.BlendFx
 import com.fluxa.motion.core.render.ShapeGeom
+import kotlin.math.PI
 import kotlin.math.min
+import kotlin.math.sin
 
 /**
  * Gambar pratinjau untuk pilihan visual di Inspector. Tidak memakai teks, kecuali
@@ -127,6 +129,86 @@ object PickerArt {
                 c.drawCircle(r.centerX(), r.centerY(), s / 2f, paint)
             }
         }
+    }
+
+    /**
+     * Tile keyframe otomatis. "t:" = pola waktu (grafik gerak), "b:" = pulsa ketukan
+     * (ikon gaya + tanda musik).
+     */
+    fun autoKey(c: Canvas, r: RectF, key: String) {
+        val name = key.substringAfter(":")
+        if (key.startsWith("b:")) {
+            val icon = when (name) {
+                "ZOOM" -> FluxaIcon.SPARK
+                "SWING" -> FluxaIcon.LOOP
+                "DIP" -> FluxaIcon.EYE_OFF
+                "BOUNCE" -> FluxaIcon.BOLT
+                else -> FluxaIcon.TRANSFORM
+            }
+            val s = min(r.width(), r.height()) * 0.62f
+            IconPainter.draw(c, icon, r.centerX() - s / 2f, r.centerY() - s / 2f, s, INK)
+            val m = min(r.width(), r.height()) * 0.32f
+            IconPainter.draw(c, FluxaIcon.MUSIC, r.right - m, r.top, m, INK)
+            return
+        }
+        val x0 = r.left + r.width() * 0.14f
+        val x1 = r.right - r.width() * 0.14f
+        val yc = r.centerY()
+        val amp = r.height() * 0.3f
+        paint.style = Paint.Style.STROKE
+        paint.strokeCap = Paint.Cap.ROUND
+        paint.strokeWidth = stroke(r)
+        paint.shader = null
+        paint.xfermode = null
+        paint.color = INK
+        when (name) {
+            "ZOOM_IN", "ZOOM_OUT" -> {
+                val n = 5
+                for (i in 0 until n) {
+                    val f = i / (n - 1f)
+                    val h = amp * (0.25f + 0.75f * (if (name == "ZOOM_IN") f else 1f - f))
+                    val x = x0 + (x1 - x0) * f
+                    c.drawLine(x, yc - h, x, yc + h, paint)
+                }
+            }
+            "SHAKE" -> {
+                path.reset()
+                val n = 8
+                for (i in 0..n) {
+                    val f = i / n.toFloat()
+                    val x = x0 + (x1 - x0) * f
+                    val y = yc + (if (i % 2 == 0) -amp * 0.6f else amp * 0.6f)
+                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                }
+                c.drawPath(path, paint)
+            }
+            "FLOAT" -> {
+                path.reset()
+                val n = 40
+                for (i in 0..n) {
+                    val f = i / n.toFloat()
+                    val x = x0 + (x1 - x0) * f
+                    val y = yc - amp * sin(f * 2f * PI.toFloat() * 1.5f)
+                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                }
+                c.drawPath(path, paint)
+            }
+            "SPIN" -> {
+                val s = min(r.width(), r.height()) * 0.62f
+                IconPainter.draw(c, FluxaIcon.LOOP, r.centerX() - s / 2f, r.centerY() - s / 2f, s, INK)
+            }
+            else -> {
+                // kedip berulang: batang terang dan redup bergantian
+                val n = 5
+                for (i in 0 until n) {
+                    val f = i / (n - 1f)
+                    val x = x0 + (x1 - x0) * f
+                    paint.color = if (i % 2 == 0) INK else DIM
+                    c.drawLine(x, yc - amp * 0.8f, x, yc + amp * 0.8f, paint)
+                }
+            }
+        }
+        paint.strokeCap = Paint.Cap.BUTT
     }
 
     private fun fillPath(c: Canvas, r: RectF) {

@@ -53,6 +53,7 @@ import kotlin.math.max
 import kotlin.math.min
 import com.fluxa.motion.ui.settings.AiActions
 import com.fluxa.motion.ui.settings.CloudSettings
+import com.fluxa.motion.core.animation.AutoPattern
 import com.fluxa.motion.core.animation.BeatKeys
 import java.io.File
 
@@ -549,6 +550,10 @@ class EditorActivity : Activity() {
 
             override fun onReorder(layer: Layer, dir: Int) {
                 reorderLayer(layer, dir)
+            }
+
+            override fun onAutoKeys(layer: Layer, key: String, intensity: Float, rate: Int) {
+                applyAutoKeys(layer, key, intensity, rate)
             }
 
             override fun onJumpKey(layer: Layer, dir: Int) {
@@ -1741,6 +1746,21 @@ class EditorActivity : Activity() {
         }
     }
 
+    /** Keyframe otomatis dari panel Inspector: pola waktu langsung, pulsa ketukan lewat deteksi beat. */
+    private fun applyAutoKeys(layer: Layer, key: String, intensity: Float, rate: Int) {
+        val name = key.substringAfter(":")
+        if (key.startsWith("t:")) {
+            val kind = try { AutoPattern.Kind.valueOf(name) } catch (e: IllegalArgumentException) { return }
+            val n = AutoPattern.apply(layer, kind, rate, intensity)
+            afterChange(layer.id)
+            toast("Pola dipasang ($n keyframe)", FluxaIcon.SPARK)
+        } else {
+            val style = try { BeatKeys.Style.valueOf(name) } catch (e: IllegalArgumentException) { return }
+            val every = intArrayOf(1, 2, 4, 8)[rate.coerceIn(0, 3)]
+            applyBeatStyle(style, layer.id, every, intensity)
+        }
+    }
+
     /** Pilih gaya pulsa beat, lalu pasang keyframe di layer terpilih. */
     private fun showBeatSheet() {
         val m = project.music
@@ -1755,9 +1775,12 @@ class EditorActivity : Activity() {
     }
 
     /** Deteksi beat di background, lalu tulis keyframe ke layer yang dipilih. */
-    private fun applyBeatStyle(style: BeatKeys.Style) {
-        val m = project.music ?: return
-        val layerId = selectedId ?: return
+    private fun applyBeatStyle(style: BeatKeys.Style, layerIdArg: String? = null, every: Int = 1, intensity: Float = 1f) {
+        val m = project.music ?: run {
+            toast("Tambah musik latar dulu di menu editor", FluxaIcon.MUSIC)
+            return
+        }
+        val layerId = layerIdArg ?: selectedId ?: return
         val handle = FluxaSheet.showProgress(this, "Mendeteksi beat", "Membaca audio...")
         Thread {
             val beats = try {
@@ -1772,7 +1795,7 @@ class EditorActivity : Activity() {
                     beats.isEmpty() -> toast("Beat tidak terdeteksi di musik ini", FluxaIcon.INFO)
                     layer == null -> toast("Layer sudah tidak ada", FluxaIcon.INFO)
                     else -> {
-                        val n = BeatKeys.apply(layer, beats, style)
+                        val n = BeatKeys.apply(layer, beats, style, every, intensity)
                         afterChange(layer.id)
                         toast("$n pulsa di ketukan lagu", FluxaIcon.SPARK)
                     }
