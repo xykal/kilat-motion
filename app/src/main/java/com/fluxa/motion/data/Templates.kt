@@ -292,6 +292,18 @@ object Templates {
         Anim.setKey(credit, "alpha", 0.4f, 0f, "easeOut")
         Anim.setKey(credit, "alpha", 1.0f, 1f, "easeOut")
         p.layers.add(credit)
+        // progress bar tipis di atas: tumbuh dari kiri selama 10 detik (scaleX + geser x supaya tepi kiri tetap)
+        val progress = Layer().apply {
+            kind = KIND_SHAPE; name = "Progress bar"; shape = "rect"
+            w = 1080f; h = 8f; fill = 0xFFFFFFFF.toInt(); alpha = 0.9f
+            x = 0f; y = 24f; start = 0f; dur = 10f
+        }
+        Anim.setKey(progress, "scaleX", 0f, 0f, "linear")
+        Anim.setKey(progress, "scaleX", 10f, 1f, "linear")
+        Anim.setKey(progress, "x", 0f, 0f, "linear")
+        Anim.setKey(progress, "x", 10f, 540f, "linear")
+        p.layers.add(progress)
+
         return p
     }
 

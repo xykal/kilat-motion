@@ -582,7 +582,10 @@ class HomeActivity : Activity() {
         val col = LinearLayout(this)
         col.orientation = LinearLayout.VERTICAL
         val session = GoogleAuth.session(this)
-        val displayName = session?.name?.takeIf { it.isNotBlank() } ?: "Kreator Fluxa"
+        // nama akun: nama Google, lalu bagian depan email, lalu nama default
+        val displayName = session?.name?.takeIf { it.isNotBlank() }
+            ?: session?.email?.substringBefore("@")?.takeIf { it.isNotBlank() }
+            ?: "Kreator Fluxa"
 
         val head = LinearLayout(this)
         head.orientation = LinearLayout.HORIZONTAL
@@ -591,7 +594,7 @@ class HomeActivity : Activity() {
         avatar.background = fluxaSolidOval()
         if (session != null) {
             // akun login: inisial nama sebagai avatar
-            val initial = kText(displayName.first().uppercase(), 24f, 0xFF05131F.toInt(), bold = true)
+            val initial = kText((displayName.firstOrNull()?.uppercase() ?: "F"), 24f, 0xFF05131F.toInt(), bold = true)
             initial.gravity = Gravity.CENTER
             avatar.addView(initial, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         } else {
