@@ -202,6 +202,25 @@ def main():
                 time.sleep(1)
     step("editor panels", editor_panels)
 
+    def effect_catalog():
+        # tambah teks dari bar bawah, buka Properti, cari bagian Stack efek lalu ambil katalog kategori
+        if not tap_text("Teks"):
+            raise RuntimeError("tombol Teks di bar bawah tidak ditemukan")
+        time.sleep(2)
+        if not tap_text("Properti"):
+            raise RuntimeError("tombol Properti tidak ditemukan")
+        time.sleep(1.5)
+        for _ in range(10):
+            if "Stack efek" in visible_texts(dump()):
+                break
+            swipe_up()
+        time.sleep(1)
+        snapshot("13-efek-warna")
+        if tap_text("Gerak"):
+            time.sleep(1)
+            snapshot("14-efek-gerak")
+    step("katalog efek", effect_catalog)
+
     # status proses dan crash
     def template_velocity():
         tap_text("Beranda")

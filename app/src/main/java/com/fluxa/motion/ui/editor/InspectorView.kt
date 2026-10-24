@@ -924,37 +924,75 @@ class InspectorView(context: Context) : LinearLayout(context) {
     /** Stack efek: deretan chip untuk menambah, lalu kartu per efek (urutan = urutan tampil). */
     private fun buildEffectStack(l: Layer, parent: LinearLayout) {
         parent.addView(header("Stack efek"))
+        // Kategori (chip) di atas, lalu tile efek untuk kategori yang dipilih.
+        val catScroll = android.widget.HorizontalScrollView(context)
+        catScroll.isHorizontalScrollBarEnabled = false
+        val catRow = LinearLayout(context)
+        catRow.orientation = HORIZONTAL
         val addScroll = android.widget.HorizontalScrollView(context)
         addScroll.isHorizontalScrollBarEnabled = false
         val addRow = LinearLayout(context)
         addRow.orientation = HORIZONTAL
-        for (type in EFFECT_TYPES) {
-            val tile = LinearLayout(context)
-            tile.orientation = VERTICAL
-            tile.gravity = Gravity.CENTER_HORIZONTAL
-            tile.isClickable = true
-            val box = android.widget.FrameLayout(context)
-            box.background = roundRectBg(0xFF11141C.toInt(), dp(12f))
-            box.addView(
-                android.widget.ImageView(context).also {
-                    it.setImageBitmap(EffectPreview.effect(type))
-                    it.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-                },
-                android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            )
-            tile.addView(box, LayoutParams(dp(68f).toInt(), dp(46f).toInt()))
-            tile.contentDescription = "Tambah " + (EFFECT_LABELS[type] ?: type)
-            tile.setOnClickListener {
-                l.effects.add(LayerEffect(type = type, amount = 0.5f, size = 0.5f, color = defaultEffectColor(type)))
-                listener?.onEdited(true)
-                rebind()
+        val selCat = EFFECT_CATEGORIES.keys.first()
+        val catChips = LinkedHashMap<String, TextView>()
+
+        fun fillTiles(cat: String) {
+            addRow.removeAllViews()
+            for (type in EFFECT_CATEGORIES[cat].orEmpty()) {
+                val tile = LinearLayout(context)
+                tile.orientation = VERTICAL
+                tile.gravity = Gravity.CENTER_HORIZONTAL
+                tile.isClickable = true
+                val box = android.widget.FrameLayout(context)
+                box.background = roundRectBg(0xFF11141C.toInt(), dp(12f))
+                box.addView(
+                    android.widget.ImageView(context).also {
+                        it.setImageBitmap(EffectPreview.effect(type))
+                        it.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+                    },
+                    android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                )
+                tile.addView(box, LayoutParams(dp(68f).toInt(), dp(46f).toInt()))
+                val nm = labelTv(EFFECT_LABELS[type] ?: type, 9f, cMuted)
+                nm.gravity = Gravity.CENTER
+                val lpNm = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+                lpNm.topMargin = dp(3f).toInt()
+                tile.addView(nm, lpNm)
+                tile.contentDescription = "Tambah " + (EFFECT_LABELS[type] ?: type)
+                tile.setOnClickListener {
+                    l.effects.add(LayerEffect(type = type, amount = 0.5f, size = 0.5f, color = defaultEffectColor(type)))
+                    listener?.onEdited(true)
+                    rebind()
+                }
+                val lpTile = LayoutParams(dp(68f).toInt(), LayoutParams.WRAP_CONTENT)
+                lpTile.rightMargin = dp(7f).toInt()
+                addRow.addView(tile, lpTile)
             }
-            val lpTile = LayoutParams(dp(68f).toInt(), LayoutParams.WRAP_CONTENT)
-            lpTile.rightMargin = dp(7f).toInt()
-            addRow.addView(tile, lpTile)
+            for ((k, tv) in catChips) {
+                val on = k == cat
+                tv.setTextColor(if (on) cAccent else cMuted)
+                tv.background = roundRectBg(0xFF11141C.toInt(), dp(10f), if (on) cAccent else null)
+            }
         }
+
+        for (cat in EFFECT_CATEGORIES.keys) {
+            val chip = labelTv(cat, 11f, cMuted)
+            chip.gravity = Gravity.CENTER
+            chip.setPadding(dp(10f).toInt(), dp(6f).toInt(), dp(10f).toInt(), dp(6f).toInt())
+            chip.isClickable = true
+            chip.setOnClickListener { fillTiles(cat) }
+            catChips[cat] = chip
+            val lpChip = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+            lpChip.rightMargin = dp(6f).toInt()
+            catRow.addView(chip, lpChip)
+        }
+        catScroll.addView(catRow)
+        parent.addView(catScroll, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        fillTiles(selCat)
         addScroll.addView(addRow)
-        parent.addView(addScroll, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        val lpAdd = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpAdd.topMargin = dp(6f).toInt()
+        parent.addView(addScroll, lpAdd)
 
         if (l.effects.isEmpty()) {
             val hint = labelTv("Belum ada efek. Ketuk salah satu di atas untuk menambah.", 11f, cDim)

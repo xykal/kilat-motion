@@ -62,11 +62,15 @@ class LayerEffect(
     fun copy(): LayerEffect = LayerEffect(type, amount, size, color, enabled)
 }
 
-/** Jenis efek yang didukung renderer. */
+/** Jenis efek yang didukung renderer (38 efek, dikelompokkan di [EFFECT_CATEGORIES]). */
 val EFFECT_TYPES = listOf(
-    "vignette", "scanlines", "grain", "lightleak", "tint", "glitch", "rgbsplit",
-    "grayscale", "sepia", "invert", "contrast", "saturate", "warm", "cool", "flicker",
-    "letterbox", "dust", "border", "shake", "flash", "chromakey"
+    "grayscale", "sepia", "invert", "contrast", "saturate", "warm", "cool", "tint", "chromakey",
+    "brightness", "exposure", "hue", "noir", "teal_orange", "night",
+    "vignette", "scanlines", "grain", "flicker", "letterbox", "dust", "border", "fade", "bleach", "vintage", "polaroid",
+    "lightleak", "flash", "spotlight", "haze", "sparkle",
+    "rain", "snow",
+    "glitch", "rgbsplit",
+    "shake", "zoompulse", "wobble"
 )
 val EFFECT_LABELS = mapOf(
     "vignette" to "Vignette",
@@ -89,10 +93,37 @@ val EFFECT_LABELS = mapOf(
     "dust" to "Debu film",
     "border" to "Bingkai",
     "shake" to "Getar kamera",
-    "flash" to "Kilatan"
+    "flash" to "Kilatan",
+    "brightness" to "Kecerahan",
+    "exposure" to "Eksposur",
+    "hue" to "Rotasi hue",
+    "noir" to "Noir",
+    "teal_orange" to "Teal & oranye",
+    "night" to "Malam",
+    "fade" to "Pudar",
+    "bleach" to "Bleach bypass",
+    "vintage" to "Vintage",
+    "polaroid" to "Polaroid",
+    "spotlight" to "Sorot",
+    "haze" to "Kabut",
+    "sparkle" to "Kilau",
+    "rain" to "Hujan",
+    "snow" to "Salju",
+    "zoompulse" to "Denyut zoom",
+    "wobble" to "Goyang"
+)
+/** Kategori untuk katalog efek di Inspector. Setiap jenis efek tepat di satu kategori. */
+val EFFECT_CATEGORIES: LinkedHashMap<String, List<String>> = linkedMapOf(
+    "Warna" to listOf("grayscale", "sepia", "invert", "contrast", "saturate", "warm", "cool", "tint", "chromakey",
+        "brightness", "exposure", "hue", "noir", "teal_orange", "night"),
+    "Film & retro" to listOf("vignette", "scanlines", "grain", "flicker", "letterbox", "dust", "border", "fade", "bleach", "vintage", "polaroid"),
+    "Cahaya" to listOf("lightleak", "flash", "spotlight", "haze", "sparkle"),
+    "Cuaca" to listOf("rain", "snow"),
+    "Glitch" to listOf("glitch", "rgbsplit"),
+    "Gerak" to listOf("shake", "zoompulse", "wobble")
 )
 /** Efek yang memakai warna. */
-val EFFECT_USES_COLOR = setOf("vignette", "lightleak", "tint", "letterbox", "border", "chromakey")
+val EFFECT_USES_COLOR = setOf("vignette", "lightleak", "tint", "letterbox", "border", "chromakey", "haze", "sparkle", "rain", "snow")
 
 class Keyframe(var t: Float = 0f, var v: Float = 0f, var ease: String = "easeOut")
 

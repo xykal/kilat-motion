@@ -137,6 +137,14 @@ object EffectPreview {
                 c.translate(6f, -4f)
                 c.drawBitmap(src, null, content, cp)
             }
+            "zoompulse" -> {
+                c.scale(1.12f, 1.12f)
+                c.drawBitmap(src, null, content, cp)
+            }
+            "wobble" -> {
+                c.rotate(5f)
+                c.drawBitmap(src, null, content, cp)
+            }
             else -> c.drawBitmap(src, null, content, cp)
         }
 

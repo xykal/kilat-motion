@@ -401,11 +401,20 @@ class Renderer(
             canvas.saveLayer(fxBounds, fxLayerPaint)
         }
 
-        // Shake menggeser konten saja (bukan overlay), dengan save/restore supaya stack tetap seimbang.
+        // Gerak (shake, zoompulse, wobble) hanya menggeser atau memutar konten, bukan overlay.
+        // Dibungkus save/restore supaya stack tetap seimbang.
         val shakeOff = shake?.let { EffectDraw.shakeOffset(it, cw, t) }
-        if (shakeOff != null) {
+        val zoom = active.firstOrNull { it.type == "zoompulse" }
+        val wobble = active.firstOrNull { it.type == "wobble" }
+        val needXf = shakeOff != null || zoom != null || wobble != null
+        if (needXf) {
             canvas.save()
-            canvas.translate(shakeOff.first, shakeOff.second)
+            if (shakeOff != null) canvas.translate(shakeOff.first, shakeOff.second)
+            if (wobble != null) canvas.rotate(EffectDraw.wobbleDeg(wobble, t))
+            if (zoom != null) {
+                val sc = EffectDraw.zoomPulseScale(zoom, t)
+                canvas.scale(sc, sc)
+            }
         }
         when {
             glitch != null -> drawGlitch(canvas, layer, fx, fp, sp, glitch, t, cw)
@@ -413,7 +422,7 @@ class Renderer(
             rgb != null -> drawRgbSplit(canvas, layer, fx, fp, sp, rgb)
             else -> drawContent(canvas, layer, fx, fp, sp, isGlow = false)
         }
-        if (shakeOff != null) canvas.restore()
+        if (needXf) canvas.restore()
 
         if (tint != null) {
             fxOverlay.reset()

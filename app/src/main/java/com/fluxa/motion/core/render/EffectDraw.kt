@@ -2,6 +2,7 @@ package com.fluxa.motion.core.render
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
@@ -9,6 +10,8 @@ import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import com.fluxa.motion.core.model.LayerEffect
+import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.sin
@@ -21,16 +24,22 @@ import kotlin.math.sin
 object EffectDraw {
 
     /** Efek yang bekerja lewat matriks warna pada seluruh layer. */
-    val COLOR_TYPES = setOf("grayscale", "sepia", "invert", "contrast", "saturate", "warm", "cool", "flicker")
+    val COLOR_TYPES = setOf(
+        "grayscale", "sepia", "invert", "contrast", "saturate", "warm", "cool", "flicker",
+        "brightness", "exposure", "hue", "fade", "noir", "bleach", "teal_orange", "vintage", "polaroid", "night"
+    )
 
     /** Efek yang digambar sebagai overlay di atas konten (hanya menimpa piksel yang sudah ada). */
-    val OVERLAY_TYPES = setOf("vignette", "lightleak", "scanlines", "grain", "letterbox", "dust", "border", "flash")
+    val OVERLAY_TYPES = setOf(
+        "vignette", "lightleak", "scanlines", "grain", "letterbox", "dust", "border", "flash",
+        "spotlight", "haze", "sparkle", "rain", "snow"
+    )
 
     /** Efek yang butuh offscreen layer. */
     val LAYER_TYPES = setOf("tint", "rgbsplit", "chromakey")
 
     /** Efek yang menggeser atau memotong konten. */
-    val MOTION_TYPES = setOf("glitch", "shake")
+    val MOTION_TYPES = setOf("glitch", "shake", "zoompulse", "wobble")
 
     val SUPPORTED: Set<String> = COLOR_TYPES + OVERLAY_TYPES + LAYER_TYPES + MOTION_TYPES
 
@@ -102,6 +111,19 @@ object EffectDraw {
                     0f, 0f, 0f, 1f, 0f
                 )
             }
+            "brightness" -> scaleOff(1f, 1f, 1f, 90f * a, 90f * a, 90f * a)
+            "exposure" -> {
+                val m = 1f + 1.2f * a
+                scaleOff(m, m, m, 0f, 0f, 0f)
+            }
+            "hue" -> hueRotate(150f * a)
+            "fade" -> fadeM(a)
+            "noir" -> mul(contrastM(1f + 1.2f * a), lerp(IDENTITY, GRAY, a))
+            "bleach" -> mul(contrastM(1f + 0.6f * a), saturation(1f - 0.7f * a))
+            "teal_orange" -> scaleOff(1f + 0.18f * a, 1f + 0.02f * a, 1f - 0.12f * a, 0f, 8f * a, 10f * a)
+            "vintage" -> mul(fadeM(0.6f * a), lerp(IDENTITY, SEPIA, 0.8f * a))
+            "polaroid" -> mul(contrastM(1f - 0.12f * a), scaleOff(1f + 0.08f * a, 1f + 0.03f * a, 1f - 0.05f * a, 10f * a, 6f * a, 0f))
+            "night" -> scaleOff(1f - 0.45f * a, 1f - 0.3f * a, 1f + 0.1f * a, 0f, 0f, 0f)
             else -> null
         }
     }
@@ -114,6 +136,19 @@ object EffectDraw {
             acc = if (acc == null) m else mul(m, acc)
         }
         return acc
+    }
+
+    /** Skala denyut untuk efek zoompulse. Berdenyut sekitar 1,2 kali per detik. amount 0 = 1. */
+    fun zoomPulseScale(e: LayerEffect, t: Float): Float {
+        val a = e.amount.coerceIn(0f, 1f)
+        val beat = abs(sin(t * PI.toFloat() * 1.2f))
+        return 1f + a * (0.04f + 0.12f * e.size) * beat
+    }
+
+    /** Sudut goyang (derajat) untuk efek wobble. amount 0 = 0. */
+    fun wobbleDeg(e: LayerEffect, t: Float): Float {
+        val a = e.amount.coerceIn(0f, 1f)
+        return a * (2f + 6f * e.size) * sin(t * 2f * PI.toFloat() * 0.9f)
     }
 
     /** Pergeseran kamera untuk efek shake, dalam piksel layer. */
@@ -206,6 +241,66 @@ object EffectDraw {
                 p.color = withA(e.color, maxOf(a, 96))
                 canvas.drawRect(-cw / 2f, -ch / 2f, cw / 2f, ch / 2f, p)
             }
+            "spotlight" -> {
+                // Sorot: area tengah bening, sisanya gelap. Ukuran menentukan radius.
+                val r = maxOf(1f, maxOf(cw, ch) * (0.25f + 0.6f * e.size))
+                p.shader = RadialGradient(
+                    0f, 0f, r,
+                    intArrayOf(0x00000000, 0x00000000, withA(0xFF000000.toInt(), a)),
+                    floatArrayOf(0f, 0.6f, 1f), Shader.TileMode.CLAMP
+                )
+                canvas.drawRect(bounds, p)
+            }
+            "haze" -> {
+                // Kabut: warna pudar dari bawah ke atas.
+                p.shader = LinearGradient(
+                    0f, ch / 2f, 0f, -ch / 2f + ch * 0.35f,
+                    intArrayOf(withA(e.color, a), withA(e.color, 0)),
+                    null, Shader.TileMode.CLAMP
+                )
+                canvas.drawRect(bounds, p)
+            }
+            "sparkle" -> {
+                // Kilau: titik cahaya yang berkedip di posisi tetap.
+                val n = (10 + e.size * 40f).toInt()
+                for (i in 0 until n) {
+                    val x = -cw / 2f + hash01(i * 31 + 1) * cw
+                    val y = -ch / 2f + hash01(i * 17 + 3) * ch
+                    val ph = hash01(i * 7 + 5) * 6.2831f
+                    val tw = 0.5f + 0.5f * sin(t * (2f + hash01(i * 3 + 9) * 4f) + ph)
+                    p.color = withA(e.color, (a * tw).toInt())
+                    canvas.drawCircle(x, y, (1f + e.size * 3f) * tw, p)
+                }
+            }
+            "rain" -> {
+                // Hujan: garis miring yang jatuh terus. Kecepatan dan jumlah ikut ukuran.
+                val n = (30 + e.size * 150f).toInt()
+                val len = 12f + e.size * 40f
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = 1.5f + e.size * 1.5f
+                p.color = withA(e.color, a)
+                for (i in 0 until n) {
+                    val x = -cw / 2f + hash01(i * 29 + 2) * cw
+                    val fall = (0.8f + hash01(i * 11 + 4) * 0.6f) * (0.6f + e.size * 0.8f)
+                    val fr = hash01(i * 13 + 8) + t * fall
+                    val y = -ch / 2f + (fr - floor(fr)) * ch
+                    canvas.drawLine(x, y, x - len * 0.2f, y + len, p)
+                }
+            }
+            "snow" -> {
+                // Salju: bintik yang turun pelan dan bergoyang.
+                val n = (20 + e.size * 120f).toInt()
+                p.color = withA(e.color, a)
+                for (i in 0 until n) {
+                    val x0 = -cw / 2f + hash01(i * 23 + 6) * cw
+                    val speed = (0.08f + hash01(i * 19 + 2) * 0.12f) * (0.5f + e.size)
+                    val fr = hash01(i * 37 + 1) + t * speed
+                    val y = -ch / 2f + (fr - floor(fr)) * ch
+                    val x = x0 + sin(t * 1.3f + i) * 12f
+                    val r = (1.5f + e.size * 3.5f) * (0.6f + hash01(i * 41 + 7) * 0.6f)
+                    canvas.drawCircle(x, y, r, p)
+                }
+            }
             "flash" -> {
                 // Kilatan putih berkedip. Laju naik sesuai ukuran.
                 val rate = 1f + e.size * 6f
@@ -225,6 +320,39 @@ object EffectDraw {
     }
 
     fun withA(c: Int, a: Int): Int = (c and 0x00FFFFFF) or (a.coerceIn(0, 255) shl 24)
+
+    /** Matriks skala per kanal plus offset (offset dalam skala 0..255). */
+    private fun scaleOff(sr: Float, sg: Float, sb: Float, or: Float, og: Float, ob: Float): FloatArray = floatArrayOf(
+        sr, 0f, 0f, 0f, or,
+        0f, sg, 0f, 0f, og,
+        0f, 0f, sb, 0f, ob,
+        0f, 0f, 0f, 1f, 0f
+    )
+
+    private fun contrastM(c: Float): FloatArray {
+        val o = 128f * (1f - c)
+        return scaleOff(c, c, c, o, o, o)
+    }
+
+    /** Pudar: angkat hitam dan turunkan kontras. x 0 = identitas. */
+    private fun fadeM(x: Float): FloatArray {
+        val c = 1f - 0.35f * x
+        val o = 51f * x
+        return scaleOff(c, c, c, o, o, o)
+    }
+
+    /** Rotasi hue (matriks standar feColorMatrix hueRotate). deg 0 = identitas. */
+    private fun hueRotate(deg: Float): FloatArray {
+        val r = deg * PI.toFloat() / 180f
+        val c = cos(r)
+        val s = sin(r)
+        return floatArrayOf(
+            0.213f + c * 0.787f - s * 0.213f, 0.715f - c * 0.715f - s * 0.715f, 0.072f - c * 0.072f + s * 0.928f, 0f, 0f,
+            0.213f - c * 0.213f + s * 0.143f, 0.715f + c * 0.285f + s * 0.140f, 0.072f - c * 0.072f - s * 0.283f, 0f, 0f,
+            0.213f - c * 0.213f - s * 0.787f, 0.715f - c * 0.715f + s * 0.715f, 0.072f + c * 0.928f + s * 0.072f, 0f, 0f,
+            0f, 0f, 0f, 1f, 0f
+        )
+    }
 
     private fun lerp(a: FloatArray, b: FloatArray, w: Float): FloatArray =
         FloatArray(20) { i -> a[i] + (b[i] - a[i]) * w }

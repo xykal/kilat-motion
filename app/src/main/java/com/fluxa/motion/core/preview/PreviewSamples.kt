@@ -52,6 +52,10 @@ object PreviewSamples {
     fun defaultEffectColor(type: String): Int = when (type) {
         "lightleak" -> 0xFFFF8A3D.toInt()
         "tint" -> 0xFF2EE6C0.toInt()
+        "haze" -> 0xFFFFFFFF.toInt()
+        "sparkle" -> 0xFFFFF3B0.toInt()
+        "rain" -> 0xFFBFD8FF.toInt()
+        "snow" -> 0xFFFFFFFF.toInt()
         else -> 0xFF000000.toInt()
     }
 }
