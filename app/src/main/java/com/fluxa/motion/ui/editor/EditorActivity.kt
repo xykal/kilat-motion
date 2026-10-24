@@ -10,6 +10,7 @@ import com.fluxa.motion.data.ProjectLibrary
 import com.fluxa.motion.data.ProjectStore
 import com.fluxa.motion.data.Templates
 import com.fluxa.motion.core.audio.VideoAudio
+import com.fluxa.motion.core.audio.VoiceChanger
 import com.fluxa.motion.core.video.VideoFrames
 import com.fluxa.motion.ui.picker.MediaPickerActivity
 import com.fluxa.motion.ui.export.ExportPreviewActivity
@@ -1359,6 +1360,63 @@ class EditorActivity : Activity() {
     // =====================================================================
     // musik latar
     // =====================================================================
+    /** Chip preset ubah suara di dialog musik (key -> TextView). */
+    private val voiceChips = ArrayList<Pair<String, TextView>>()
+
+    private fun restyleVoiceChips(active: String) {
+        for ((key, chip) in voiceChips) {
+            val on = key == active
+            chip.setTextColor(if (on) FluxaColors.Accent else FluxaColors.Muted)
+            chip.background = roundedRect(if (on) FluxaColors.CardHi else FluxaColors.Bg, kdpf(10f))
+        }
+    }
+
+    /** Ubah suara musik: file baru dibuat dari file asli di background, lalu dipakai untuk preview & export. */
+    private fun applyVoice(key: String) {
+        val m = project.music ?: return
+        if (m.voice == key) return
+        if (!VoiceChanger.isAvailable()) {
+            toast("Ubah suara tidak tersedia di perangkat ini", FluxaIcon.INFO)
+            return
+        }
+        val src = m.srcPath.ifEmpty { m.path }
+        if (src.isEmpty() || !File(src).exists()) {
+            toast("File musik asli tidak ditemukan", FluxaIcon.INFO)
+            return
+        }
+        val semis = VoiceChanger.semitonesOf(key)
+        toast("Mengubah suara...", FluxaIcon.MUSIC)
+        Thread {
+            val dir = File(filesDir, "audio").apply { mkdirs() }
+            val dst = File(dir, "voice_${System.currentTimeMillis()}.m4a").absolutePath
+            val ok = VoiceChanger.apply(src, dst, semis)
+            val wave = if (ok) AudioUtil.decodeEnvelope(dst) else null
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                if (!ok) {
+                    toast("Gagal mengubah suara", FluxaIcon.INFO)
+                    return@runOnUiThread
+                }
+                val mm = project.music
+                if (mm == null) {
+                    File(dst).delete()
+                    return@runOnUiThread
+                }
+                val old = mm.path
+                mm.srcPath = src
+                mm.path = dst
+                mm.voice = key
+                mm.wave = wave
+                if (old != src && old.contains("/audio/voice_")) File(old).delete()
+                musicPlayer.release()
+                timeline.invalidate()
+                autosave()
+                restyleVoiceChips(key)
+                toast("Suara diubah: ${VoiceChanger.PRESETS.first { it.first == key }.second}", FluxaIcon.MUSIC)
+            }
+        }.start()
+    }
+
     private fun showMusicDialog() {
         val m = project.music
         if (m == null) {
@@ -1434,6 +1492,33 @@ class EditorActivity : Activity() {
         }
         startSlider.onReleased = { autosave() }
         wrap.addView(startSlider, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30f)))
+
+        // ubah suara (native SoundTouch): pitch berubah, durasi tetap
+        val voiceTitle = kText("Ubah suara", 11.5f, FluxaColors.Muted)
+        val lpVT = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpVT.topMargin = dp(14f)
+        wrap.addView(voiceTitle, lpVT)
+        val voiceRow = LinearLayout(this)
+        voiceRow.orientation = LinearLayout.HORIZONTAL
+        val lpVR = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpVR.topMargin = dp(6f)
+        voiceChips.clear()
+        for ((key, label, _) in VoiceChanger.PRESETS) {
+            val chip = kText(label, 10.5f, FluxaColors.Muted, bold = true)
+            chip.gravity = Gravity.CENTER
+            chip.setPadding(dp(4f).toInt(), dp(7f).toInt(), dp(4f).toInt(), dp(7f).toInt())
+            chip.setOnClickListener { applyVoice(key) }
+            voiceChips.add(key to chip)
+            val lpChip = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            lpChip.marginEnd = dp(4f).toInt()
+            voiceRow.addView(chip, lpChip)
+        }
+        wrap.addView(voiceRow, lpVR)
+        restyleVoiceChips(m.voice)
+        val voiceHint = kText("Durasi tetap. Setiap perubahan dibuat dari file asli.", 10.5f, FluxaColors.Dim)
+        val lpVH = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpVH.topMargin = dp(6f)
+        wrap.addView(voiceHint, lpVH)
 
         FluxaSheet.show(
             this, "Musik latar", wrap,

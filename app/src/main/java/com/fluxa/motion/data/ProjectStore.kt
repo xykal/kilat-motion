@@ -77,6 +77,8 @@ object ProjectStore {
             mo.put("dur", m.dur.toDouble())
             mo.put("offset", m.offset.toDouble())
             mo.put("volume", m.volume.toDouble())
+            mo.put("srcPath", m.srcPath)
+            mo.put("voice", m.voice)
             m.wave?.let { w ->
                 val wa = JSONArray()
                 for (v in w) wa.put(v.toDouble())
@@ -350,6 +352,8 @@ object ProjectStore {
             m.dur = mo.optDouble("dur", p.duration.toDouble()).toFloat()
             m.offset = mo.optDouble("offset", 0.0).toFloat()
             m.volume = mo.optDouble("volume", 0.8).toFloat()
+            m.srcPath = mo.optString("srcPath", "")
+            m.voice = mo.optString("voice", "normal")
             val wa = mo.optJSONArray("wave")
             if (wa != null && wa.length() > 0) {
                 val w = FloatArray(wa.length())

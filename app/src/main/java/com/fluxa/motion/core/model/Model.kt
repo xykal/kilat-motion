@@ -416,6 +416,8 @@ class Music {
     var offset: Float = 0f     // mulai dari detik berapa di file
     var volume: Float = 0.8f   // preview (export pakai volume asli file)
     var wave: FloatArray? = null // envelope waveform (runtime + disimpan)
+    var srcPath: String = ""     // file asli sebelum ubah suara (kosong = pakai path)
+    var voice: String = "normal" // preset ubah suara aktif (lihat VoiceChanger.PRESETS)
 }
 
 class Project {
