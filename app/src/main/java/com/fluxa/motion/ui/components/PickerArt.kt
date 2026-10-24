@@ -225,6 +225,7 @@ object PickerArt {
     private fun face(key: String): Typeface = faces.getOrPut(key) {
         try {
             when (key) {
+                in com.fluxa.motion.core.render.FontBank.KEYS -> com.fluxa.motion.core.render.FontBank.bundled(key) ?: Typeface.DEFAULT
                 "sans" -> Typeface.create("sans-serif", Typeface.NORMAL)
                 "sans_black" -> Typeface.create("sans-serif-black", Typeface.BOLD)
                 "serif" -> Typeface.create("serif", Typeface.NORMAL)

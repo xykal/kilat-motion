@@ -489,6 +489,21 @@ class InspectorView(context: Context) : LinearLayout(context) {
         addProp(transform, l, "skewY", "Miring Y", -1f, 1f, 0.01f, false)
         addProp(transform, l, "rot", "Rotasi", -180f, 180f, 1f, true)
         addProp(transform, l, "alpha", "Opasitas", 0f, 1f, 0.01f, false)
+        // preset squash & stretch: skala X melebar & Y menyempit tiap 0,5 detik, lalu kembali
+        val ssBtn = TextView(context)
+        ssBtn.text = "Squash & stretch"
+        ssBtn.setTextColor(com.fluxa.motion.ui.theme.FluxaColors.Accent)
+        ssBtn.textSize = 11f
+        ssBtn.typeface = android.graphics.Typeface.DEFAULT_BOLD
+        ssBtn.gravity = Gravity.CENTER
+        ssBtn.setPadding(dp(12f).toInt(), dp(7f).toInt(), dp(12f).toInt(), dp(7f).toInt())
+        ssBtn.background = GradientDrawable().apply { cornerRadius = dp(10f); setColor(com.fluxa.motion.ui.theme.FluxaColors.Field) }
+        ssBtn.setOnClickListener {
+            applySquashStretch(l, l.dur)
+            listener?.onEdited(true)
+            rebind()
+        }
+        transform.addView(ssBtn, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8f).toInt() })
         if (l.kind == KIND_TEXT) addProp(transform, l, "typing", "Teks muncul", 0f, 1f, 0.01f, false)
         val flipRow = LinearLayout(context)
         flipRow.orientation = HORIZONTAL
@@ -1425,6 +1440,21 @@ class InspectorView(context: Context) : LinearLayout(context) {
     }
 
     // ---------------- animated prop row ----------------
+    /** Squash & stretch: tiap 0,5 detik skala X melebar dan Y menyempit, lalu kembali ke normal. */
+    private fun applySquashStretch(l: Layer, dur: Float) {
+        Anim.setKey(l, "scaleX", 0f, 1f, "linear")
+        Anim.setKey(l, "scaleY", 0f, 1f, "linear")
+        var t = 0.5f
+        while (t < dur) {
+            Anim.setKey(l, "scaleX", t, 1.2f, "easeOut")
+            Anim.setKey(l, "scaleY", t, 0.82f, "easeOut")
+            val back = minOf(dur, t + 0.18f)
+            Anim.setKey(l, "scaleX", back, 1f, "easeOut")
+            Anim.setKey(l, "scaleY", back, 1f, "easeOut")
+            t += 0.5f
+        }
+    }
+
     private fun addProp(parent: LinearLayout, l: Layer, key: String, label: String, minV: Float, maxV: Float, step: Float, isInt: Boolean) {
         val row = LinearLayout(context)
         row.orientation = HORIZONTAL

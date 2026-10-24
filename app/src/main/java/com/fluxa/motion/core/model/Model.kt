@@ -38,11 +38,14 @@ val SHAPE_LABELS = mapOf(
 )
 
 val FONT_KEYS = listOf(
-    "sans", "sans_black", "serif", "serif_bold", "mono", "condensed", "casual", "cursive"
+    "sans", "sans_black", "serif", "serif_bold", "mono", "condensed", "casual", "cursive",
+    "poppins_black", "poppins", "space_mono", "playfair", "bebas"
 )
 val FONT_LABELS = mapOf(
     "sans" to "Sans", "sans_black" to "Sans Black", "serif" to "Serif", "serif_bold" to "Serif Bold",
-    "mono" to "Mono", "condensed" to "Condensed", "casual" to "Casual", "cursive" to "Cursive"
+    "mono" to "Mono", "condensed" to "Condensed", "casual" to "Casual", "cursive" to "Cursive",
+    "poppins_black" to "Poppins Black", "poppins" to "Poppins", "space_mono" to "Space Mono",
+    "playfair" to "Playfair (serif)", "bebas" to "Bebas Neue"
 )
 
 /**
