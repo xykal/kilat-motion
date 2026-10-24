@@ -323,6 +323,7 @@ class Renderer(
         fxBounds.set(-cw / 2f - pad, -ch / 2f - pad, cw / 2f + pad, ch / 2f + pad)
 
         val glitch = active.firstOrNull { it.type == "glitch" }
+        val chroma = active.firstOrNull { it.type == "chromakey" }
         val rgb = active.firstOrNull { it.type == "rgbsplit" }
         val tint = active.firstOrNull { it.type == "tint" }
         val overlays = active.filter { it.type in OVERLAY_EFFECTS }
@@ -351,6 +352,7 @@ class Renderer(
         }
         when {
             glitch != null -> drawGlitch(canvas, layer, fx, fp, sp, glitch, t, cw)
+            chroma != null -> drawChroma(canvas, layer, fx, fp, sp, chroma, cw, ch)
             rgb != null -> drawRgbSplit(canvas, layer, fx, fp, sp, rgb)
             else -> drawContent(canvas, layer, fx, fp, sp, isGlow = false)
         }
@@ -366,6 +368,42 @@ class Renderer(
         for (e in overlays) drawOverlay(canvas, e, cw, ch, t)
 
         if (needsLayer) canvas.restore()
+    }
+
+    /**
+     * Chroma key: konten dirender ke bitmap offscreen, lalu piksel dekat warna kunci dibuat transparan.
+     * amount = toleransi, size = kelembutan tepi. Dilewati bila area terlalu besar (hemat memori).
+     */
+    private fun drawChroma(canvas: Canvas, layer: Layer, fx: HashMap<String, Float>, fp: Paint, sp: Paint, e: LayerEffect, cw: Float, ch: Float) {
+        val w = max(1, (cw + 0.5f).toInt())
+        val h = max(1, (ch + 0.5f).toInt())
+        if (w.toLong() * h > 4_000_000L) {
+            drawContent(canvas, layer, fx, fp, sp, isGlow = false)
+            return
+        }
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val bc = Canvas(bmp)
+        bc.translate(w / 2f, h / 2f)
+        val cp = Paint(fp)
+        cp.alpha = 255
+        cp.xfermode = null
+        drawContent(bc, layer, fx, cp, sp, isGlow = false)
+        val px = IntArray(w * h)
+        bmp.getPixels(px, 0, w, 0, 0, w, h)
+        val kr = (e.color shr 16) and 0xFF
+        val kg = (e.color shr 8) and 0xFF
+        val kb = e.color and 0xFF
+        for (i in px.indices) {
+            val c = px[i]
+            val a = c ushr 24
+            if (a == 0) continue
+            val na = EffectMath.chromaAlpha((c shr 16) and 0xFF, (c shr 8) and 0xFF, c and 0xFF, kr, kg, kb, e.amount, e.size)
+            px[i] = (((a * na) / 255) shl 24) or (c and 0xFFFFFF)
+        }
+        bmp.setPixels(px, 0, w, 0, 0, w, h)
+        rectF.set(-cw / 2f, -ch / 2f, cw / 2f, ch / 2f)
+        canvas.drawBitmap(bmp, null, rectF, fp)
+        bmp.recycle()
     }
 
     /** Irisan horizontal yang digeser acak, berubah 12 kali per detik. */
@@ -471,7 +509,7 @@ class Renderer(
         layer.lastW = w
         layer.lastH = h
         rectF.set(-w / 2f, -h / 2f, w / 2f, h / 2f)
-        val frame = frames.frameAt(layer.imgPath, max(0f, curT - layer.start), videoMaxLong)
+        val frame = frames.frameAt(layer.imgPath, max(0f, curT - layer.start) * layer.speed.coerceIn(0.1f, 8f), videoMaxLong)
         if (frame == null) {
             fp.style = Paint.Style.FILL
             fp.rgbKeepAlpha(0xFF1B2230.toInt())
@@ -698,7 +736,7 @@ class Renderer(
     }
 
     private fun fillBitmapFor(layer: Layer): Bitmap? =
-        if (layer.fillMode == "video") frames.frameAt(layer.fillPath, max(0f, curT - layer.start), videoMaxLong)
+        if (layer.fillMode == "video") frames.frameAt(layer.fillPath, max(0f, curT - layer.start) * layer.speed.coerceIn(0.1f, 8f), videoMaxLong)
         else layer.ensureFillBitmap()
 
     // ---------------- IMAGE ----------------

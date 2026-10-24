@@ -743,6 +743,29 @@ class InspectorView(context: Context) : LinearLayout(context) {
             c.addView(sw, lpSw)
         }
 
+        // kecepatan putar media (video/gambar bergerak)
+        if (l.imgPath.isNotEmpty()) {
+            val spRow = LinearLayout(context)
+            spRow.orientation = HORIZONTAL
+            spRow.gravity = Gravity.CENTER_VERTICAL
+            val lpSp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            lpSp.topMargin = dp(8f).toInt()
+            spRow.addView(labelTv("Kecepatan", widthDp = 60f))
+            val speedRuler = RulerSlider(context)
+            speedRuler.step = 0.05f
+            speedRuler.value = l.speed
+            val speedTv = labelTv(Format.dec(l.speed, 2) + "x", widthDp = 52f)
+            speedRuler.onChange = { v, commit ->
+                val nv = v.coerceIn(0.1f, 8f)
+                l.speed = nv
+                speedTv.text = Format.dec(nv, 2) + "x"
+                listener?.onEdited(commit)
+            }
+            spRow.addView(speedRuler, LayoutParams(0, dp(34f).toInt(), 1f))
+            spRow.addView(speedTv, LayoutParams(dp(52f).toInt(), LayoutParams.WRAP_CONTENT))
+            c.addView(spRow, lpSp)
+        }
+
         fun dimRow(label: String, value: Float, maxVal: Int, onChange: (Float) -> Unit) {
             val row = LinearLayout(context)
             row.orientation = HORIZONTAL

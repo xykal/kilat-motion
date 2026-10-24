@@ -63,10 +63,11 @@ class LayerEffect(
 val EFFECT_TYPES = listOf(
     "vignette", "scanlines", "grain", "lightleak", "tint", "glitch", "rgbsplit",
     "grayscale", "sepia", "invert", "contrast", "saturate", "warm", "cool", "flicker",
-    "letterbox", "dust", "border", "shake", "flash"
+    "letterbox", "dust", "border", "shake", "flash", "chromakey"
 )
 val EFFECT_LABELS = mapOf(
     "vignette" to "Vignette",
+    "chromakey" to "Chroma key",
     "scanlines" to "Scanlines",
     "grain" to "Film grain",
     "lightleak" to "Light leak",
@@ -88,7 +89,7 @@ val EFFECT_LABELS = mapOf(
     "flash" to "Kilatan"
 )
 /** Efek yang memakai warna. */
-val EFFECT_USES_COLOR = setOf("vignette", "lightleak", "tint", "letterbox", "border")
+val EFFECT_USES_COLOR = setOf("vignette", "lightleak", "tint", "letterbox", "border", "chromakey")
 
 class Keyframe(var t: Float = 0f, var v: Float = 0f, var ease: String = "easeOut")
 
@@ -194,6 +195,8 @@ class Layer {
     var blurAmount: Float = 0f
     var glowColor: Int = 0xFF2EE6C0.toInt()
     var blend: String = "normal"
+    /** Kecepatan putar media video/gambar bergerak (1 = normal). Tidak mengubah durasi klip. */
+    var speed: Float = 1f
     /** Stack efek (renderer menerapkan sesuai urutan). */
     val effects: MutableList<LayerEffect> = ArrayList()
 
@@ -371,6 +374,7 @@ class Layer {
         c.imgW = imgW
         c.imgH = imgH
         c.fillMode = fillMode
+        c.speed = speed
         c.fillPath = fillPath
         c.fxBlur = fxBlur
         c.fxBright = fxBright

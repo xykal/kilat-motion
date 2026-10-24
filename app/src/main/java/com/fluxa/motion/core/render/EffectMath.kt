@@ -29,6 +29,21 @@ object EffectMath {
         "censor" to "Sensor (kotak hitam)"
     )
 
+    /**
+     * Alpha chroma key untuk satu piksel: 0 = dibuang (dekat warna kunci), 255 = tetap.
+     * [tolerance] dan [softness] dalam rentang 0..1. Jarak warna dinormalkan ke 0..1.
+     */
+    fun chromaAlpha(r: Int, g: Int, b: Int, kr: Int, kg: Int, kb: Int, tolerance: Float, softness: Float): Int {
+        val dr = (r - kr).toFloat()
+        val dg = (g - kg).toFloat()
+        val db = (b - kb).toFloat()
+        val d = kotlin.math.sqrt(dr * dr + dg * dg + db * db) / 441.67f
+        val t0 = tolerance.coerceIn(0f, 1f) * 0.6f
+        val soft = softness.coerceIn(0f, 1f) * 0.25f + 0.0001f
+        val k = ((d - t0) / soft).coerceIn(0f, 1f)
+        return (k * 255f).toInt()
+    }
+
     /** Alpha tint putih untuk glass. Input persen (0..100), hasil 0..255. */
     fun glassTintAlpha(percent: Float): Int =
         (percent.coerceIn(0f, 100f) / 100f * 255f).toInt()
