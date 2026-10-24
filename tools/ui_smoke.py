@@ -169,7 +169,8 @@ def main():
         size = adb("shell", "wm", "size")
         m = re.search(r"(\d+)x(\d+)", size)
         w, h = (int(m.group(1)), int(m.group(2))) if m else (1080, 2400)
-        tap(w // 2, h - 150)
+        # pusat FAB berada ~89% tinggi layar (bar kapsul melayang di bawah)
+        tap(w // 2, int(h * 0.893))
         time.sleep(1.5)
         # pilih "Buat project baru" di sheet navigasi
         if not tap_text("Buat project baru"):
