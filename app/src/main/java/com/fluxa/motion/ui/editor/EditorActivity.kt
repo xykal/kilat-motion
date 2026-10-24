@@ -258,6 +258,25 @@ class EditorActivity : Activity() {
         lpName.marginStart = dp(2f)
         top.addView(nameEdit, lpName)
 
+        // tombol cepat topbar: simpan, frame PNG, rekam layar (dulu di dalam menu)
+        val saveBtn = FluxaIconButton(this, FluxaIcon.SAVE, FluxaColors.Muted, filled = false, sizeDp = 36f)
+        saveBtn.contentDescription = "Simpan project"
+        saveBtn.setOnClickListener {
+            ProjectLibrary.save(applicationContext, project)
+            toast("Project disimpan", FluxaIcon.SAVE)
+        }
+        top.addView(saveBtn, LinearLayout.LayoutParams(dp(36f), dp(36f)))
+        val frameBtn = FluxaIconButton(this, FluxaIcon.IMAGE, FluxaColors.Muted, filled = false, sizeDp = 36f)
+        frameBtn.contentDescription = "Export frame PNG"
+        frameBtn.setOnClickListener { exportPng() }
+        top.addView(frameBtn, LinearLayout.LayoutParams(dp(36f), dp(36f)))
+        val recBtn = FluxaIconButton(this, FluxaIcon.FILM, FluxaColors.Muted, filled = false, sizeDp = 36f)
+        recBtn.contentDescription = "Rekam layar"
+        recBtn.setOnClickListener {
+            startActivity(Intent(this, com.fluxa.motion.ui.record.RecordStartActivity::class.java))
+        }
+        top.addView(recBtn, LinearLayout.LayoutParams(dp(36f), dp(36f)))
+
         // Tombol ekspor utama: pill teal solid di kanan atas (gaya CapCut).
         val exportBtn = TextView(this).apply {
             text = "Ekspor"
@@ -1831,42 +1850,23 @@ class EditorActivity : Activity() {
     // =====================================================================
     // menu & dialogs
     // =====================================================================
+    private fun menuEntry(item: FluxaSheet.Item, action: () -> Unit): Pair<FluxaSheet.Item, () -> Unit> = item to action
+
     private fun showMenu() {
-        val items = listOf(
-            FluxaSheet.Item("Musik latar", "Musik ikut ter-export ke MP4", FluxaIcon.MUSIC, FluxaColors.Accent),
-            FluxaSheet.Item("Pengaturan project", "Rasio, durasi, warna latar", FluxaIcon.SETTINGS, FluxaColors.Sky),
-            FluxaSheet.Item("Simpan sekarang", "Tersimpan juga otomatis tiap perubahan", FluxaIcon.SAVE, FluxaColors.Green),
-            FluxaSheet.Item("Muat demo", "Ganti isi project ini dengan demo", FluxaIcon.BOLT, FluxaColors.Amber),
-            FluxaSheet.Item("Project baru (kosong)", "Isi project ini dikosongkan", FluxaIcon.PLUS, FluxaColors.Violet),
-            FluxaSheet.Item("Export frame PNG", "Simpan frame saat ini sebagai gambar", FluxaIcon.IMAGE, FluxaColors.Rose),
-            FluxaSheet.Item("Layer dari AI", "Tulis prompt, AI menyusun teks dan animasi", FluxaIcon.SPARK, FluxaColors.Violet),
-            FluxaSheet.Item("Caption otomatis", "Transkrip musik jadi teks (Groq Whisper)", FluxaIcon.TEXT, FluxaColors.Sky),
-            FluxaSheet.Item("Keyframe ke beat", "Pulsa zoom, goyang, atau kedip mengikuti ketukan lagu", FluxaIcon.SPARK, FluxaColors.Amber),
-            FluxaSheet.Item("Bagikan project", "Unggah ke link share (perlu login Google)", FluxaIcon.SHARE, FluxaColors.Green),
-            FluxaSheet.Item("Panduan", "Cara pakai editor", FluxaIcon.BOOK, FluxaColors.Sky),
-            FluxaSheet.Item("Tentang", "Versi dan info aplikasi", FluxaIcon.INFO, FluxaColors.Muted),
-            FluxaSheet.Item("Kembali ke Beranda", "Project tersimpan otomatis", FluxaIcon.HOME, FluxaColors.Accent)
+        val entries = listOf(
+            menuEntry(FluxaSheet.Item("Musik latar", "Musik ikut ter-export ke MP4", FluxaIcon.MUSIC, FluxaColors.Accent)) { showMusicDialog() },
+            menuEntry(FluxaSheet.Item("Pengaturan project", "Rasio, durasi, warna latar", FluxaIcon.SETTINGS, FluxaColors.Sky)) { showProjectSettings() },
+            menuEntry(FluxaSheet.Item("Muat demo", "Ganti isi project ini dengan demo", FluxaIcon.BOLT, FluxaColors.Amber)) { loadDemo() },
+            menuEntry(FluxaSheet.Item("Project baru (kosong)", "Isi project ini dikosongkan", FluxaIcon.PLUS, FluxaColors.Violet)) { newProject() },
+            menuEntry(FluxaSheet.Item("Layer dari AI", "Tulis prompt, AI menyusun teks dan animasi", FluxaIcon.SPARK, FluxaColors.Violet)) { AiActions.promptLayers(this, project) { addAiLayers(it) } },
+            menuEntry(FluxaSheet.Item("Caption otomatis", "Transkrip musik jadi teks (Groq Whisper)", FluxaIcon.TEXT, FluxaColors.Sky)) { AiActions.captionsFromMusic(this, project) { addAiLayers(it) } },
+            menuEntry(FluxaSheet.Item("Keyframe ke beat", "Pulsa zoom, goyang, atau kedip mengikuti ketukan lagu", FluxaIcon.SPARK, FluxaColors.Amber)) { showBeatSheet() },
+            menuEntry(FluxaSheet.Item("Bagikan project", "Unggah ke link share (perlu login Google)", FluxaIcon.SHARE, FluxaColors.Green)) { CloudSettings.shareProject(this, project) },
+            menuEntry(FluxaSheet.Item("Panduan", "Cara pakai editor", FluxaIcon.BOOK, FluxaColors.Sky)) { showGuide() },
+            menuEntry(FluxaSheet.Item("Tentang", "Versi dan info aplikasi", FluxaIcon.INFO, FluxaColors.Muted)) { showAbout() },
+            menuEntry(FluxaSheet.Item("Kembali ke Beranda", "Project tersimpan otomatis", FluxaIcon.HOME, FluxaColors.Accent)) { finish() }
         )
-        FluxaSheet.showList(this, "Menu project", items) { which ->
-            when (which) {
-                0 -> showMusicDialog()
-                1 -> showProjectSettings()
-                2 -> {
-                    ProjectLibrary.save(applicationContext, project)
-                    toast("Project disimpan", FluxaIcon.SAVE)
-                }
-                3 -> loadDemo()
-                4 -> newProject()
-                5 -> exportPng()
-                6 -> AiActions.promptLayers(this, project) { addAiLayers(it) }
-                7 -> AiActions.captionsFromMusic(this, project) { addAiLayers(it) }
-                8 -> showBeatSheet()
-                9 -> CloudSettings.shareProject(this, project)
-                10 -> showGuide()
-                11 -> showAbout()
-                12 -> finish()
-            }
-        }
+        FluxaSheet.showList(this, "Menu project", entries.map { it.first }) { which -> entries[which].second() }
     }
 
     /** Keyframe otomatis dari panel Inspector: pola waktu langsung, pulsa ketukan lewat deteksi beat. */

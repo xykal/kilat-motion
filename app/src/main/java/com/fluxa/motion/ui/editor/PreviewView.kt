@@ -9,6 +9,8 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
+import android.graphics.LinearGradient
+import android.graphics.Shader
 import android.graphics.Paint
 import android.graphics.RectF
 import android.view.GestureDetector
@@ -71,8 +73,12 @@ class PreviewView(context: Context) : View(context) {
 
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dp(1f)
+        strokeWidth = dp(1.5f)
         color = 0xFF252B3A.toInt()
+    }
+    private val canvasShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF000000.toInt()
+        setShadowLayer(dp(20f), 0f, dp(8f), 0xB3000000.toInt())
     }
     private val selPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -178,15 +184,20 @@ class PreviewView(context: Context) : View(context) {
         updateMapping()
 
         canvas.drawColor(0xFF07080C.toInt())
-        // kanvas project
+        // kanvas project: bayangan lembut + tepi gradasi aksen
         tmpRect.set(offX, offY, offX + p.width * viewScale, offY + p.height * viewScale)
+        canvas.drawRoundRect(tmpRect, dp(8f), dp(8f), canvasShadowPaint)
         canvas.save()
         canvas.clipRect(tmpRect)
         canvas.translate(offX, offY)
         canvas.scale(viewScale, viewScale)
         Renderer.renderFrame(canvas, p, playhead, true)
         canvas.restore()
-        canvas.drawRect(tmpRect, borderPaint)
+        borderPaint.shader = LinearGradient(
+            tmpRect.left, tmpRect.top, tmpRect.right, tmpRect.bottom,
+            intArrayOf(0x9932E6C0.toInt(), 0x558B7CFF.toInt()), null, Shader.TileMode.CLAMP
+        )
+        canvas.drawRoundRect(tmpRect, dp(8f), dp(8f), borderPaint)
 
         // coretan yang sedang digambar (mode gambar bebas)
         if (strokePts.size >= 4) {
