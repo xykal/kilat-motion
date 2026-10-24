@@ -1179,6 +1179,63 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpHint = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         lpHint.topMargin = dp(8f).toInt()
         c3.addView(hintMask, lpHint)
+
+        // mask grup & clip ke bawah
+        val clipRow = LinearLayout(context)
+        clipRow.orientation = HORIZONTAL
+        clipRow.gravity = Gravity.CENTER_VERTICAL
+        val lpClip = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpClip.topMargin = dp(12f).toInt()
+        clipRow.addView(labelTv("Mask ke bawah", widthDp = 84f))
+        val clipSwitch = FluxaSwitch(context)
+        clipSwitch.checked = l.clipBelow
+        clipSwitch.onToggle = { on ->
+            l.clipBelow = on
+            listener?.onEdited(true)
+            rebind()
+        }
+        clipRow.addView(clipSwitch)
+        c3.addView(clipRow, lpClip)
+
+        val members = proj?.layers?.count { it.groupId.isNotEmpty() && it.groupId == l.groupId } ?: 0
+        val grpRow = LinearLayout(context)
+        grpRow.orientation = HORIZONTAL
+        grpRow.gravity = Gravity.CENTER_VERTICAL
+        val lpGrp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpGrp.topMargin = dp(10f).toInt()
+        grpRow.addView(labelTv("Grup", widthDp = 84f))
+        val grpInfo = labelTv(if (l.groupId.isEmpty()) "Belum dalam grup" else "Grup: $members layer", 11f, cDim)
+        grpRow.addView(grpInfo, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        grpRow.addView(miniButton("Gabung ke bawah") { joinBelow(l); listener?.onEdited(true); rebind() })
+        if (l.groupId.isNotEmpty()) {
+            val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+            lp.marginStart = dp(6f).toInt()
+            grpRow.addView(miniButton("Lepas") { l.groupId = ""; l.groupMask = false; listener?.onEdited(true); rebind() }, lp)
+        }
+        c3.addView(grpRow, lpGrp)
+
+        val gmRow = LinearLayout(context)
+        gmRow.orientation = HORIZONTAL
+        gmRow.gravity = Gravity.CENTER_VERTICAL
+        val lpGm = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpGm.topMargin = dp(10f).toInt()
+        gmRow.addView(labelTv("Mask grup", widthDp = 84f))
+        val gmSwitch = FluxaSwitch(context)
+        gmSwitch.checked = l.groupMask
+        gmSwitch.isEnabled = l.groupId.isNotEmpty()
+        gmSwitch.alpha = if (l.groupId.isNotEmpty()) 1f else 0.4f
+        gmSwitch.onToggle = { on ->
+            setGroupMask(l, on)
+            listener?.onEdited(true)
+            rebind()
+        }
+        gmRow.addView(gmSwitch)
+        c3.addView(gmRow, lpGm)
+
+        val hintGroup = labelTv("Mask ke bawah memotong layer tepat di bawahnya. Gabung ke bawah mengelompokkan layer; Mask grup memotong seluruh grup.", 10f, cDim)
+        val lpHintG = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+        lpHintG.topMargin = dp(8f).toInt()
+        c3.addView(hintGroup, lpHintG)
         parent.addView(c3)
     }
 
@@ -1440,6 +1497,37 @@ class InspectorView(context: Context) : LinearLayout(context) {
     }
 
     // ---------------- animated prop row ----------------
+    private fun miniButton(label: String, onClick: () -> Unit): TextView {
+        val tv = TextView(context)
+        tv.text = label
+        tv.setTextColor(com.fluxa.motion.ui.theme.FluxaColors.Accent)
+        tv.textSize = 11f
+        tv.typeface = android.graphics.Typeface.DEFAULT_BOLD
+        tv.gravity = Gravity.CENTER
+        tv.setPadding(dp(10f).toInt(), dp(6f).toInt(), dp(10f).toInt(), dp(6f).toInt())
+        tv.background = GradientDrawable().apply { cornerRadius = dp(10f); setColor(com.fluxa.motion.ui.theme.FluxaColors.Field) }
+        tv.setOnClickListener { onClick() }
+        return tv
+    }
+
+    /** Gabung layer ke layer tepat di bawahnya. Bila sudah ada grup di bawah, ikut grup itu. */
+    private fun joinBelow(l: Layer) {
+        val layers = proj?.layers ?: return
+        val idx = layers.indexOf(l)
+        if (idx <= 0) return
+        val below = layers[idx - 1]
+        val gid = below.groupId.ifEmpty { java.util.UUID.randomUUID().toString().substring(0, 8) }
+        below.groupId = gid
+        l.groupId = gid
+    }
+
+    /** Hanya satu layer per grup yang jadi mask grup. */
+    private fun setGroupMask(l: Layer, on: Boolean) {
+        if (l.groupId.isEmpty()) return
+        if (on) proj?.layers?.forEach { if (it !== l && it.groupId == l.groupId) it.groupMask = false }
+        l.groupMask = on
+    }
+
     /** Squash & stretch: tiap 0,5 detik skala X melebar dan Y menyempit, lalu kembali ke normal. */
     private fun applySquashStretch(l: Layer, dur: Float) {
         Anim.setKey(l, "scaleX", 0f, 1f, "linear")

@@ -168,10 +168,7 @@ class Renderer(
         val needsBackdrop = project.layers.any { !it.hidden && it.fxGlass > 0.5f }
         if (!needsBackdrop) {
             if (withBackground) canvas.drawColor(project.bg)
-            for (layer in project.layers) {
-                if (layer.hidden) continue
-                drawLayer(canvas, layer, t)
-            }
+            drawSequence(canvas, project.layers, t)
             return
         }
         // Mode kaca: frame disusun dulu di bitmap kerja supaya layer glass bisa membaca latar di bawahnya.
@@ -199,10 +196,7 @@ class Renderer(
         backdrop = work
         baseMatrix = base
         try {
-            for (layer in project.layers) {
-                if (layer.hidden) continue
-                drawLayer(wc, layer, t)
-            }
+            drawSequence(wc, project.layers, t)
         } finally {
             backdrop = prevBack
             baseMatrix = prevBase
@@ -212,6 +206,69 @@ class Renderer(
         canvas.drawBitmap(work, 0f, 0f, null)
         canvas.restore()
         if (!reuseWork) work.recycle()
+    }
+
+    // ---------------- MASK GRUP ----------------
+
+    private val maskDstPaint = Paint().apply { xfermode = android.graphics.PorterDuffXfermode(PorterDuff.Mode.DST_IN) }
+
+    /**
+     * Gambar daftar layer dengan dukungan mask.
+     * - clipBelow: layer ini memotong layer tepat di bawahnya dan tidak tampil sendiri.
+     * - groupId sama dan berurutan = satu grup. Layer dengan groupMask memotong seluruh grup.
+     * Mask yang disembunyikan diabaikan. Bentuk mask ikut maskShape/maskInvert layer mask itu sendiri.
+     */
+    fun drawSequence(canvas: Canvas, layers: List<Layer>, t: Float) {
+        val units = ArrayList<List<Layer>>()
+        var i = 0
+        while (i < layers.size) {
+            var e = i
+            val gid = layers[i].groupId
+            if (gid.isNotEmpty()) {
+                while (e + 1 < layers.size && layers[e + 1].groupId == gid) e++
+            }
+            units.add(layers.subList(i, e + 1))
+            i = e + 1
+        }
+        var u = 0
+        while (u < units.size) {
+            val next = units.getOrNull(u + 1)
+            val clip = next?.takeIf { it.size == 1 && it[0].clipBelow && !it[0].hidden }?.get(0)
+            if (clip != null) {
+                drawUnit(canvas, units[u], t, clip)
+                u += 2
+            } else {
+                drawUnit(canvas, units[u], t, null)
+                u += 1
+            }
+        }
+    }
+
+    private fun drawUnit(canvas: Canvas, unit: List<Layer>, t: Float, clip: Layer?) {
+        val members = unit.filter { !it.hidden }
+        if (members.isEmpty()) return
+        // layer clipBelow tanpa target tidak digambar
+        if (members.size == 1 && members[0].clipBelow) return
+        val gm = if (members[0].groupId.isNotEmpty()) members.lastOrNull { it.groupMask } else null
+        val content = if (gm != null) members.filter { it !== gm } else members
+        if (content.isEmpty()) return
+        val masks = ArrayList<Layer>(2)
+        if (gm != null) masks.add(gm)
+        if (clip != null) masks.add(clip)
+        drawMasked(canvas, content, masks, 0, t)
+    }
+
+    private fun drawMasked(canvas: Canvas, content: List<Layer>, masks: List<Layer>, idx: Int, t: Float) {
+        if (idx >= masks.size) {
+            for (l in content) drawLayer(canvas, l, t)
+            return
+        }
+        val outer = canvas.saveLayer(null, null)
+        drawMasked(canvas, content, masks, idx + 1, t)
+        val mk = canvas.saveLayer(null, maskDstPaint)
+        drawLayer(canvas, masks[idx], t)
+        canvas.restoreToCount(mk)
+        canvas.restoreToCount(outer)
     }
 
     fun drawLayer(canvas: Canvas, layer: Layer, t: Float) {

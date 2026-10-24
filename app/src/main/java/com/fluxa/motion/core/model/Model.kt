@@ -128,6 +128,11 @@ class Layer {
     var shadowColor: Int = 0xFF000000.toInt()
     var maskShape: String = "none"   // none | circle | rrect | star
     var maskInvert: Boolean = false
+    // mask grup: clipBelow = layer ini jadi mask untuk layer tepat di bawahnya (tidak tampil sendiri);
+    // groupId = layer berurutan dengan id sama membentuk grup; groupMask = layer ini jadi mask untuk seluruh grup
+    var clipBelow: Boolean = false
+    var groupId: String = ""
+    var groupMask: Boolean = false
 
     // kurva easing custom (cubic bezier) untuk keyframe berease "custom"
     var bezX1: Float = 0.3f
@@ -345,6 +350,7 @@ class Layer {
         c.shadowColor = shadowColor
         c.maskShape = maskShape
         c.maskInvert = maskInvert
+        c.clipBelow = clipBelow; c.groupId = groupId; c.groupMask = groupMask
         c.bezX1 = bezX1; c.bezY1 = bezY1; c.bezX2 = bezX2; c.bezY2 = bezY2
         c.vecPoints = vecPoints
         c.vecStrokeW = vecStrokeW
