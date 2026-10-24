@@ -119,7 +119,7 @@ class HomeActivity : Activity() {
         bottomNav = FluxaBottomNav(this)
         bottomNav.onTabSelected = { id -> showPage(id) }
         bottomNav.onCreateClicked = { showNavSheet() }
-        bottomNav.setCompact(true)
+        bottomNav.setCompact(false)
         root.addView(bottomNav, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
         setContentView(root)

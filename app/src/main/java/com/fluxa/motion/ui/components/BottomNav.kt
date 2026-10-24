@@ -46,10 +46,11 @@ class FluxaBottomNav(context: Context) : FrameLayout(context) {
         val bar = LinearLayout(context)
         bar.orientation = LinearLayout.HORIZONTAL
         bar.gravity = Gravity.CENTER_VERTICAL
-        bar.background = roundedTop(FluxaColors.BgTop, dpf(20f))
-        bar.setPadding(dp(8f), dp(8f), dp(8f), dp(10f))
+        // bar melayang berbentuk kapsul; tombol Buat menimpa tepi atasnya
+        bar.background = roundedRect(FluxaColors.Card, dpf(32f), FluxaColors.Line)
+        bar.setPadding(dp(8f), dp(8f), dp(8f), dp(8f))
         val lpBar = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM)
-        lpBar.topMargin = dp(24f)
+        lpBar.setMargins(dp(16f), dp(24f), dp(16f), dp(14f))
         addView(bar, lpBar)
         barView = bar
 
