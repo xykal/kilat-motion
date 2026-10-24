@@ -343,7 +343,7 @@ class TimelineView(context: Context) : View(context) {
     }
 
     private val gripShadow = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val clipNamePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = android.graphics.Typeface.DEFAULT_BOLD }
+    private val clipNamePaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply { typeface = android.graphics.Typeface.DEFAULT_BOLD }
     private var splitRect: android.graphics.RectF? = null
     private var splitLayer: Layer? = null
 
