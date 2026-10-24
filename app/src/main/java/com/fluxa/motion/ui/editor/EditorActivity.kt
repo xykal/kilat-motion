@@ -546,31 +546,26 @@ class EditorActivity : Activity() {
 
         main.addView(timeline, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(176f)))
 
-        // ---------- bottom toolbar ----------
-        val bottomScroll = android.widget.HorizontalScrollView(this)
-        bottomScroll.isHorizontalScrollBarEnabled = false
-        bottomScroll.setBackgroundColor(FluxaColors.BgTop)
+        // ---------- bottom bar (pola Alight Motion) ----------
+        // Tombol Tambah (hijau) membuka menu layer bertab. Bar bawah tetap, tanpa scroll.
         val bottom = LinearLayout(this)
         bottom.orientation = LinearLayout.HORIZONTAL
-        bottom.setPadding(dp(8f), dp(4f), dp(8f), dp(8f))
-        val tools = listOf(
-            Triple(FluxaIcon.TEXT, "Teks") { addTextLayer() },
-            Triple(FluxaIcon.SHAPE, "Bentuk") { showShapePicker() },
-            Triple(FluxaIcon.IMAGE, "Gambar") { pickImage(null) },
-            Triple(FluxaIcon.FILM, "Video") { pickVideoLayer() },
-            Triple(FluxaIcon.MUSIC, "Musik") { showMusicDialog() },
-            Triple(FluxaIcon.PENCIL, "Coret") { toggleDrawMode() },
-            Triple(FluxaIcon.VECTOR, "SVG") { pickSvg() },
-            Triple(FluxaIcon.CUBE, "3D") { show3DPicker() },
-            Triple(FluxaIcon.SLIDERS, "Properti") { showPanel() }
+        bottom.gravity = Gravity.CENTER_VERTICAL
+        bottom.setBackgroundColor(FluxaColors.BgTop)
+        bottom.setPadding(dp(4f), dp(4f), dp(4f), dp(8f))
+        bottom.addView(toolItem(FluxaIcon.PLUS, "Tambah", accent = true) { showAddLayerSheet() },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val barTools = listOf(
+            Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.SLIDERS, "Properti", { showPanel() }),
+            Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.TEXT, "Teks", { addTextLayer() }),
+            Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.SHAPE, "Bentuk", { showShapePicker() }),
+            Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.MUSIC, "Musik", { showMusicDialog() })
         )
-        for ((_, triple) in tools.withIndex()) {
-            val (icon, label, action) = triple
-            val item = toolItem(icon, label, accent = false) { action() }
-            bottom.addView(item, LinearLayout.LayoutParams(dp(64f), ViewGroup.LayoutParams.WRAP_CONTENT))
+        for ((icon, label, action) in barTools) {
+            bottom.addView(toolItem(icon, label, accent = false) { action() },
+                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
-        bottomScroll.addView(bottom)
-        main.addView(bottomScroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        main.addView(bottom, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
         root.addView(main, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
@@ -711,6 +706,74 @@ class EditorActivity : Activity() {
     // =====================================================================
     // panel
     // =====================================================================
+    /** Menu tambah layer bertab (pola Alight Motion). Setiap tile memanggil aksi yang sudah ada. */
+    private fun showAddLayerSheet() {
+        val wrap = LinearLayout(this)
+        wrap.orientation = LinearLayout.VERTICAL
+        val tabRow = LinearLayout(this)
+        tabRow.orientation = LinearLayout.HORIZONTAL
+        val grid = LinearLayout(this)
+        grid.orientation = LinearLayout.VERTICAL
+        var handle: FluxaSheet.Handle? = null
+
+        val tabs = listOf("Bentuk", "Media", "Audio", "Elemen")
+        val entries = mapOf(
+            "Bentuk" to listOf(
+                Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.TEXT, "Teks", { addTextLayer() }),
+                Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.SHAPE, "Bentuk", { showShapePicker() }),
+                Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.PENCIL, "Coret", { toggleDrawMode() })
+            ),
+            "Media" to listOf(
+                Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.IMAGE, "Gambar", { pickImage(null) }),
+                Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.FILM, "Video", { pickVideoLayer() })
+            ),
+            "Audio" to listOf(
+                Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.MUSIC, "Musik", { showMusicDialog() }),
+                Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.FILM, "Video ke audio", { pickVideoForAudio() })
+            ),
+            "Elemen" to listOf(
+                Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.VECTOR, "SVG", { pickSvg() }),
+                Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.CUBE, "3D", { show3DPicker() })
+            )
+        )
+        val tabViews = HashMap<String, TextView>()
+
+        fun renderGrid(tab: String) {
+            grid.removeAllViews()
+            val items = entries[tab].orEmpty()
+            var row: LinearLayout? = null
+            items.forEachIndexed { i, (icon, label, action) ->
+                if (i % 3 == 0) {
+                    row = LinearLayout(this)
+                    row!!.orientation = LinearLayout.HORIZONTAL
+                    grid.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+                }
+                row!!.addView(toolItem(icon, label) {
+                    handle?.dismiss()
+                    action()
+                }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            }
+            tabViews.forEach { (k, v) ->
+                v.setTextColor(if (k == tab) FluxaColors.Accent else FluxaColors.Muted)
+            }
+        }
+
+        for (tab in tabs) {
+            val tv = kText(tab, 13f, FluxaColors.Muted, bold = true)
+            tv.gravity = Gravity.CENTER
+            tv.setPadding(dp(10f), dp(8f), dp(10f), dp(8f))
+            tv.setOnClickListener { renderGrid(tab) }
+            tabViews[tab] = tv
+            tabRow.addView(tv, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        wrap.addView(tabRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        val lpGrid = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpGrid.topMargin = dp(10f)
+        wrap.addView(grid, lpGrid)
+        renderGrid(tabs.first())
+        handle = FluxaSheet.show(this, "Tambah layer", wrap, negativeText = "Tutup")
+    }
+
     private fun showPanel() {
         if (inspectorPanel.visibility == View.VISIBLE) return
         val h = (resources.displayMetrics.heightPixels * 0.52f).toInt()
