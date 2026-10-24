@@ -281,6 +281,17 @@ def main():
         snapshot("15-timeline-props")
     step("baris properti", prop_rows)
 
+    def timeline_clip():
+        # tutup panel "Properti Layer" kalau masih terbuka, supaya timeline dan klip terlihat
+        if "Properti Layer" in visible_texts(dump()):
+            adb("shell", "input", "keyevent", "4")
+            time.sleep(1.2)
+        # ketuk klip layer di timeline, lalu ambil screenshot: nama klip, pegangan trim
+        tap(420, 1779)
+        time.sleep(1)
+        snapshot("16-timeline-klip")
+    step("klip timeline", timeline_clip)
+
     def health():
         alive = adb("shell", "pidof", PKG).strip()
         log(f"  pid: {alive or 'MATI'}")
