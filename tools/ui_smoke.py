@@ -198,8 +198,10 @@ def main():
             if tap_text(label):
                 time.sleep(1.5)
                 snapshot(name)
-                adb("shell", "input", "keyevent", "KEYCODE_BACK")
-                time.sleep(1)
+                # tutup dialog/sheet: tombol Batal (dialog musik) atau Tutup (sheet), baru BACK
+                if not (tap_text("Batal", exact=True) or tap_text("Tutup", exact=True)):
+                    adb("shell", "input", "keyevent", "KEYCODE_BACK")
+                time.sleep(1.5)
     step("editor panels", editor_panels)
 
     def effect_catalog():
