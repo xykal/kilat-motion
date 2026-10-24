@@ -411,6 +411,22 @@ class HomeActivity : Activity() {
         return card
     }
 
+    /** Kartu statistik datar: ikon berwarna, nilai besar, label kecil. */
+    private fun statTile(icon: FluxaIcon, tint: Int, value: String, label: String): LinearLayout {
+        val card = LinearLayout(this)
+        card.orientation = LinearLayout.VERTICAL
+        card.background = roundedRect(FluxaColors.Card, dpf(16f))
+        card.setPadding(dp(12f), dp(12f), dp(12f), dp(12f))
+        card.addView(IconView(this, icon, tint), LinearLayout.LayoutParams(dp(20f), dp(20f)))
+        val lpV = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpV.topMargin = dp(8f)
+        card.addView(kText(value, 17f, FluxaColors.Text, bold = true), lpV)
+        val lpL = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpL.topMargin = dp(2f)
+        card.addView(kText(label, 10.5f, FluxaColors.Dim), lpL)
+        return card
+    }
+
     private fun projectCard(p: Project): LinearLayout {
         val row = LinearLayout(this)
         row.orientation = LinearLayout.HORIZONTAL
@@ -463,6 +479,23 @@ class HomeActivity : Activity() {
         lpC.topMargin = dp(4f)
         lpC.bottomMargin = dp(14f)
         col.addView(count, lpC)
+
+        // baris statistik: jumlah project, total layer, total durasi
+        val totalLayers = projects.sumOf { it.layers.size }
+        val totalSec = projects.sumOf { it.duration.toDouble() }.toFloat()
+        val statRow = LinearLayout(this)
+        statRow.orientation = LinearLayout.HORIZONTAL
+        fun statLp(i: Int): LinearLayout.LayoutParams {
+            val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            if (i > 0) lp.leftMargin = dp(8f)
+            return lp
+        }
+        statRow.addView(statTile(FluxaIcon.FOLDER, FluxaColors.Violet, "${projects.size}", "Project"), statLp(0))
+        statRow.addView(statTile(FluxaIcon.LAYERS, FluxaColors.Amber, "$totalLayers", "Layer"), statLp(1))
+        statRow.addView(statTile(FluxaIcon.CLOCK, FluxaColors.Green, "${Format.dec(totalSec, 0)} dtk", "Total durasi"), statLp(2))
+        val lpSR = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpSR.bottomMargin = dp(14f)
+        col.addView(statRow, lpSR)
 
         if (projects.isEmpty()) {
             val empty = LinearLayout(this)
