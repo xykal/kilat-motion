@@ -165,6 +165,9 @@ def main():
     step("profil scroll", profil_scroll)
 
     def open_create():
+        # dialog ANR launcher emulator bisa menutupi layar; pilih Wait dulu
+        if tap_text("Wait", exact=True):
+            time.sleep(2)
         # FAB + di tengah bawah (tidak punya teks) membuka sheet Navigasi
         size = adb("shell", "wm", "size")
         m = re.search(r"(\d+)x(\d+)", size)
