@@ -180,6 +180,7 @@ class Layer {
 
     // image
     var imgPath: String = ""
+    var imgOrigPath: String = ""  // gambar asli sebelum hapus background (kosong = belum dihapus)
     var imgW: Float = 480f
     var imgH: Float = 480f
     /** Isi shape: "color" (warna fill), "image" atau "video" (media di dalam bentuk). */
@@ -380,6 +381,7 @@ class Layer {
         c.shapeStrokeW = shapeStrokeW
         c.shapeStrokeColor = shapeStrokeColor
         c.imgPath = imgPath
+        c.imgOrigPath = imgOrigPath
         c.imgW = imgW
         c.imgH = imgH
         c.fillMode = fillMode

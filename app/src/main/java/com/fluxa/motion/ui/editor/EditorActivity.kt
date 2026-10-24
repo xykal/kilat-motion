@@ -615,6 +615,22 @@ class EditorActivity : Activity() {
                 pickFont(layer)
             }
 
+            override fun onRemoveBackground(layer: Layer) {
+                removeBackground(layer)
+            }
+
+            override fun onRestoreBackground(layer: Layer) {
+                val orig = layer.imgOrigPath
+                if (orig.isEmpty() || !File(orig).exists()) {
+                    toast("Gambar asli tidak ditemukan", FluxaIcon.INFO)
+                    return
+                }
+                layer.imgPath = orig
+                layer.imgOrigPath = ""
+                afterChange(layer.id)
+                toast("Gambar asli dikembalikan", FluxaIcon.INFO)
+            }
+
             override fun onRequestFill(layer: Layer, mode: String) {
                 pickFill(layer, mode)
             }
@@ -904,6 +920,45 @@ class EditorActivity : Activity() {
         p.layers.add(l)
         afterChange(l.id)
         toast("Coretan jadi layer vektor - atur di Properti", FluxaIcon.PENCIL)
+    }
+
+    /** Hapus background gambar layer: hasil PNG transparan disimpan di filesDir/cutouts. */
+    private fun removeBackground(layer: Layer) {
+        val src = layer.imgPath
+        if (src.isEmpty() || !File(src).exists()) {
+            toast("Pilih gambar dulu", FluxaIcon.INFO)
+            return
+        }
+        toast("Menghapus background...", FluxaIcon.INFO)
+        Thread {
+            val bmp = android.graphics.BitmapFactory.decodeFile(src)
+            val cut = if (bmp != null) com.fluxa.motion.core.vision.BgRemover.cutout(this, bmp) else null
+            var outPath: String? = null
+            if (cut != null) {
+                val dir = File(filesDir, "cutouts").apply { mkdirs() }
+                val out = File(dir, "cut_${layer.id}_${System.currentTimeMillis()}.png")
+                try {
+                    out.outputStream().use { cut.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                    outPath = out.absolutePath
+                } catch (e: Exception) {
+                    out.delete()
+                }
+            }
+            bmp?.recycle()
+            cut?.recycle()
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                val path = outPath
+                if (path == null) {
+                    toast("Background tidak bisa dihapus dari gambar ini", FluxaIcon.INFO)
+                    return@runOnUiThread
+                }
+                if (layer.imgOrigPath.isEmpty()) layer.imgOrigPath = src
+                layer.imgPath = path
+                afterChange(layer.id)
+                toast("Background dihapus", FluxaIcon.INFO)
+            }
+        }.start()
     }
 
     private var fontTarget: Layer? = null

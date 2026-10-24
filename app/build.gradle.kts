@@ -108,6 +108,8 @@ dependencies {
     // UI: Material Components (Material3) untuk tema dasar, widget default, dan kontrol sistem.
     // Komponen editor tetap custom (Canvas/View) agar tampilan flat FLUXA konsisten.
     implementation("com.google.android.material:material:1.12.0")
+    // Hapus background: MediaPipe Tasks Vision (image segmenter, model selfie di assets/models)
+    implementation("com.google.mediapipe:tasks-vision:0.10.14")
     // login Google native lewat Credential Manager (tanpa browser)
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")

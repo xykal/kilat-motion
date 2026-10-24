@@ -59,6 +59,10 @@ class InspectorView(context: Context) : LinearLayout(context) {
         fun onClearKeys(layer: Layer)
         /** Minta file font .ttf/.otf untuk layer teks. */
         fun onRequestFontImport(layer: Layer)
+        /** Hapus background gambar layer (MediaPipe). */
+        fun onRemoveBackground(layer: Layer)
+        /** Kembalikan gambar asli sebelum hapus background. */
+        fun onRestoreBackground(layer: Layer)
         fun onJumpKey(layer: Layer, dir: Int)
         fun onSplit(layer: Layer)
         /** dir: +1 = maju (digambar lebih atas), -1 = mundur. */
@@ -587,6 +591,24 @@ class InspectorView(context: Context) : LinearLayout(context) {
             val lpBtn = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
             lpBtn.topMargin = dp(4f).toInt()
             imgCard.addView(btn, lpBtn)
+            val bgRow = LinearLayout(context)
+            bgRow.orientation = HORIZONTAL
+            bgRow.gravity = Gravity.CENTER_VERTICAL
+            val bgBtn = miniBtn("Hapus background") { listener?.onRemoveBackground(l) }
+            bgRow.addView(bgBtn)
+            if (l.imgOrigPath.isNotEmpty()) {
+                val restore = miniBtn("Kembalikan asli") { listener?.onRestoreBackground(l) }
+                val lpR = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+                lpR.marginStart = dp(6f).toInt()
+                bgRow.addView(restore, lpR)
+            }
+            val lpBg = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+            lpBg.topMargin = dp(6f).toInt()
+            imgCard.addView(bgRow, lpBg)
+            val hintBg = labelTv("Untuk gambar orang/wajah. Hasil disimpan sebagai PNG transparan.", 10f, cDim)
+            val lpHb = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+            lpHb.topMargin = dp(4f).toInt()
+            imgCard.addView(hintBg, lpHb)
             kontenCat.addView(imgCard)
         }
 
