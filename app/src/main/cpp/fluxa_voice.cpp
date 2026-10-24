@@ -4,6 +4,15 @@
 #include <algorithm>
 #include <vector>
 #include "SoundTouch.h"
+#include "STTypes.h"
+#include "cpu_detect.h"
+
+// File SIMD x86 (MMX/SSE) tidak diikutkan. Dengan 0 SoundTouch memakai jalur C generik,
+// yang juga dipakai di ARM. Tanpa stub ini link gagal (detectCPUextensions tidak ada).
+extern "C++" {
+uint detectCPUextensions(void) { return 0; }
+void disableExtensions(uint) {}
+}
 
 namespace {
 struct VoiceCtx {

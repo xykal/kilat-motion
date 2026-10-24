@@ -15,6 +15,6 @@ add_library(fluxa_voice SHARED fluxa_voice.cpp ${SOUNDTOUCH_SRC})
 target_include_directories(fluxa_voice PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/soundtouch/include
     ${CMAKE_CURRENT_SOURCE_DIR}/soundtouch/src)
-target_compile_definitions(fluxa_voice PRIVATE SOUNDTOUCH_FLOAT_SAMPLES=1)
+target_compile_definitions(fluxa_voice PRIVATE SOUNDTOUCH_FLOAT_SAMPLES=1 SOUNDTOUCH_DISABLE_X86_OPTIMIZATIONS=1)
 target_compile_options(fluxa_voice PRIVATE -O2 -fvisibility=hidden)
 target_link_libraries(fluxa_voice ${log-lib})
