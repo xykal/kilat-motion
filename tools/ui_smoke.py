@@ -211,6 +211,9 @@ def main():
         # addTextLayer() langsung membuka panel Inspector; jangan ketuk bar bawah lagi
         # (ketukan di y bawah mengenai isi panel, misalnya tombol impor font).
         time.sleep(2.5)
+        # stack efek ada di tab "Efek" pada panel Inspector
+        tap_text("Efek", exact=True)
+        time.sleep(1.5)
         for _ in range(10):
             texts = visible_texts(dump())
             if "Recent" in texts or "Recent files" in texts:
