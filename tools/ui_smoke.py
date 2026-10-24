@@ -99,8 +99,15 @@ def swipe_up():
     time.sleep(1)
 
 
+def clear_anr():
+    # dialog "... isn't responding" dari launcher emulator bisa menutupi layar: pilih Wait
+    if tap_text("Wait", exact=True):
+        time.sleep(2)
+
+
 def step(name, fn):
     log(f"== {name}")
+    clear_anr()
     try:
         fn()
     except Exception as e:  # noqa: BLE001
@@ -108,6 +115,7 @@ def step(name, fn):
 
 
 def snapshot(name):
+    clear_anr()
     root = dump()
     shot(name)
     texts = visible_texts(root)
