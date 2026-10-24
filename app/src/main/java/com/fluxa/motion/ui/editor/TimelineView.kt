@@ -343,6 +343,7 @@ class TimelineView(context: Context) : View(context) {
     }
 
     private val gripShadow = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val clipNamePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = android.graphics.Typeface.DEFAULT_BOLD }
     private var splitRect: android.graphics.RectF? = null
     private var splitLayer: Layer? = null
 
@@ -456,10 +457,21 @@ class TimelineView(context: Context) : View(context) {
             barPaint.color = if (selected) c else solidMix(c)
             val rr = dp(6f)
             canvas.drawRoundRect(x1, bt, max(x1 + dp(2f), x2), bb, rr, rr, barPaint)
+            // nama layer di dalam klip, dipotong (ellipsis) sesuai lebar klip
+            val clipW = max(x1 + dp(2f), x2) - x1
+            val innerW = clipW - dp(28f)
+            if (innerW > dp(24f)) {
+                clipNamePaint.textSize = dp(10.5f)
+                clipNamePaint.color = if (selected) 0xFF05131F.toInt() else 0xFFE9EEF7.toInt()
+                val label = android.text.TextUtils.ellipsize(
+                    layer.name, clipNamePaint, innerW, android.text.TextUtils.TruncateAt.END
+                ).toString()
+                canvas.drawText(label, x1 + dp(14f), top + rh / 2f + dp(3.6f), clipNamePaint)
+            }
             if (selected) {
-                // handle trim di kedua ujung klip terpilih: pil putih dengan panah
+                // handle trim di kedua ujung klip terpilih: pil putih dengan panah (kiri & kanan sama)
                 drawTrimHandle(canvas, x1, bt, bb, true)
-                drawGrip(canvas, x2, bt, bb)
+                drawTrimHandle(canvas, x2, bt, bb, false)
                 // gunting inline di tepi atas playhead (potong klip tanpa sheet)
                 val px = timeToX(playhead)
                 if (px > x1 + dp(6f) && px < x2 - dp(6f) && px > leftW + dp(10f)) {
