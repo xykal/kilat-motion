@@ -40,6 +40,9 @@ class FluxaBottomNav(context: Context) : FrameLayout(context) {
     }
 
     init {
+        // FAB punya bayangan yang keluar dari batas view, jadi parent jangan memotongnya
+        clipChildren = false
+        clipToPadding = false
         val bar = LinearLayout(context)
         bar.orientation = LinearLayout.HORIZONTAL
         bar.gravity = Gravity.CENTER_VERTICAL
@@ -112,6 +115,10 @@ class FluxaBottomNav(context: Context) : FrameLayout(context) {
         fab.setOnClickListener { onCreateClicked?.invoke() }
         val lpFab = LayoutParams(dp(58f), dp(58f), Gravity.TOP or Gravity.CENTER_HORIZONTAL)
         lpFab.topMargin = dp(2f)
+        // bayangan FAB: elevasi + warna aksen supaya terlihat di latar gelap
+        fab.elevation = dpf(10f)
+        fab.outlineSpotShadowColor = FluxaColors.Accent
+        fab.outlineAmbientShadowColor = FluxaColors.Accent
         addView(fab, lpFab)
 
         select("home", notify = false)
