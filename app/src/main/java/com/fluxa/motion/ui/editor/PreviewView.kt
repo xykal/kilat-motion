@@ -193,10 +193,9 @@ class PreviewView(context: Context) : View(context) {
         canvas.scale(viewScale, viewScale)
         Renderer.renderFrame(canvas, p, playhead, true)
         canvas.restore()
-        borderPaint.shader = LinearGradient(
-            tmpRect.left, tmpRect.top, tmpRect.right, tmpRect.bottom,
-            intArrayOf(0x9932E6C0.toInt(), 0x558B7CFF.toInt()), null, Shader.TileMode.CLAMP
-        )
+        // bingkai datar: warna solid, tanpa gradien
+        borderPaint.shader = null
+        borderPaint.color = 0x9932E6C0.toInt()
         canvas.drawRoundRect(tmpRect, dp(8f), dp(8f), borderPaint)
 
         // coretan yang sedang digambar (mode gambar bebas)

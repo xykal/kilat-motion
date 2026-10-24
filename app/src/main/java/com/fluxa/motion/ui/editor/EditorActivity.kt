@@ -379,12 +379,10 @@ class EditorActivity : Activity() {
         transport.addView(prevKeyBtn, LinearLayout.LayoutParams(dp(32f), dp(32f)))
 
         val playWrap = FrameLayout(this)
-        // tombol play: gradien putih ke mint dengan cincin aksen
-        val playBg = android.graphics.drawable.GradientDrawable(
-            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-            intArrayOf(0xFFFFFFFF.toInt(), 0xFFBFF5E0.toInt())
-        )
+        // tombol play: putih solid dengan cincin aksen (tanpa gradien)
+        val playBg = android.graphics.drawable.GradientDrawable()
         playBg.shape = android.graphics.drawable.GradientDrawable.OVAL
+        playBg.setColor(0xFFFFFFFF.toInt())
         playBg.setStroke(dp(2f), 0x8832E6C0.toInt())
         playWrap.background = playBg
         playWrap.isClickable = true
