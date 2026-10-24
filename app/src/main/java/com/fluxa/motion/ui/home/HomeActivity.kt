@@ -38,8 +38,6 @@ import com.fluxa.motion.ui.theme.dpf
 import com.fluxa.motion.ui.theme.kSectionLabel
 import com.fluxa.motion.ui.theme.kText
 import com.fluxa.motion.ui.theme.fluxaSolid
-import com.fluxa.motion.ui.theme.fluxaGradient
-import com.fluxa.motion.ui.theme.FluxaGradients
 import com.fluxa.motion.ui.theme.fluxaSolidOval
 import com.fluxa.motion.ui.theme.ovalBg
 import com.fluxa.motion.ui.theme.pressEffect
@@ -258,17 +256,17 @@ class HomeActivity : Activity() {
 
         // kartu Buat Project (hero gradient)
         val hero = FrameLayout(this)
-        hero.background = fluxaGradient(FluxaGradients.Violet, dpf(22f))
+        hero.background = fluxaSolid(dpf(20f))
         hero.isClickable = true
-        val decor = IconView(this, FluxaIcon.BOLT, 0x33FFFFFF)
+        val decor = IconView(this, FluxaIcon.BOLT, 0xFFDDE2EC.toInt())
         val lpDecor = FrameLayout.LayoutParams(dp(150f), dp(150f), Gravity.END or Gravity.CENTER_VERTICAL)
         lpDecor.rightMargin = -dp(30f)
         hero.addView(decor, lpDecor)
         val heroCol = LinearLayout(this)
         heroCol.orientation = LinearLayout.VERTICAL
         heroCol.setPadding(dp(18f), dp(18f), dp(18f), dp(18f))
-        heroCol.addView(kText("Buat Project Baru", 21f, 0xFFFFFFFF.toInt(), bold = true))
-        heroCol.addView(kText("Mulai dari kanvas kosong, pilih rasio favoritmu.", 12f, 0xE6FFFFFF.toInt()))
+        heroCol.addView(kText("Buat Project Baru", 20f, 0xFF0A0B0F.toInt(), bold = true))
+        heroCol.addView(kText("Mulai dari kanvas kosong, pilih rasio favoritmu.", 12f, 0xFF3A4150.toInt()))
         val chipRow = LinearLayout(this)
         chipRow.orientation = LinearLayout.HORIZONTAL
         val chipScroll = HorizontalScrollView(this)
@@ -276,8 +274,6 @@ class HomeActivity : Activity() {
         chipScroll.addView(chipRow)
         for (r in Templates.RATIOS) {
             val chip = FluxaChip(this, r.label)
-            chip.background = roundedRect(0x26FFFFFF, dpf(9f))
-            chip.setTextColor(0xFFFFFFFF.toInt())
             val lpC = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             lpC.rightMargin = dp(7f)
             chipRow.addView(chip, lpC)
@@ -295,20 +291,20 @@ class HomeActivity : Activity() {
         val feat = LinearLayout(this)
         feat.orientation = LinearLayout.HORIZONTAL
         val feats = listOf(
-            Triple("Teks", FluxaIcon.TEXT, FluxaGradients.Violet),
-            Triple("Bentuk", FluxaIcon.SHAPE, FluxaGradients.Warm),
-            Triple("Musik", FluxaIcon.MUSIC, FluxaGradients.Cool),
-            Triple("Efek", FluxaIcon.SPARK, FluxaGradients.Rose)
+            Triple("Teks", FluxaIcon.TEXT, FluxaColors.Violet),
+            Triple("Bentuk", FluxaIcon.SHAPE, FluxaColors.Orange),
+            Triple("Musik", FluxaIcon.MUSIC, FluxaColors.Green),
+            Triple("Efek", FluxaIcon.SPARK, FluxaColors.Rose)
         )
-        for ((label, icon, grad) in feats) {
+        for ((label, icon, tint) in feats) {
             val tile = LinearLayout(this)
             tile.orientation = LinearLayout.VERTICAL
             tile.gravity = Gravity.CENTER
-            tile.background = fluxaGradient(grad, dpf(16f))
+            tile.background = roundedRect(FluxaColors.Card, dpf(16f))
             tile.isClickable = true
             tile.pressEffect(0.96f)
-            tile.addView(IconView(this, icon, 0xFFFFFFFF.toInt()), LinearLayout.LayoutParams(dp(22f), dp(22f)))
-            val lblTv = kText(label, 11.5f, 0xFFFFFFFF.toInt(), bold = true)
+            tile.addView(IconView(this, icon, tint), LinearLayout.LayoutParams(dp(22f), dp(22f)))
+            val lblTv = kText(label, 11.5f, FluxaColors.Text, bold = true)
             val lpLbl = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             lpLbl.topMargin = dp(6f)
             tile.addView(lblTv, lpLbl)
