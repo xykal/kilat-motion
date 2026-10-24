@@ -21,8 +21,8 @@ class EffectCatalogTest {
     )
 
     @Test
-    fun tepatDuaPuluhEfek() {
-        assertEquals(20, EFFECT_TYPES.size)
+    fun tepatDuaPuluhSatuEfek() {
+        assertEquals(21, EFFECT_TYPES.size)
         assertEquals(EFFECT_TYPES.size, EFFECT_TYPES.toSet().size)
     }
 

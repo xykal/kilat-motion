@@ -27,7 +27,7 @@ object EffectDraw {
     val OVERLAY_TYPES = setOf("vignette", "lightleak", "scanlines", "grain", "letterbox", "dust", "border", "flash")
 
     /** Efek yang butuh offscreen layer. */
-    val LAYER_TYPES = setOf("tint", "rgbsplit")
+    val LAYER_TYPES = setOf("tint", "rgbsplit", "chromakey")
 
     /** Efek yang menggeser atau memotong konten. */
     val MOTION_TYPES = setOf("glitch", "shake")
