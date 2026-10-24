@@ -208,12 +208,16 @@ def main():
         # tambah teks dari bar bawah, buka Properti, cari bagian Stack efek lalu ambil katalog kategori
         if not tap_text("Teks"):
             raise RuntimeError("tombol Teks di bar bawah tidak ditemukan")
-        time.sleep(2)
-        if not tap_text("Properti"):
-            raise RuntimeError("tombol Properti tidak ditemukan")
-        time.sleep(1.5)
+        # addTextLayer() langsung membuka panel Inspector; jangan ketuk bar bawah lagi
+        # (ketukan di y bawah mengenai isi panel, misalnya tombol impor font).
+        time.sleep(2.5)
         for _ in range(10):
-            if "Stack efek" in visible_texts(dump()):
+            texts = visible_texts(dump())
+            if "Recent" in texts or "Recent files" in texts:
+                adb("shell", "input", "keyevent", "KEYCODE_BACK")
+                time.sleep(1.5)
+                continue
+            if "Stack efek" in texts:
                 break
             swipe_up()
         time.sleep(1)
