@@ -57,6 +57,8 @@ class InspectorView(context: Context) : LinearLayout(context) {
         fun onDuplicate(layer: Layer)
         fun onApplyPreset(layer: Layer, preset: String)
         fun onClearKeys(layer: Layer)
+        /** Minta file font .ttf/.otf untuk layer teks. */
+        fun onRequestFontImport(layer: Layer)
         fun onJumpKey(layer: Layer, dir: Int)
         fun onSplit(layer: Layer)
         /** dir: +1 = maju (digambar lebih atas), -1 = mundur. */
@@ -623,12 +625,21 @@ class InspectorView(context: Context) : LinearLayout(context) {
         val lpFont = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         lpFont.topMargin = dp(8f).toInt()
         fontRow.addView(labelTv("Font", widthDp = 50f))
-        val fontDrop = visualPicker(FONT_KEYS, l.fontKey, { FONT_LABELS[it] ?: it }, { c, r, k -> PickerArt.font(c, r, k) }) { k ->
+        val fontKeys = FONT_KEYS + com.fluxa.motion.core.render.FontBank.customKeys()
+        val fontDrop = visualPicker(fontKeys, l.fontKey, { FONT_LABELS[it] ?: com.fluxa.motion.core.render.FontBank.labelOf(it) }, { c, r, k -> PickerArt.font(c, r, k) }) { k ->
             l.fontKey = k
             listener?.onEdited(true)
         }
         fontRow.addView(fontDrop, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         c.addView(fontRow, lpFont)
+        val importFontRow = LinearLayout(context)
+        importFontRow.orientation = HORIZONTAL
+        importFontRow.gravity = Gravity.CENTER_VERTICAL
+        val lpImportFont = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lpImportFont.topMargin = dp(6f).toInt()
+        importFontRow.addView(labelTv("", widthDp = 50f))
+        importFontRow.addView(miniButton("Impor font .ttf / .otf") { listener?.onRequestFontImport(l) })
+        c.addView(importFontRow, lpImportFont)
 
         val sizeRow = LinearLayout(context)
         sizeRow.orientation = HORIZONTAL

@@ -610,6 +610,10 @@ class EditorActivity : Activity() {
                 pickImage(layer)
             }
 
+            override fun onRequestFontImport(layer: Layer) {
+                pickFont(layer)
+            }
+
             override fun onRequestFill(layer: Layer, mode: String) {
                 pickFill(layer, mode)
             }
@@ -899,6 +903,37 @@ class EditorActivity : Activity() {
         p.layers.add(l)
         afterChange(l.id)
         toast("Coretan jadi layer vektor - atur di Properti", FluxaIcon.PENCIL)
+    }
+
+    private var fontTarget: Layer? = null
+
+    private fun pickFont(layer: Layer) {
+        fontTarget = layer
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("font/ttf", "font/otf", "application/x-font-ttf", "application/x-font-otf", "application/octet-stream"))
+        }
+        try {
+            @Suppress("DEPRECATION")
+            startActivityForResult(intent, REQ_FONT)
+        } catch (e: Throwable) {
+            fontTarget = null
+            toast("Tidak bisa membuka pemilih file", FluxaIcon.INFO)
+        }
+    }
+
+    private fun importFontFrom(uri: Uri) {
+        val layer = fontTarget ?: return
+        fontTarget = null
+        val key = com.fluxa.motion.core.render.FontBank.importFont(this, uri)
+        if (key == null) {
+            toast("File itu bukan font .ttf/.otf yang valid", FluxaIcon.INFO)
+            return
+        }
+        layer.fontKey = key
+        afterChange(layer.id)
+        toast("Font ditambahkan dan dipakai di layer ini", FluxaIcon.INFO)
     }
 
     private fun pickSvg() {
@@ -1582,6 +1617,11 @@ class EditorActivity : Activity() {
             importAudioFrom(auri)
             return
         }
+        if (requestCode == REQ_FONT) {
+            val furi: Uri = data?.data ?: return
+            importFontFrom(furi)
+            return
+        }
         if (requestCode == REQ_OBJ) {
             val ouri: Uri = data?.data ?: return
             importObjFrom(ouri)
@@ -2161,6 +2201,7 @@ class EditorActivity : Activity() {
         private const val REQ_AUDIO = 1002
         private const val REQ_OBJ = 1003
         private const val REQ_SVG = 1004
+        private const val REQ_FONT = 1005
         private const val REQ_PICK_IMAGE = 1101
         private const val REQ_PICK_AUDIO = 1102
         private const val REQ_PICK_VIDEO_AUDIO = 1103

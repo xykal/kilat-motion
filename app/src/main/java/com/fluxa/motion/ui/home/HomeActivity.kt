@@ -61,6 +61,7 @@ class HomeActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.fluxa.motion.core.render.FontBank.init(this)
         window.statusBarColor = FluxaColors.BgTop
         window.navigationBarColor = FluxaColors.Bg
         buildUi()
