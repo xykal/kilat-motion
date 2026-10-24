@@ -87,6 +87,8 @@ class TimelineView(context: Context) : View(context) {
     }
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     // Keyframe dibuat terang dengan tepi gelap supaya terbaca di atas bar layer
+    private val propRowBg = Paint().apply { color = 0xFF0B0D13.toInt() }
+    private val propNamePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF98A3B8.toInt() }
     private val diamondPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0xFFE9EEF7.toInt()
         style = Paint.Style.FILL
@@ -228,16 +230,35 @@ class TimelineView(context: Context) : View(context) {
     private fun rowHeight(): Float {
         val p = project ?: return dp(30f)
         val avail = height - rulerH - musicLaneH()
-        if (p.layers.isEmpty()) return dp(30f)
-        return min(dp(34f), max(dp(16f), avail / p.layers.size))
+        val n = rows().size
+        if (n == 0) return dp(30f)
+        return min(dp(34f), max(dp(16f), avail / n))
     }
 
-    private fun layerAtRow(rowIdx: Int): Layer? {
-        val p = project ?: return null
-        // baris 0 = layer paling atas (index terakhir)
-        val idx = p.layers.size - 1 - rowIdx
-        return if (idx in p.layers.indices) p.layers[idx] else null
+    /** Satu baris timeline: baris layer (channel = null) atau baris properti (channel = kunci properti). */
+    private class TRow(val layer: Layer, val channel: String?)
+
+    /**
+     * Daftar baris dari atas ke bawah. Layer yang dipilih dan punya keyframe menampilkan satu baris
+     * per properti yang berkeyframe, seperti Alight Motion.
+     */
+    private fun rows(): List<TRow> {
+        val p = project ?: return emptyList()
+        val out = ArrayList<TRow>()
+        for (i in p.layers.indices.reversed()) {
+            val layer = p.layers[i]
+            out.add(TRow(layer, null))
+            if (layer.id == selectedId) {
+                for (k in PROP_KEYS) {
+                    val ch = layer.channels[k] ?: continue
+                    if (ch.keys.isNotEmpty()) out.add(TRow(layer, k))
+                }
+            }
+        }
+        return out
     }
+
+    private fun layerAtRow(rowIdx: Int): Layer? = rows().getOrNull(rowIdx)?.layer
 
     // scroll vertikal area layer (baris bisa lebih banyak dari tinggi layar)
     private var vScroll = 0f
@@ -245,7 +266,7 @@ class TimelineView(context: Context) : View(context) {
 
     private fun maxVScroll(): Float {
         val p = project ?: return 0f
-        val content = p.layers.size * rowHeight()
+        val content = rows().size * rowHeight()
         return max(0f, content - (height - rulerH - musicLaneH()))
     }
 
@@ -279,6 +300,31 @@ class TimelineView(context: Context) : View(context) {
     private val handlePath = Path()
 
     /** Handle tiga garis melayang di ujung kanan klip terpilih (tarik untuk trim kanan). */
+    /** Baris properti: nama properti di kolom kiri, diamond keyframe milik properti itu saja. */
+    private fun drawPropRow(c: Canvas, layer: Layer, key: String, top: Float, rh: Float) {
+        c.drawRect(0f, top, width.toFloat(), top + rh, propRowBg)
+        propNamePaint.textSize = dp(10.5f)
+        c.drawText(PROP_NAMES[key] ?: key, dp(40f), top + rh / 2f + dp(3.6f), propNamePaint)
+        val ch = layer.channels[key] ?: return
+        c.save()
+        c.clipRect(leftW, top, width.toFloat(), top + rh)
+        val ky = top + rh / 2f
+        val r = dp(4f)
+        for (k in ch.keys) {
+            val kx = timeToX(k.t)
+            if (kx < leftW - dp(2f) || kx > width) continue
+            playheadHead.reset()
+            playheadHead.moveTo(kx, ky - r)
+            playheadHead.lineTo(kx + r, ky)
+            playheadHead.lineTo(kx, ky + r)
+            playheadHead.lineTo(kx - r, ky)
+            playheadHead.close()
+            c.drawPath(playheadHead, if (abs(k.t - playhead) < 0.03f) diamondActive else diamondPaint)
+            c.drawPath(playheadHead, diamondStroke)
+        }
+        c.restore()
+    }
+
     private fun drawGrip(c: Canvas, edgeX: Float, top: Float, bottom: Float) {
         val w = dp(14f)
         val h = min(bottom - top, dp(28f))
@@ -366,12 +412,16 @@ class TimelineView(context: Context) : View(context) {
         canvas.save()
         canvas.clipRect(0f, rulerH, width.toFloat(), height - musicLaneH())
         val rh = rowHeight()
-        var row = 0
-        while (row < p.layers.size) {
-            val layer = layerAtRow(row) ?: break
+        val rowList = rows()
+        for ((row, info) in rowList.withIndex()) {
+            val layer = info.layer
             val top = rulerH + row * rh - vScroll
             if (top > height) break
             canvas.drawLine(0f, top + rh, width.toFloat(), top + rh, linePaint)
+            if (info.channel != null) {
+                drawPropRow(canvas, layer, info.channel, top, rh)
+                continue
+            }
 
             // nama layer
             val nameY = top + rh / 2f + dp(3.6f)
@@ -440,7 +490,6 @@ class TimelineView(context: Context) : View(context) {
                 canvas.drawPath(playheadHead, diamondStroke)
             }
             canvas.restore()
-            row++
         }
         canvas.restore()
 
@@ -634,8 +683,20 @@ class TimelineView(context: Context) : View(context) {
                     return true
                 }
 
-                val row = rowAtY(event.y)
-                val layer = layerAtRow(row)
+                val info = rows().getOrNull(rowAtY(event.y))
+                val layer = info?.layer
+                if (info?.channel != null && layer != null) {
+                    // baris properti: ketuk diamond = lompat ke keyframe properti itu (tanpa drag)
+                    val kt = layer.channels[info.channel]?.keys?.minByOrNull { abs(timeToX(it.t) - event.x) }?.t
+                    if (kt != null && abs(timeToX(kt) - event.x) < dp(14f)) {
+                        selectedId = layer.id
+                        listener?.onSelect(layer.id)
+                        listener?.onSeek(kt)
+                    }
+                    dragMode = MODE_NONE
+                    invalidate()
+                    return true
+                }
                 if (layer == null) {
                     dragMode = MODE_PAN
                     lastPanX = event.x
@@ -853,3 +914,11 @@ class TimelineView(context: Context) : View(context) {
         const val MODE_TRIM_START = 8
     }
 }
+
+/** Nama tampilan untuk baris properti di timeline. */
+private val PROP_NAMES = mapOf(
+    "x" to "Posisi X", "y" to "Posisi Y", "scale" to "Skala", "scaleX" to "Skala X", "scaleY" to "Skala Y",
+    "skewX" to "Miring X", "skewY" to "Miring Y", "rot" to "Rotasi", "rotX" to "Tilt X", "rotY" to "Tilt Y",
+    "alpha" to "Opacity", "typing" to "Teks muncul", "fx.blur" to "Blur", "fx.brightness" to "Kecerahan",
+    "fx.contrast" to "Kontras", "fx.saturate" to "Saturasi", "fx.hue" to "Hue", "fx.glow" to "Glow"
+)

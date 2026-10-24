@@ -261,6 +261,14 @@ def main():
         snapshot("12-template-reportase")
     step("template reportase", template_reportase)
 
+    def prop_rows():
+        # pilih layer "Kredit" (baris paling atas, punya keyframe) lewat kolom nama timeline,
+        # lalu baris per properti harus muncul di bawahnya
+        tap(150, 1779)
+        time.sleep(1.5)
+        snapshot("15-timeline-props")
+    step("baris properti", prop_rows)
+
     def health():
         alive = adb("shell", "pidof", PKG).strip()
         log(f"  pid: {alive or 'MATI'}")
