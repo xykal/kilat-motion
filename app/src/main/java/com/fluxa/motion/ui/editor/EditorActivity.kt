@@ -192,20 +192,25 @@ class EditorActivity : Activity() {
     // =====================================================================
     // UI
     // =====================================================================
-    private fun toolItem(icon: FluxaIcon, label: String, accent: Boolean = false, onClick: () -> Unit): LinearLayout {
+    private val editorTeal = 0xFF32E6C0.toInt()
+
+    private fun toolItem(icon: FluxaIcon, label: String, accent: Boolean = false, tint: Int = FluxaColors.Muted, onClick: () -> Unit): LinearLayout {
         val col = LinearLayout(this)
         col.orientation = LinearLayout.VERTICAL
         col.gravity = Gravity.CENTER
         col.isClickable = true
-        col.setPadding(dp(2f), dp(8f), dp(2f), dp(6f))
-        // Gaya CapCut: ikon polos tanpa kotak, label kecil di bawah.
-        val iv = IconView(this, icon, if (accent) FluxaColors.Accent else FluxaColors.Text)
-        iv.iconInset = 0.1f
-        col.addView(iv, LinearLayout.LayoutParams(dp(26f), dp(26f)))
-        val tv = kText(label, 10.5f, FluxaColors.Muted, bold = false)
+        col.setPadding(dp(2f), dp(6f), dp(2f), dp(6f))
+        // ubin ikon: Tambah = teal solid, lainnya = kartu gelap dengan ikon berwarna
+        val tile = FrameLayout(this)
+        tile.background = roundedRect(if (accent) editorTeal else FluxaColors.Card, kdpf(14f))
+        val iv = IconView(this, icon, if (accent) FluxaColors.AccentInk else tint)
+        iv.iconInset = 0.2f
+        tile.addView(iv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        col.addView(tile, LinearLayout.LayoutParams(dp(46f), dp(34f)))
+        val tv = kText(label, 10.5f, if (accent) FluxaColors.Text else FluxaColors.Muted, bold = accent)
         tv.gravity = Gravity.CENTER
         val lpTv = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        lpTv.topMargin = dp(5f)
+        lpTv.topMargin = dp(4f)
         col.addView(tv, lpTv)
         col.pressEffect(0.92f)
         col.setOnClickListener { onClick() }
@@ -225,7 +230,7 @@ class EditorActivity : Activity() {
         top.orientation = LinearLayout.HORIZONTAL
         top.gravity = Gravity.CENTER_VERTICAL
         top.setPadding(dp(10f), dp(8f), dp(8f), dp(6f))
-        top.setBackgroundColor(FluxaColors.BgTop)
+        top.setBackgroundColor(FluxaColors.Bg)
 
         val backBtn = FluxaIconButton(this, FluxaIcon.BACK, FluxaColors.Muted, filled = false, sizeDp = 40f)
         backBtn.setOnClickListener { finish() }
@@ -245,8 +250,8 @@ class EditorActivity : Activity() {
         nameEdit.textSize = 14f
         nameEdit.typeface = android.graphics.Typeface.DEFAULT_BOLD
         nameEdit.setSingleLine(true)
-        nameEdit.background = null
-        nameEdit.setPadding(dp(10f), dp(6f), dp(6f), dp(6f))
+        nameEdit.setPadding(dp(14f), dp(9f), dp(10f), dp(9f))
+        nameEdit.background = roundedRect(FluxaColors.Card, kdpf(18f))
         nameEdit.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) {
                 val s = nameEdit.text.toString().trim()
@@ -257,7 +262,8 @@ class EditorActivity : Activity() {
             }
         }
         val lpName = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        lpName.marginStart = dp(2f)
+        lpName.marginStart = dp(4f)
+        lpName.marginEnd = dp(6f)
         top.addView(nameEdit, lpName)
 
         // tombol cepat topbar: simpan, frame PNG, rekam layar (dulu di dalam menu)
@@ -287,7 +293,7 @@ class EditorActivity : Activity() {
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setPadding(dp(14f), 0, dp(14f), 0)
-            background = fluxaSolid(kdpf(17f))
+            background = roundedRect(editorTeal, kdpf(20f))
             setOnClickListener { showExportDialog() }
         }
         top.addView(exportBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(40f)).apply { marginEnd = dp(6f) })
@@ -361,10 +367,11 @@ class EditorActivity : Activity() {
         val transport = LinearLayout(this)
         transport.orientation = LinearLayout.HORIZONTAL
         transport.gravity = Gravity.CENTER_VERTICAL
-        transport.setPadding(dp(14f), dp(4f), dp(14f), dp(6f))
+        transport.setPadding(dp(12f), dp(8f), dp(12f), dp(8f))
+        transport.background = roundedRect(FluxaColors.Panel, kdpf(22f))
 
         // dua baris: posisi di atas, durasi di bawah (kolom kiri sempit karena tombol transport)
-        timecode = kText("00:00.00\n/ 00:00.00", 10f, FluxaColors.Text, bold = true, font = "monospace")
+        timecode = kText("00:00.00\n/ 00:00.00", 11f, FluxaColors.Text, bold = true, font = "monospace")
         timecode.maxLines = 2
         timecode.setLineSpacing(0f, 0.95f)
         timecode.gravity = Gravity.CENTER_VERTICAL or Gravity.START
@@ -379,11 +386,10 @@ class EditorActivity : Activity() {
         transport.addView(prevKeyBtn, LinearLayout.LayoutParams(dp(32f), dp(32f)))
 
         val playWrap = FrameLayout(this)
-        // tombol play: putih solid dengan cincin aksen (tanpa gradien)
+        // tombol play: teal solid, ikon gelap
         val playBg = android.graphics.drawable.GradientDrawable()
         playBg.shape = android.graphics.drawable.GradientDrawable.OVAL
-        playBg.setColor(0xFFFFFFFF.toInt())
-        playBg.setStroke(dp(2f), 0x8832E6C0.toInt())
+        playBg.setColor(editorTeal)
         playWrap.background = playBg
         playWrap.isClickable = true
         playIcon = IconView(this, FluxaIcon.PLAY, FluxaColors.Bg)
@@ -429,7 +435,9 @@ class EditorActivity : Activity() {
         right.addView(loopBtn, LinearLayout.LayoutParams(dp(36f), dp(36f)))
         transport.addView(right, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
 
-        main.addView(transport, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        val lpTr = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpTr.setMargins(dp(10f), dp(6f), dp(10f), dp(8f))
+        main.addView(transport, lpTr)
 
         // ---------- timeline ----------
         timeline = TimelineView(this)
@@ -486,7 +494,7 @@ class EditorActivity : Activity() {
         tlHead.orientation = LinearLayout.HORIZONTAL
         tlHead.gravity = Gravity.CENTER_VERTICAL
         tlHead.setPadding(dp(12f), dp(2f), dp(8f), dp(2f))
-        tlHead.setBackgroundColor(FluxaColors.BgTop)
+        tlHead.setBackgroundColor(FluxaColors.Bg)
         selLabel = kText("Timeline", 10.5f, FluxaColors.Dim, bold = true)
         selLabel.maxLines = 1
         tlHead.addView(selLabel, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -549,8 +557,8 @@ class EditorActivity : Activity() {
         val bottom = LinearLayout(this)
         bottom.orientation = LinearLayout.HORIZONTAL
         bottom.gravity = Gravity.CENTER_VERTICAL
-        bottom.setBackgroundColor(FluxaColors.BgTop)
-        bottom.setPadding(dp(4f), dp(4f), dp(4f), dp(8f))
+        bottom.setBackgroundColor(FluxaColors.Panel)
+        bottom.setPadding(dp(6f), dp(8f), dp(6f), dp(10f))
         bottom.addView(toolItem(FluxaIcon.PLUS, "Tambah", accent = true) { showAddLayerSheet() },
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         val barTools = listOf(
@@ -559,8 +567,10 @@ class EditorActivity : Activity() {
             Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.SHAPE, "Bentuk", { showShapePicker() }),
             Triple<FluxaIcon, String, () -> Unit>(FluxaIcon.MUSIC, "Musik", { showMusicDialog() })
         )
-        for ((icon, label, action) in barTools) {
-            bottom.addView(toolItem(icon, label, accent = false) { action() },
+        val barTints = listOf(FluxaColors.Violet, FluxaColors.Sky, FluxaColors.Amber, FluxaColors.Green)
+        for ((i, t) in barTools.withIndex()) {
+            val (icon, label, action) = t
+            bottom.addView(toolItem(icon, label, accent = false, tint = barTints[i]) { action() },
                 LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
         main.addView(bottom, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
