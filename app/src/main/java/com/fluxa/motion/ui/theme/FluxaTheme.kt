@@ -76,6 +76,21 @@ fun fluxaSolid(radiusPx: Float): GradientDrawable {
     return d
 }
 
+/** Gradien diagonal (kiri atas ke kanan bawah) untuk kartu hero dan pintasan. */
+fun fluxaGradient(colors: IntArray, radiusPx: Float): GradientDrawable {
+    val d = GradientDrawable(GradientDrawable.Orientation.TL_BR, colors)
+    d.cornerRadius = radiusPx
+    return d
+}
+
+/** Palet gradien Fluxa. */
+object FluxaGradients {
+    val Violet = intArrayOf(0xFF7C6CFF.toInt(), 0xFF3FB6FF.toInt())
+    val Warm = intArrayOf(0xFFFF8A3D.toInt(), 0xFFFF5C7A.toInt())
+    val Cool = intArrayOf(0xFF22C55E.toInt(), 0xFF59E3FF.toInt())
+    val Rose = intArrayOf(0xFFFF5C7A.toInt(), 0xFF8B7CFF.toInt())
+}
+
 fun fluxaSolidOval(): GradientDrawable {
     val d = GradientDrawable()
     d.shape = GradientDrawable.OVAL
