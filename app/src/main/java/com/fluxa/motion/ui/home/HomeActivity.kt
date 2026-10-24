@@ -712,6 +712,7 @@ class HomeActivity : Activity() {
             FluxaSheet.Item("Project", "Semua project tersimpan", FluxaIcon.FOLDER, FluxaColors.Violet),
             FluxaSheet.Item("Template", "Template siap edit", FluxaIcon.LAYERS, FluxaColors.Amber),
             FluxaSheet.Item("Profil", "Akun, cloud, dan pengaturan", FluxaIcon.USER, FluxaColors.Rose),
+            FluxaSheet.Item("Rekam layar", "Rekam layar beserta audio sistem", FluxaIcon.FILM, FluxaColors.Sky),
             FluxaSheet.Item("Buat project baru", "Mulai dari kanvas kosong", FluxaIcon.PLUS, FluxaColors.Accent)
         )
         FluxaSheet.showList(this, "Navigasi", items) { i ->
@@ -720,6 +721,7 @@ class HomeActivity : Activity() {
                 1 -> showPage("projects")
                 2 -> showPage("templates")
                 3 -> showPage("profile")
+                4 -> startActivity(Intent(this, com.fluxa.motion.ui.record.RecordStartActivity::class.java))
                 else -> showCreateSheet()
             }
         }

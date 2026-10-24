@@ -4,6 +4,12 @@
     <!-- login Google, share preset, dan AI (Groq/OpenRouter) butuh internet -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- rekam layar dalam app + audio sistem (AudioPlaybackCapture butuh RECORD_AUDIO) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- picker media custom (galeri foto/video & musik). Android 13+ pakai READ_MEDIA_*. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
@@ -47,6 +53,17 @@
         <activity
             android:name=".ui.export.ExportPreviewActivity"
             android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <service
+            android:name=".core.record.ScreenRecordService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+
+        <activity
+            android:name=".ui.record.RecordStartActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
             android:screenOrientation="portrait" />
 
         <activity
