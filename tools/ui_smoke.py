@@ -269,6 +269,9 @@ def main():
             if tap_text("JJ Reportase", exact=True):
                 break
             swipe_up()
+        time.sleep(1)
+        # kartu JJ Reportase: tombol "Pakai Template" pertama (paling atas) yang membuka editor
+        tap_text("Pakai Template")
         time.sleep(4)
         snapshot("12-template-reportase")
     step("template reportase", template_reportase)
