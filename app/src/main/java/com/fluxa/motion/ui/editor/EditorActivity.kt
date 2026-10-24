@@ -357,6 +357,40 @@ class EditorActivity : Activity() {
         lpBadge.leftMargin = dp(10f)
         lpBadge.topMargin = dp(8f)
         previewWrap.addView(badge, lpBadge)
+
+        // kartu "mulai dari sini": tampil saat project belum punya layer
+        emptyHint = LinearLayout(this)
+        emptyHint.orientation = LinearLayout.VERTICAL
+        emptyHint.gravity = Gravity.CENTER_HORIZONTAL
+        emptyHint.setPadding(dp(20f), dp(22f), dp(20f), dp(20f))
+        emptyHint.background = roundedRect(FluxaColors.Panel, kdpf(20f))
+        emptyHint.addView(IconView(this, FluxaIcon.PLUS, editorTeal), LinearLayout.LayoutParams(dp(36f), dp(36f)))
+        val hTitle = kText("Mulai dari sini", 15f, FluxaColors.Text, bold = true)
+        hTitle.gravity = Gravity.CENTER
+        val lpHT = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpHT.topMargin = dp(10f)
+        emptyHint.addView(hTitle, lpHT)
+        val hDesc = kText("Tambah gambar, video, teks, atau bentuk. Semua tampil di kanvas ini.", 11.5f, FluxaColors.Muted)
+        hDesc.gravity = Gravity.CENTER
+        val lpHD = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpHD.topMargin = dp(4f)
+        emptyHint.addView(hDesc, lpHD)
+        val hBtn = TextView(this).apply {
+            text = "+ Tambah layer"
+            setTextColor(FluxaColors.AccentInk)
+            textSize = 13f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(dp(18f), 0, dp(18f), 0)
+            background = roundedRect(editorTeal, kdpf(20f))
+            setOnClickListener { showAddLayerSheet() }
+        }
+        val lpHB = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(40f))
+        lpHB.topMargin = dp(14f)
+        emptyHint.addView(hBtn, lpHB)
+        val lpEH = FrameLayout.LayoutParams(dp(260f), ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpEH.gravity = Gravity.CENTER
+        previewWrap.addView(emptyHint, lpEH)
         updateBadge()
 
         main.addView(previewWrap, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
@@ -707,8 +741,13 @@ class EditorActivity : Activity() {
         setContentView(root)
     }
 
+    private lateinit var emptyHint: LinearLayout
+
     private fun updateBadge() {
         badge.text = "${project.width} x ${project.height}  |  ${project.fps}fps"
+        if (::emptyHint.isInitialized) {
+            emptyHint.visibility = if (project.layers.isEmpty()) View.VISIBLE else View.GONE
+        }
     }
 
     // =====================================================================
@@ -909,6 +948,7 @@ class EditorActivity : Activity() {
 
     private fun afterChange(selectId: String? = null, openPanel: Boolean = true) {
         ensureDuration()
+        updateBadge()
         if (selectId != null) selectedId = selectId
         preview.project = project
         preview.select(selectedId)

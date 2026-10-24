@@ -78,6 +78,7 @@ class PreviewView(context: Context) : View(context) {
         color = 0xFF000000.toInt()
         setShadowLayer(dp(20f), 0f, dp(8f), 0xB3000000.toInt())
     }
+    private val gridDotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1A1F2C.toInt() }
     private val selPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = dp(1.4f)
@@ -182,6 +183,17 @@ class PreviewView(context: Context) : View(context) {
         updateMapping()
 
         canvas.drawColor(0xFF07080C.toInt())
+        // pola titik halus di latar (tanda area kerja, bukan gradien)
+        val step = dp(18f)
+        var gy = step / 2f
+        while (gy < height) {
+            var gx = step / 2f
+            while (gx < width) {
+                canvas.drawCircle(gx, gy, dp(0.9f), gridDotPaint)
+                gx += step
+            }
+            gy += step
+        }
         // kanvas project: bayangan lembut + tepi gradasi aksen
         tmpRect.set(offX, offY, offX + p.width * viewScale, offY + p.height * viewScale)
         canvas.drawRoundRect(tmpRect, dp(8f), dp(8f), canvasShadowPaint)
